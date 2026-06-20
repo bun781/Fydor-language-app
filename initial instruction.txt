@@ -1,0 +1,600 @@
+# AI Language Learning Platform — System Architecture & Product Specification
+
+## Mission
+
+Build a production-grade AI-powered language learning platform that is simple, maintainable, scalable, and educationally effective. Every feature should improve the long-term health of the repository. The system should support any language pair through configuration rather than language-specific code.
+
+The platform should be designed around reusable curriculum files, active recall, spaced repetition, AI-assisted tutoring, contextual language acquisition, and personalized study sessions.
+
+---
+
+# Core Architecture Principles
+
+The entire application must revolve around one reusable learning engine.
+
+There must never be separate implementations for Korean, Japanese, Chinese, or any other language. Instead, language behavior should be defined through configurable language-pair presets and curriculum files.
+
+The architecture should prioritize:
+
+* Simplicity over cleverness
+* Reuse over duplication
+* Configuration over hardcoding
+* Composition over inheritance
+* Consistency over flexibility
+* Long-term maintainability over short-term convenience
+
+Before introducing new abstractions, verify that the feature cannot extend an existing system.
+
+---
+
+# Technology Stack
+
+## Frontend
+
+* Next.js (App Router)
+* React
+* TypeScript
+* Tailwind CSS
+* Mobile-first responsive design
+
+## Backend
+
+* Next.js Route Handlers / Server Actions
+* TypeScript
+
+## Database
+
+Use a **local PostgreSQL database** for now.
+
+Requirements:
+
+* Local PostgreSQL only
+* Drizzle ORM
+* Database migrations
+* Proper foreign keys
+* Indexed search fields
+* Normalized schema
+* No duplicated data
+* Server-side validation before writes
+
+## Hosting
+
+Deploy exclusively on **Vercel**.
+
+Requirements:
+
+* Production deployment
+* Preview deployments
+* Environment variables
+* Serverless functions
+* Edge caching where appropriate
+* Image optimization
+* Analytics support
+* Logging support
+* Optimized cold starts
+
+---
+
+# Core Learning System
+
+## Success Criteria
+
+* User can choose a target language and native/base language.
+* User may optionally choose a secondary bridge language.
+* App supports vocabulary, grammar patterns, sentence chunks, listening, speaking, writing, and review.
+* Learning prioritizes active recall rather than passive rereading.
+* Users study through complete sentences and chunks instead of isolated vocabulary whenever possible.
+* Every vocabulary item and grammar pattern can be linked to multiple example sentences.
+* AI-generated content is clearly marked and never treated as authoritative without validation.
+
+---
+
+# Language Pair Presets
+
+The application must never assume English is the base language.
+
+Each preset defines:
+
+* Source language
+* Target language
+* Optional bridge language
+* Writing system
+* Romanization rules
+* Grammar explanation language
+* Dictionary direction
+* Keyboard/input hints
+* Speech recognition language
+* Text-to-speech voice
+* Example sentence difficulty
+* Common learner mistakes
+* Language-specific grammar notes
+
+Required presets include:
+
+* Chinese → English
+* Korean → English
+* Japanese → English
+* Korean → Japanese
+* Japanese → Korean
+* Chinese → Japanese
+* English → Japanese
+* English → Korean
+* English → Chinese
+
+Users can:
+
+* Select a preset during onboarding
+* Change presets later
+* Store preset preferences per account
+* Use different explanation languages without changing the learning language
+
+---
+
+# Curriculum Import System
+
+The learning engine is driven by structured curriculum files.
+
+Supported formats:
+
+* JSON (production)
+* YAML (human and AI authoring)
+
+Each curriculum may include:
+
+* Language preset
+* Vocabulary
+* Sentence chunks
+* Grammar patterns
+* Example sentences
+* Listening transcripts
+* Speaking prompts
+* Writing prompts
+* Review configuration
+* Metadata
+
+Requirements:
+
+* Schema validation before import
+* Preview before importing
+* Duplicate detection
+* Required field validation
+* Source tagging
+* Versioning
+* Bulk deletion by curriculum source
+
+Curriculum files become the primary source of educational content.
+
+---
+
+# Vocabulary & Chunk Learning
+
+Users can save:
+
+* Individual words
+* Multi-word phrases
+* Collocations
+* Idioms
+* Sentence chunks
+
+Each vocabulary item includes:
+
+* Meaning
+* Pronunciation
+* Audio
+* Example sentence
+* Topic tags
+* Difficulty
+* Frequency
+* Source curriculum
+
+The system should encourage phrase-level acquisition rather than isolated memorization.
+
+AI should generate additional contextual example sentences using vocabulary already known by the learner.
+
+---
+
+# Grammar Learning
+
+Grammar patterns are first-class entities.
+
+Each grammar pattern stores:
+
+* Explanation
+* Usage notes
+* Example sentences
+* Common learner mistakes
+* User-created examples
+* Related grammar
+* Difficulty
+* Source curriculum
+
+The platform should generate targeted grammar practice based on previous mistakes.
+
+Repeatedly missed grammar structures receive higher review priority.
+
+---
+
+# Listening
+
+The listening engine supports:
+
+* Native audio
+* AI-generated audio
+* Human-recorded audio
+
+Each listening item includes:
+
+* Transcript
+* Translation
+* Vocabulary extraction
+* Difficulty
+* Topic
+* Curriculum source
+
+Users can:
+
+* Hide transcript
+* Reveal transcript
+* Generate flashcards from unknown words
+* Review extracted vocabulary
+
+Listening material is filtered according to proficiency level.
+
+---
+
+# Speaking
+
+Users can:
+
+* Record spoken responses
+* Receive automatic transcription
+* Compare against expected answers
+* Receive AI feedback
+
+Feedback includes:
+
+* Grammar
+* Vocabulary
+* Pronunciation
+* Fluency
+* Completeness
+
+Speaking mistakes automatically become future review items.
+
+---
+
+# Writing
+
+Users write short responses using recently learned material.
+
+AI evaluates:
+
+* Grammar
+* Vocabulary
+* Naturalness
+* Missing particles
+* Missing prepositions
+* Missing case markers
+* Word choice
+
+Recurring writing mistakes automatically enter the spaced repetition system.
+
+---
+
+# AI Tutor
+
+The AI Tutor can:
+
+* Explain grammar simply
+* Generate personalized exercises
+* Produce example sentences
+* Create mini-dialogues
+* Generate quizzes
+* Recommend review content
+* Answer language questions within the current curriculum
+
+AI-generated content must always be labeled as AI-generated.
+
+Server-side validation should prevent malformed AI output from entering persistent storage.
+
+---
+
+# Spaced Repetition
+
+The review engine supports:
+
+* Vocabulary
+* Sentence chunks
+* Grammar structures
+* Listening items
+* Speaking mistakes
+* Writing mistakes
+
+Review directions include:
+
+* Target → Native
+* Native → Target
+* Fill-in-the-blank
+* Sentence reconstruction
+* Listening recognition
+* Speaking recall
+
+Users can rate responses as:
+
+* Easy
+* Correct
+* Hard
+* Failed
+
+The scheduler adapts intervals according to user performance.
+
+Daily review queues only display items due today.
+
+---
+
+# Personalization
+
+Track:
+
+* Known vocabulary
+* Weak vocabulary
+* Weak grammar
+* Weak sentence patterns
+* Accuracy
+* Daily streak
+* Study time
+* Listening time
+* Writing attempts
+* Speaking attempts
+* Review history
+* Topic interests
+
+The recommendation engine should always suggest the highest-impact next activity.
+
+---
+
+# Study Session Flow
+
+Users can launch a daily study session.
+
+Each session contains:
+
+1. Due reviews
+2. New vocabulary and sentence chunks
+3. Grammar exercises
+4. Listening practice
+5. Speaking or writing production
+
+Target duration:
+
+15–30 minutes.
+
+At completion, display:
+
+* Accuracy
+* XP (if enabled)
+* Weak areas
+* New mastered items
+* Suggested next study topic
+
+---
+
+# Mistake System
+
+Every incorrect answer can become a review item.
+
+Mistakes are categorized as:
+
+* Vocabulary
+* Grammar
+* Spelling
+* Word order
+* Pronunciation
+* Listening comprehension
+* Writing
+* Speaking
+
+The dashboard displays:
+
+* Most common mistakes
+* Weakest grammar
+* Weakest vocabulary
+* Frequently forgotten items
+
+---
+
+# Content Management
+
+Users can:
+
+* Add vocabulary
+* Add sentence chunks
+* Add grammar
+* Import curriculum files
+* Edit saved items
+* Delete saved items
+* Attach notes
+* Store source sentences
+* Merge duplicates
+
+Learning should always preserve context.
+
+---
+
+# Dashboard
+
+The dashboard should display:
+
+* Daily review count
+* Daily streak
+* Current study session
+* Weekly progress
+* Accuracy trends
+* Weak grammar
+* Weak vocabulary
+* Listening progress
+* Speaking progress
+* Writing progress
+* Suggested next lesson
+
+Dashboard loading should remain fast regardless of account size.
+
+---
+
+# Data Model
+
+The database must support the single-tenant MVP tables at minimum:
+
+* language_presets
+* curriculum_imports
+* vocab_items
+* grammar_patterns
+* sentence_chunks
+* example_sentences
+* review_items
+* review_attempts
+* listening_items
+* speaking_attempts
+* writing_attempts
+* mistake_logs
+* study_sessions
+* ai_generations
+* user_statistics
+
+Relationships should remain normalized with minimal duplication.
+
+---
+
+# Security & Privacy
+
+Implement:
+
+* Parameterized queries
+* Rate limiting for AI endpoints
+* Input validation
+* Output sanitization
+* Secure secret management
+* Audit logging
+* Least-privilege database access
+
+Authentication, account ownership checks, and Supabase-specific Row Level Security are deferred for now.
+
+User study data is private by default.
+
+AI requests must never expose unnecessary personal information.
+
+---
+
+# Compliance
+
+The platform should be designed to support modern privacy and security requirements from the start.
+
+Requirements include:
+
+* Privacy by design
+* User consent where required
+* Account deletion
+* Data export
+* Configurable retention policies
+* Audit logs for security-sensitive actions
+* Encryption in transit
+* Secure storage of sensitive data
+* Compliance-ready architecture for GDPR, CCPA, and similar regulations
+* Age-appropriate safeguards when applicable
+* Compliance with AI provider usage policies
+* Accessibility considerations (WCAG)
+
+Compliance should be considered a core architectural requirement rather than an optional feature.
+
+---
+
+# Performance
+
+The application should:
+
+* Load dashboards quickly
+* Keep review interactions nearly instantaneous
+* Minimize API calls
+* Cache generated examples where appropriate
+* Support asynchronous AI generation with loading states
+* Optimize database queries
+* Avoid unnecessary serverless invocations
+* Minimize bundle size
+* Scale efficiently on Vercel
+
+---
+
+# Testing
+
+Required tests include:
+
+## Unit
+
+* Spaced repetition scheduling
+* Review scoring
+* API input validation
+* Curriculum validation
+* Language preset resolution
+
+## Integration
+
+* Daily study session
+* Curriculum import
+* AI feedback pipeline
+* Review scheduling
+
+## End-to-End
+
+* User registration
+* Language selection
+* Curriculum import
+* Vocabulary creation
+* Grammar creation
+* Daily review
+* Listening practice
+* Writing submission
+* Speaking submission
+* AI feedback
+* Mistake creation
+* Future review generation
+
+Every bug fix should include an automated regression test.
+
+---
+
+# MVP Definition
+
+The MVP is successful when a user can:
+
+* Create an account
+* Select a language pair preset
+* Import or create a curriculum
+* Add vocabulary and grammar
+* Study through contextual sentences and chunks
+* Complete spaced repetition reviews
+* Finish a daily study session
+* Practice listening
+* Submit speaking or writing responses
+* Receive AI feedback
+* Have mistakes automatically scheduled for future review
+* View personalized progress, weak areas, and recommendations
+
+---
+
+# Definition of Done
+
+A feature is complete only if:
+
+* It extends existing architecture rather than creating parallel systems.
+* All validation occurs server-side.
+* Database migrations are included where necessary.
+* Local database schema remains normalized.
+* Vercel deployment builds successfully.
+* Linting passes.
+* Type checking passes.
+* Unit, integration, and E2E tests pass.
+* Security checks appropriate to the unauthenticated local MVP are implemented.
+* Compliance requirements remain satisfied.
+* Documentation is updated.
+* No unnecessary technical debt is introduced.
+* The repository is simpler and more maintainable than before the feature was implemented.
