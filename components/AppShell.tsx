@@ -1,9 +1,10 @@
 "use client";
 
+import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const navLinks = [
+const navLinks: Array<{ href: Route<string>; label: string }> = [
   { href: "/admin/imports", label: "Import" },
   { href: "/study/sentence-forge", label: "Sentence Forge" },
   { href: "/study/imported-content", label: "Imported Content" },

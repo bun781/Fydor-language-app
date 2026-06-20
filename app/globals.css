@@ -734,6 +734,248 @@ textarea.input {
   padding: 12px 14px;
 }
 
+/* ── Button active state (reveal controls) ──────────────── */
+
+.button.secondary.active {
+  background: var(--surface-muted);
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+/* ── Token type coloring ─────────────────────────────────── */
+
+.token-chip-word {
+  border-color: var(--word);
+  color: var(--word);
+}
+
+.token-chip-grammar {
+  border-color: var(--grammar);
+  color: var(--grammar);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 14px;
+}
+
+.token-chip-chunk {
+  border-color: var(--chunk);
+  color: var(--chunk);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 14px;
+}
+
+.token-selected {
+  box-shadow: 0 0 0 2px currentColor;
+}
+
+/* Session familiarity */
+.token-fam-known { background: rgba(22, 101, 52, 0.08); }
+.token-fam-learning { background: rgba(146, 64, 14, 0.08); }
+
+/* ── Interactive token wrapper ───────────────────────────── */
+
+.interactive-token-wrap {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.token-meaning {
+  display: block;
+  font-size: 11px;
+  max-width: 90px;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Token row (word/grammar/chunk sections) ─────────────── */
+
+.token-row {
+  align-items: flex-start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 36px;
+}
+
+/* ── Flashcard ───────────────────────────────────────────── */
+
+.flashcard {
+  max-width: 820px;
+}
+
+.flashcard-progress {
+  background: var(--line);
+  border-radius: 99px;
+  height: 3px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.flashcard-progress-fill {
+  background: var(--accent);
+  border-radius: 99px;
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.flashcard-hint {
+  background: var(--surface-muted);
+  border-left: 3px solid var(--accent);
+  border-radius: 2px;
+  font-size: 13px;
+  padding: 8px 12px;
+}
+
+/* ── Reveal controls ─────────────────────────────────────── */
+
+.reveal-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ── Translation ─────────────────────────────────────────── */
+
+.flashcard-translation {
+  background: var(--surface-muted);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  font-family: Georgia, serif;
+  font-size: 16px;
+  min-height: 48px;
+  padding: 12px 14px;
+  transition: filter 0.2s;
+}
+
+.translation-hidden {
+  cursor: pointer;
+  filter: blur(6px);
+  user-select: none;
+}
+
+.translation-hidden:hover {
+  filter: blur(4px);
+}
+
+/* ── Details panel ───────────────────────────────────────── */
+
+.details-panel {
+  background: var(--surface-muted);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 14px 16px;
+}
+
+.details-surface {
+  font-family: Georgia, serif;
+  font-size: 22px;
+  margin: 0;
+}
+
+.detail-label {
+  color: var(--muted);
+  display: block;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  margin-bottom: 2px;
+  text-transform: uppercase;
+}
+
+.detail-mistakes {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+/* ── Related sentences ───────────────────────────────────── */
+
+.related-sentences {
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+
+.related-sentence {
+  border-left: 3px solid var(--line);
+  display: grid;
+  gap: 4px;
+  padding-left: 12px;
+}
+
+.related-sentence-text {
+  font-family: Georgia, serif;
+  font-size: 16px;
+  margin: 0;
+}
+
+.related-reason {
+  font-size: 11px;
+}
+
+/* ── Checkpoint quiz ─────────────────────────────────────── */
+
+.quiz-card {
+  max-width: 820px;
+}
+
+.quiz-prompt {
+  font-family: Georgia, serif;
+  font-size: 18px;
+  margin: 0;
+}
+
+.quiz-choices {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 1fr 1fr;
+}
+
+.quiz-choice {
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.quiz-correct {
+  background: rgba(22, 101, 52, 0.10);
+  border-color: var(--ok);
+  color: var(--ok);
+}
+
+.quiz-wrong {
+  background: rgba(146, 64, 14, 0.10);
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+.quiz-result {
+  font-size: 14px;
+  font-weight: 500;
+  padding: 10px 14px;
+  border-radius: 3px;
+}
+
+.quiz-result-ok {
+  background: rgba(22, 101, 52, 0.08);
+  color: var(--ok);
+}
+
+.quiz-result-fail {
+  background: rgba(146, 64, 14, 0.08);
+  color: var(--warn);
+}
+
+/* ── Study shell / lesson picker ─────────────────────────── */
+
+.study-shell {
+  max-width: 820px;
+}
+
+.lesson-picker {
+  max-width: 480px;
+}
+
 /* ── Responsive ─────────────────────────────────────────── */
 
 @media (max-width: 820px) {

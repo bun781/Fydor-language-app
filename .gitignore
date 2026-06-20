@@ -7,3 +7,7 @@ coverage/
 .env
 .env*.local
 !.env.example
+
+# Old PWA generated files (from workbox builds)
+public/workbox-*.js
+public/swe-worker-*.js

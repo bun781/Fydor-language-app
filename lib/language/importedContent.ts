@@ -1,4 +1,4 @@
-import { asc, desc, eq, inArray } from "drizzle-orm";
+import { asc, count, desc, eq, inArray } from "drizzle-orm";
 import {
   lessonSentences,
   learningItems,
@@ -9,6 +9,7 @@ import {
   sentences
 } from "@/db/schema";
 import { getDb, db } from "@/lib/server/db";
+import type { StudyLesson, StudyLessonMeta } from "@/lib/imported-content/types";
 
 export interface ImportedLessonSentence {
   id: string;
@@ -129,6 +130,139 @@ export async function getLatestImportedLessonContent(): Promise<ImportedLessonCo
         meaning: chunk.meaning,
         explanation: chunk.explanation,
         type: chunk.type
+      }))
+    }))
+  };
+}
+
+export async function getAllLessonsMeta(): Promise<StudyLessonMeta[]> {
+  await getDb();
+  const lessonList = await db
+    .select({
+      id: lessons.id,
+      language: lessons.targetLanguage,
+      baseLanguage: lessons.baseLanguage,
+      title: lessons.title,
+      description: lessons.description,
+      level: lessons.level,
+      tags: lessons.tags
+    })
+    .from(lessons)
+    .orderBy(desc(lessons.importedAt));
+
+  if (!lessonList.length) return [];
+
+  const lessonIds = lessonList.map((l) => l.id);
+  const countRows = await db
+    .select({ lessonId: lessonSentences.lessonId, cnt: count(lessonSentences.sentenceId) })
+    .from(lessonSentences)
+    .where(inArray(lessonSentences.lessonId, lessonIds))
+    .groupBy(lessonSentences.lessonId);
+
+  const countMap = new Map(countRows.map((r) => [r.lessonId, r.cnt]));
+
+  return lessonList.map((l) => ({ ...l, sentenceCount: countMap.get(l.id) ?? 0 }));
+}
+
+export async function getLessonContentById(lessonId: string): Promise<StudyLesson | null> {
+  await getDb();
+  const [lesson] = await db
+    .select({
+      id: lessons.id,
+      language: lessons.targetLanguage,
+      baseLanguage: lessons.baseLanguage,
+      title: lessons.title,
+      description: lessons.description,
+      level: lessons.level,
+      tags: lessons.tags
+    })
+    .from(lessons)
+    .where(eq(lessons.id, lessonId));
+
+  if (!lesson) return null;
+
+  const lessonSentenceRows = await db
+    .select({ sentenceId: lessonSentences.sentenceId, text: sentences.text, translation: sentences.translation })
+    .from(lessonSentences)
+    .innerJoin(sentences, eq(lessonSentences.sentenceId, sentences.id))
+    .where(eq(lessonSentences.lessonId, lesson.id))
+    .orderBy(asc(lessonSentences.position));
+
+  const sentenceIds = lessonSentenceRows.map((r) => r.sentenceId);
+  if (!sentenceIds.length) return { ...lesson, sentences: [] };
+
+  const [vocabLinks, grammarLinks, chunkLinks] = await Promise.all([
+    db
+      .select({
+        sentenceId: sentenceVocabularyLinks.sentenceId,
+        surfaceText: sentenceVocabularyLinks.surfaceText,
+        displayText: learningItems.displayText,
+        meaning: learningItems.meaning,
+        explanation: learningItems.explanation,
+        commonMistakes: learningItems.commonMistakes,
+        canonicalKey: learningItems.canonicalKey
+      })
+      .from(sentenceVocabularyLinks)
+      .innerJoin(learningItems, eq(sentenceVocabularyLinks.vocabularyItemId, learningItems.id))
+      .where(inArray(sentenceVocabularyLinks.sentenceId, sentenceIds)),
+    db
+      .select({
+        sentenceId: sentenceGrammarLinks.sentenceId,
+        surfaceText: sentenceGrammarLinks.surfaceText,
+        pattern: learningItems.displayText,
+        meaning: learningItems.meaning,
+        explanation: learningItems.explanation,
+        commonMistakes: learningItems.commonMistakes,
+        canonicalKey: learningItems.canonicalKey
+      })
+      .from(sentenceGrammarLinks)
+      .innerJoin(learningItems, eq(sentenceGrammarLinks.grammarItemId, learningItems.id))
+      .where(inArray(sentenceGrammarLinks.sentenceId, sentenceIds)),
+    db
+      .select({
+        sentenceId: sentenceChunkLinks.sentenceId,
+        surfaceText: sentenceChunkLinks.surfaceText,
+        meaning: learningItems.meaning,
+        explanation: learningItems.explanation,
+        canonicalKey: learningItems.canonicalKey
+      })
+      .from(sentenceChunkLinks)
+      .innerJoin(learningItems, eq(sentenceChunkLinks.chunkItemId, learningItems.id))
+      .where(inArray(sentenceChunkLinks.sentenceId, sentenceIds))
+  ]);
+
+  const wordsBySentence = groupBySentence(vocabLinks);
+  const grammarBySentence = groupBySentence(grammarLinks);
+  const chunksBySentence = groupBySentence(chunkLinks);
+
+  return {
+    ...lesson,
+    sentences: lessonSentenceRows.map((row) => ({
+      id: row.sentenceId,
+      text: row.text,
+      translation: row.translation,
+      audioUrl: null,
+      words: (wordsBySentence.get(row.sentenceId) ?? []).map((w) => ({
+        surface: w.surfaceText,
+        displayText: w.displayText,
+        meaning: w.meaning,
+        explanation: w.explanation,
+        commonMistakes: w.commonMistakes,
+        canonicalKey: w.canonicalKey
+      })),
+      grammar: (grammarBySentence.get(row.sentenceId) ?? []).map((g) => ({
+        surfaceText: g.surfaceText,
+        pattern: g.pattern,
+        meaning: g.meaning,
+        explanation: g.explanation,
+        commonMistakes: g.commonMistakes,
+        canonicalKey: g.canonicalKey
+      })),
+      chunks: (chunksBySentence.get(row.sentenceId) ?? []).map((c) => ({
+        surfaceText: c.surfaceText,
+        meaning: c.meaning,
+        explanation: c.explanation,
+        canonicalKey: c.canonicalKey
       }))
     }))
   };
