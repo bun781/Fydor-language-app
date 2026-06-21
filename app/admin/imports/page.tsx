@@ -380,76 +380,68 @@ export default function LessonImportsPage() {
         </div>
       </div>
 
-      <section className="card stack lesson-builder-top">
+      <section className="card lesson-builder-top">
         <div className="lesson-builder-topbar">
-          <div className="mode-tabs" role="tablist" aria-label="Lesson editor mode">
-            <button className={mode === "builder" ? "active" : ""} type="button" onClick={() => setMode("builder")}>
-              <BookOpen size={17} />
-              Builder
-            </button>
-            <button className={mode === "json" ? "active" : ""} type="button" onClick={() => {
-              setSource(stringifyLesson(lesson));
-              setMode("json");
-            }}>
-              <FileJson size={17} />
-              JSON
-            </button>
+          <div className="lesson-builder-topbar-left">
+            <div className="mode-tabs" role="tablist" aria-label="Lesson editor mode">
+              <button className={mode === "builder" ? "active" : ""} type="button" onClick={() => setMode("builder")}>
+                <BookOpen size={17} />
+                Builder
+              </button>
+              <button className={mode === "json" ? "active" : ""} type="button" onClick={() => {
+                setSource(stringifyLesson(lesson));
+                setMode("json");
+              }}>
+                <FileJson size={17} />
+                JSON
+              </button>
+            </div>
+            <span className="sentence-count-badge">
+              {lesson.sentences.length} sentence{lesson.sentences.length === 1 ? "" : "s"}
+            </span>
           </div>
-          <ImportHelpPanel />
+          <div className="lesson-builder-topbar-right">
+            <ImportHelpPanel />
+            <div className="lesson-builder-actions">
+              <button className="button secondary compact-button" type="button" disabled={loading} onClick={() => requestPreview("validate")}>
+                <Check size={16} />
+                Check
+              </button>
+              <button className="button secondary compact-button" type="button" disabled={loading} onClick={() => requestPreview("preview")}>
+                <Upload size={16} />
+                {loading ? "Checking…" : "Preview"}
+              </button>
+              <button className="button compact-button" type="button" disabled={importing} onClick={importLesson}>
+                <Save size={16} />
+                {importing ? "Saving…" : "Save"}
+              </button>
+            </div>
+          </div>
         </div>
 
-        <div className="lesson-meta-layout">
-          <div className="stack">
-            <div className="row">
-              <div>
-                <h2>Lesson metadata</h2>
-                <p className="muted">Set the lesson details up front, then build sentences and annotations below.</p>
-              </div>
-              <div className="lesson-meta-count">
-                <strong>{lesson.sentences.length} sentence{lesson.sentences.length === 1 ? "" : "s"}</strong>
-                <span className="muted">Validation checks surfaces before the lesson is saved.</span>
-              </div>
-            </div>
-
-            <div className="lesson-meta-grid">
-              <label className="field lesson-meta-title">
-                <span>Title</span>
-                <input className="input" value={lesson.title} onChange={(event) => updateLessonField("title", event.target.value)} />
-              </label>
-              <LanguageField label="Language" value={lesson.language} onChange={(value) => updateLessonField("language", value)} />
-              <LanguageField label="Base" value={lesson.baseLanguage} onChange={(value) => updateLessonField("baseLanguage", value)} />
-              <label className="field">
-                <span>Level</span>
-                <input className="input" value={lesson.level ?? ""} onChange={(event) => updateLessonField("level", event.target.value)} />
-              </label>
-              <label className="field">
-                <span>Source</span>
-                <input className="input" value={lesson.source ?? ""} onChange={(event) => updateLessonField("source", event.target.value)} />
-              </label>
-              <label className="field lesson-meta-tags">
-                <span>Tags</span>
-                <input className="input" value={(lesson.tags ?? []).join(", ")} onChange={(event) => updateLessonField("tags", splitTags(event.target.value))} />
-              </label>
-              <label className="field lesson-meta-description">
-                <span>Description</span>
-                <input className="input" value={lesson.description ?? ""} onChange={(event) => updateLessonField("description", event.target.value)} />
-              </label>
-            </div>
-          </div>
-
-          <div className="lesson-builder-actions">
-            <button className="button secondary" type="button" disabled={loading} onClick={() => requestPreview("validate")}>
-              Check lesson
-            </button>
-            <button className="button secondary" type="button" disabled={loading} onClick={() => requestPreview("preview")}>
-              <Upload size={18} />
-              {loading ? "Checking" : "Preview lesson"}
-            </button>
-            <button className="button" type="button" disabled={importing} onClick={importLesson}>
-              <Save size={18} />
-              {importing ? "Saving" : "Save lesson"}
-            </button>
-          </div>
+        <div className="lesson-meta-grid">
+          <label className="field lesson-meta-title">
+            <span>Title</span>
+            <input className="input" value={lesson.title} onChange={(event) => updateLessonField("title", event.target.value)} />
+          </label>
+          <LanguageField label="Language" value={lesson.language} onChange={(value) => updateLessonField("language", value)} />
+          <LanguageField label="Base" value={lesson.baseLanguage} onChange={(value) => updateLessonField("baseLanguage", value)} />
+          <label className="field">
+            <span>Level</span>
+            <input className="input" value={lesson.level ?? ""} onChange={(event) => updateLessonField("level", event.target.value)} />
+          </label>
+          <label className="field">
+            <span>Source</span>
+            <input className="input" value={lesson.source ?? ""} onChange={(event) => updateLessonField("source", event.target.value)} />
+          </label>
+          <label className="field lesson-meta-tags">
+            <span>Tags</span>
+            <input className="input" value={(lesson.tags ?? []).join(", ")} onChange={(event) => updateLessonField("tags", splitTags(event.target.value))} />
+          </label>
+          <label className="field lesson-meta-description">
+            <span>Description</span>
+            <input className="input" value={lesson.description ?? ""} onChange={(event) => updateLessonField("description", event.target.value)} />
+          </label>
         </div>
       </section>
 
