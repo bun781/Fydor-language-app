@@ -174,6 +174,20 @@ export function ImportedContentStudy({ lesson: initialLesson, allLessons }: Prop
   });
 
   useEffect(() => {
+    setLesson(initialLesson);
+    setSelectedLanguage(initialLesson?.language ?? allLessons[0]?.language ?? "");
+    setCardIndex(0);
+    setCardOrder(initialLesson?.sentences.map((s) => s.id) ?? []);
+    setRandomOrderEnabled(false);
+    setQuizPendingAt(null);
+    setReveal(DEFAULT_REVEAL);
+    setSessionFamiliarity(new Map());
+    setCardGrades(new Map());
+    setReviewStates(new Map());
+    review.finishReview();
+  }, [allLessons, initialLesson, review.finishReview]);
+
+  useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (isEditableShortcutTarget(e.target)) return;
       if (review.active && (e.key === "ArrowLeft" || e.key === "ArrowRight")) return;
