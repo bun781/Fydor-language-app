@@ -1,12 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   ItemFamiliarity,
   RevealState,
   StudyLesson,
-  StudyLessonMeta
+  StudyLessonMeta,
+  StudySentence
 } from "@/lib/imported-content/types";
+import { getLesson } from "@/lib/desktopApi";
 import { groupLessonsByLanguage } from "@/lib/language/importResources";
 import { CheckpointQuiz } from "./CheckpointQuiz";
 import { SentenceFlashcard } from "./SentenceFlashcard";
@@ -23,21 +25,55 @@ const DEFAULT_REVEAL: RevealState = {
   hint: false
 };
 
+type CardGrade = "easy" | "correct" | "hard" | "failed";
+
 export function ImportedContentStudy({ lesson: initialLesson, allLessons }: Props) {
   const [lesson, setLesson] = useState(initialLesson);
   const [selectedLanguage, setSelectedLanguage] = useState(initialLesson?.language ?? allLessons[0]?.language ?? "");
   const [cardIndex, setCardIndex] = useState(0);
+  const [cardOrder, setCardOrder] = useState<string[]>(
+    () => initialLesson?.sentences.map((sentence) => sentence.id) ?? []
+  );
   const [quizPendingAt, setQuizPendingAt] = useState<number | null>(null);
   const [reveal, setReveal] = useState<RevealState>(DEFAULT_REVEAL);
   const [sessionFamiliarity, setSessionFamiliarity] = useState<Map<string, ItemFamiliarity>>(new Map());
-  const [cardGrades, setCardGrades] = useState<Map<number, string>>(new Map());
+  const [cardGrades, setCardGrades] = useState<Map<string, CardGrade>>(new Map());
   const [loadingLesson, setLoadingLesson] = useState(false);
   const languageGroups = groupLessonsByLanguage(allLessons);
 
-  const sentence = lesson?.sentences[cardIndex] ?? null;
-  const total = lesson?.sentences.length ?? 0;
+  const sentenceById = useMemo(
+    () => new Map(lesson?.sentences.map((sentence) => [sentence.id, sentence]) ?? []),
+    [lesson]
+  );
+  const total = cardOrder.length;
+  const sentenceId = cardOrder[cardIndex] ?? null;
+  const sentence = sentenceId ? sentenceById.get(sentenceId) ?? null : null;
+  const completed = total > 0 && cardIndex >= total;
   const activeLanguageGroup = languageGroups.find((group) => group.language === selectedLanguage) ?? languageGroups[0] ?? null;
   const languageLessons = activeLanguageGroup?.lessons ?? [];
+  const summary = useMemo(() => {
+    let easy = 0;
+    let correct = 0;
+    let hard = 0;
+    let failed = 0;
+
+    for (const grade of cardGrades.values()) {
+      if (grade === "easy") easy += 1;
+      else if (grade === "correct") correct += 1;
+      else if (grade === "hard") hard += 1;
+      else failed += 1;
+    }
+
+    return {
+      total,
+      reviewed: cardGrades.size,
+      remaining: Math.max(0, total - cardGrades.size),
+      easy,
+      correct,
+      hard,
+      failed
+    };
+  }, [cardGrades, total]);
 
   const handlePrev = useCallback(() => {
     setCardIndex((i) => Math.max(0, i - 1));
@@ -46,12 +82,19 @@ export function ImportedContentStudy({ lesson: initialLesson, allLessons }: Prop
 
   const handleNext = useCallback(() => {
     const next = cardIndex + 1;
-    if (next >= total) return;
-    // Checkpoint quiz after every 5 cards
+    // Checkpoint quiz after every 5 cards.
     if (next % 5 === 0) {
       setQuizPendingAt(next);
       return;
     }
+
+    if (next >= total) {
+      setCardIndex(total);
+      setQuizPendingAt(null);
+      setReveal(DEFAULT_REVEAL);
+      return;
+    }
+
     setCardIndex(next);
     setReveal(DEFAULT_REVEAL);
   }, [cardIndex, total]);
@@ -59,9 +102,13 @@ export function ImportedContentStudy({ lesson: initialLesson, allLessons }: Prop
   const handleQuizDone = useCallback(() => {
     const nextIdx = quizPendingAt ?? cardIndex + 1;
     setQuizPendingAt(null);
-    setCardIndex(nextIdx);
+    if (nextIdx >= total) {
+      setCardIndex(total);
+    } else {
+      setCardIndex(nextIdx);
+    }
     setReveal(DEFAULT_REVEAL);
-  }, [quizPendingAt, cardIndex]);
+  }, [quizPendingAt, cardIndex, total]);
 
   const handleRevealTranslation = useCallback(() => {
     setReveal((r) => ({ ...r, translation: true }));
@@ -80,13 +127,11 @@ export function ImportedContentStudy({ lesson: initialLesson, allLessons }: Prop
   }, []);
 
   const handleGrade = useCallback(
-    (grade: "easy" | "correct" | "hard" | "failed") => {
-      if (!sentence) return;
-      setCardGrades((prev) => new Map(prev).set(cardIndex, grade));
+    (grade: CardGrade) => {
+      if (!sentenceId || !sentence) return;
+      setCardGrades((prev) => new Map(prev).set(sentenceId, grade));
 
-      // Update session familiarity for all items in the sentence
-      const familiarity: ItemFamiliarity =
-        grade === "easy" || grade === "correct" ? "known" : "learning";
+      const familiarity: ItemFamiliarity = grade === "easy" || grade === "correct" ? "known" : "learning";
 
       setSessionFamiliarity((prev) => {
         const next = new Map(prev);
@@ -96,8 +141,23 @@ export function ImportedContentStudy({ lesson: initialLesson, allLessons }: Prop
         return next;
       });
     },
-    [cardIndex, sentence]
+    [sentence, sentenceId]
   );
+
+  const handleShuffle = useCallback(() => {
+    if (!cardOrder.length) return;
+
+    const currentSentenceId = cardOrder[cardIndex] ?? null;
+    const shuffled = shuffleIds(cardOrder);
+    const reordered = currentSentenceId
+      ? [currentSentenceId, ...shuffled.filter((id) => id !== currentSentenceId)]
+      : shuffled;
+
+    setCardOrder(reordered);
+    setCardIndex(0);
+    setQuizPendingAt(null);
+    setReveal(DEFAULT_REVEAL);
+  }, [cardIndex, cardOrder]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -128,6 +188,7 @@ export function ImportedContentStudy({ lesson: initialLesson, allLessons }: Prop
           break;
       }
     }
+
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [handlePrev, handleNext, handleRevealTranslation, handleToggleHint, handleToggleWordMeanings, handleToggleGrammar]);
@@ -135,12 +196,12 @@ export function ImportedContentStudy({ lesson: initialLesson, allLessons }: Prop
   async function switchLesson(lessonId: string) {
     setLoadingLesson(true);
     try {
-      const res = await fetch(`/api/lessons/${lessonId}`);
-      const data = (await res.json()) as { lesson: StudyLesson | null };
-      if (data.lesson) {
-        setLesson(data.lesson);
-        setSelectedLanguage(data.lesson.language);
+      const selectedLesson = await getLesson(lessonId);
+      if (selectedLesson) {
+        setLesson(selectedLesson);
+        setSelectedLanguage(selectedLesson.language);
         setCardIndex(0);
+        setCardOrder(selectedLesson.sentences.map((sentence) => sentence.id));
         setQuizPendingAt(null);
         setReveal(DEFAULT_REVEAL);
         setSessionFamiliarity(new Map());
@@ -159,10 +220,39 @@ export function ImportedContentStudy({ lesson: initialLesson, allLessons }: Prop
     );
   }
 
-  const recentSentences = lesson.sentences.slice(Math.max(0, cardIndex - 4), cardIndex + 1);
+  const recentSentences = cardOrder.slice(Math.max(0, cardIndex - 4), cardIndex + 1);
+  const recentStudySentences = recentSentences
+    .map((id) => sentenceById.get(id))
+    .filter((value): value is StudySentence => Boolean(value));
 
   return (
     <div className="study-shell stack">
+      <section className="card stack">
+        <div className="row">
+          <div>
+            <h2>{lesson.title}</h2>
+            <p className="muted">Review-style shuffle, summary, and checkpoints built into the lesson library.</p>
+          </div>
+          <button
+            type="button"
+            className="button secondary"
+            disabled={loadingLesson || !cardOrder.length}
+            onClick={handleShuffle}
+          >
+            Shuffle
+          </button>
+        </div>
+        <div className="review-summary">
+          <span className="pill">Total {summary.total}</span>
+          <span className="pill">Reviewed {summary.reviewed}</span>
+          <span className="pill">Remaining {summary.remaining}</span>
+          <span className="pill">Easy {summary.easy}</span>
+          <span className="pill">Correct {summary.correct}</span>
+          <span className="pill">Hard {summary.hard}</span>
+          <span className="pill">Failed {summary.failed}</span>
+        </div>
+      </section>
+
       {languageGroups.length > 1 ? (
         <section className="card stack language-browser">
           <div className="row">
@@ -209,13 +299,44 @@ export function ImportedContentStudy({ lesson: initialLesson, allLessons }: Prop
 
       {quizPendingAt !== null ? (
         <CheckpointQuiz
-          sentences={recentSentences}
+          sentences={recentStudySentences}
           allSentences={lesson.sentences}
           onComplete={handleQuizDone}
         />
+      ) : completed ? (
+        <section className="card stack">
+          <div className="row">
+            <div>
+              <h2>Lesson complete</h2>
+              <p className="muted">You reached the end of this lesson. Shuffle to start another pass.</p>
+            </div>
+            <span className="pill">Done</span>
+          </div>
+          <div className="review-summary">
+            <span className="pill">Total {summary.total}</span>
+            <span className="pill">Reviewed {summary.reviewed}</span>
+            <span className="pill">Remaining {summary.remaining}</span>
+          </div>
+          <div className="row">
+            <button type="button" className="button secondary" onClick={handleShuffle}>
+              Shuffle
+            </button>
+            <button
+              type="button"
+              className="button"
+              onClick={() => {
+                setCardIndex(0);
+                setQuizPendingAt(null);
+                setReveal(DEFAULT_REVEAL);
+              }}
+            >
+              Restart
+            </button>
+          </div>
+        </section>
       ) : sentence ? (
         <SentenceFlashcard
-          key={`${lesson.id}:${cardIndex}`}
+          key={`${lesson.id}:${sentence.id}:${cardIndex}`}
           sentence={sentence}
           cardIndex={cardIndex}
           totalCards={total}
@@ -224,7 +345,7 @@ export function ImportedContentStudy({ lesson: initialLesson, allLessons }: Prop
           allSentences={lesson.sentences}
           reveal={reveal}
           sessionFamiliarity={sessionFamiliarity}
-          currentGrade={cardGrades.get(cardIndex) ?? null}
+          currentGrade={cardGrades.get(sentence.id) ?? null}
           onRevealTranslation={handleRevealTranslation}
           onToggleWordMeanings={handleToggleWordMeanings}
           onToggleGrammar={handleToggleGrammar}
@@ -236,4 +357,13 @@ export function ImportedContentStudy({ lesson: initialLesson, allLessons }: Prop
       ) : null}
     </div>
   );
+}
+
+function shuffleIds(values: string[]): string[] {
+  const copy = [...values];
+  for (let index = copy.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [copy[index], copy[swapIndex]] = [copy[swapIndex], copy[index]];
+  }
+  return copy;
 }

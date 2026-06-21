@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { updateReviewItem } from "@/lib/desktopApi";
 import { applyReviewDecision, buildReviewQueue, getReviewShortcutAction, summarizeReviewSentences } from "./algorithm";
 import type { ReviewDecision, ReviewSentence } from "./types";
 
@@ -55,27 +56,11 @@ export function useReviewDeck(initialSentences: ReviewSentence[]) {
     }));
 
     try {
-      const response = await fetch("/api/review", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sentenceId: currentSentence.id,
-          decision
-        })
-      });
-
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({} as { error?: string }));
-        throw new Error(payload.error ?? "Unable to save review decision.");
-      }
-
-      const payload = await response.json() as { sentence?: ReviewSentence };
-      if (payload.sentence) {
-        setState((prev) => ({
-          ...prev,
-          sentences: prev.sentences.map((sentence) => (sentence.id === payload.sentence?.id ? payload.sentence! : sentence))
-        }));
-      }
+      const savedSentence = await updateReviewItem(currentSentence.id, decision);
+      setState((prev) => ({
+        ...prev,
+        sentences: prev.sentences.map((sentence) => (sentence.id === savedSentence.id ? savedSentence : sentence))
+      }));
     } catch (error) {
       setState((prev) => ({
         ...prev,

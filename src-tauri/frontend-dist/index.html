@@ -59,14 +59,26 @@
         margin-top: 1.5rem;
         letter-spacing: 0.2em;
       }
+
+      .status {
+        color: #92400e;
+        display: none;
+        margin-top: 1rem;
+      }
+
+      .status.visible {
+        display: block;
+      }
+
     </style>
   </head>
   <body>
     <main class="shell" aria-live="polite">
       <div class="badge">Starting Fydor</div>
       <h1>Launching the lesson workspace</h1>
-      <p>If the app stays here for more than a moment, the Next.js server is still booting.</p>
+      <p>If the app stays here for more than a moment, the bundled app server is still booting.</p>
       <p class="dots">···</p>
+      <p class="status visible">Waiting for the embedded runtime...</p>
     </main>
   </body>
 </html>

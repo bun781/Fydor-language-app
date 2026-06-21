@@ -222,10 +222,9 @@ export function SentenceFlashcard({
         <button
           type="button"
           className="button"
-          disabled={cardIndex >= totalCards - 1}
           onClick={onNext}
         >
-          Next →
+          {cardIndex >= totalCards - 1 ? "Finish →" : "Next →"}
         </button>
       </div>
     </div>

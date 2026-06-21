@@ -16,6 +16,7 @@ import { AppShell } from "@/components/AppShell";
 import { ImportHelpPanel } from "@/components/language/ImportHelpPanel";
 import { ImportPreview } from "@/components/language/ImportPreview";
 import { Tooltip } from "@/components/ui/Tooltip";
+import { importLesson as importLessonApi, previewLessonImport } from "@/lib/desktopApi";
 import type {
   LessonChunkInput,
   LessonGrammarInput,
@@ -276,22 +277,16 @@ export default function LessonImportsPage() {
       setStatus("");
       setSummary(null);
 
-      const result = await fetch("/api/lessons/import/preview", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ source: jsonSource })
-      });
-      const data = await result.json() as { preview?: LessonImportPreviewResult; errors?: string[]; error?: string };
-      setLoading(false);
-
-      if (!result.ok || !data.preview) {
+      try {
+        const nextPreview = await previewLessonImport(jsonSource);
+        setPreview(nextPreview);
+        setStatus(modeLabel === "validate" ? "Validation passed." : "Preview ready.");
+      } catch (error) {
         setPreview(null);
-        setErrors(data.errors ?? [data.error ?? "Unable to validate lesson."]);
-        return;
+        setErrors([error instanceof Error ? error.message : "Unable to validate lesson."]);
+      } finally {
+        setLoading(false);
       }
-
-      setPreview(data.preview);
-      setStatus(modeLabel === "validate" ? "Validation passed." : "Preview ready.");
     });
   }
 
@@ -300,22 +295,16 @@ export default function LessonImportsPage() {
       setImporting(true);
       setErrors([]);
       setStatus("");
-      const result = await fetch("/api/lessons/import", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ source: jsonSource })
-      });
-      const data = await result.json() as { result?: LessonImportSummary; error?: string; errors?: string[] };
-      setImporting(false);
-
-      if (!result.ok || !data.result) {
-        setErrors(data.errors ?? [data.error ?? "Unable to import lesson."]);
-        return;
+      try {
+        const result = await importLessonApi(jsonSource);
+        setPreview(null);
+        setSummary(result);
+        setStatus("Lesson saved.");
+      } catch (error) {
+        setErrors([error instanceof Error ? error.message : "Unable to import lesson."]);
+      } finally {
+        setImporting(false);
       }
-
-      setPreview(null);
-      setSummary(data.result);
-      setStatus("Lesson saved.");
     });
   }
 

@@ -1,12 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "standalone",
+  output: "export",
   typedRoutes: true,
   images: {
+    unoptimized: true,
     remotePatterns: []
-  },
-  serverExternalPackages: ["@electric-sql/pglite"]
+  }
 };
 
 export default nextConfig;

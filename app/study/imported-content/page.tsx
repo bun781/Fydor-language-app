@@ -1,13 +1,44 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { ImportedContentStudy } from "@/components/imported-content/ImportedContentStudy";
+import { PageState } from "@/components/system/PageState";
+import type { StudyLesson, StudyLessonMeta } from "@/lib/imported-content/types";
+import { getLesson, getLessons } from "@/lib/desktopApi";
 import { formatLanguageLabel } from "@/lib/language/importResources";
-import { getAllLessonsMeta, getLessonContentById } from "@/lib/language/importedContent";
 
-export const dynamic = "force-dynamic";
+export default function ImportedContentPage() {
+  const [allLessons, setAllLessons] = useState<StudyLessonMeta[]>([]);
+  const [latestLesson, setLatestLesson] = useState<StudyLesson | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-export default async function ImportedContentPage() {
-  const allLessons = await getAllLessonsMeta();
-  const latestLesson = allLessons[0] ? await getLessonContentById(allLessons[0].id) : null;
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadLessons() {
+      const lessons = await getLessons();
+      const firstLesson = lessons[0] ? await getLesson(lessons[0].id) : null;
+
+      if (!cancelled) {
+        setAllLessons(lessons);
+        setLatestLesson(firstLesson);
+      }
+    }
+
+    loadLessons()
+      .catch((err) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : "Unable to load imported lessons.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <AppShell>
@@ -17,11 +48,32 @@ export default async function ImportedContentPage() {
           <p className="muted">Study saved lessons one sentence at a time, grouped by language.</p>
         </div>
         {latestLesson ? (
-          <span className="pill">{formatLanguageLabel(latestLesson.language)} → {formatLanguageLabel(latestLesson.baseLanguage)}</span>
+          <span className="pill">
+            {formatLanguageLabel(latestLesson.language)} - {formatLanguageLabel(latestLesson.baseLanguage)}
+          </span>
         ) : null}
       </div>
 
-      <ImportedContentStudy lesson={latestLesson} allLessons={allLessons} />
+      {loading ? (
+        <PageState eyebrow="Loading" title="Loading lessons" description="Opening your local lesson library." />
+      ) : error ? (
+        <PageState
+          eyebrow="Storage error"
+          tone="error"
+          title="Lesson Library failed to load"
+          description={error}
+          actions={<a className="button" href="/study/imported-content">Retry</a>}
+        />
+      ) : allLessons.length ? (
+        <ImportedContentStudy lesson={latestLesson} allLessons={allLessons} />
+      ) : (
+        <PageState
+          eyebrow="No data yet"
+          title="No lessons in the library"
+          description="Save a lesson first. When lessons exist, this page will show them grouped by language and let you study them sentence by sentence."
+          actions={<a className="button" href="/admin/imports">Import a lesson</a>}
+        />
+      )}
     </AppShell>
   );
 }
