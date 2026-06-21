@@ -1,5 +1,7 @@
 "use client";
 
+import { Shuffle } from "lucide-react";
+
 interface ReviewControlsProps {
   disabled?: boolean;
   shuffleEnabled: boolean;
@@ -11,18 +13,19 @@ interface ReviewControlsProps {
 export function ReviewControls({ disabled, shuffleEnabled, onRemembered, onForgotten, onToggleShuffle }: ReviewControlsProps) {
   return (
     <div className="review-controls">
-      <label className="shuffle-toggle" title="Shuffle the review queue">
-        <input
-          type="checkbox"
-          checked={shuffleEnabled}
-          onChange={onToggleShuffle}
-          disabled={disabled}
-        />
-        <span className="shuffle-toggle-track">
-          <span className="shuffle-toggle-thumb" />
+      <button
+        type="button"
+        className={`shuffle-toggle${shuffleEnabled ? " shuffle-toggle--on" : ""}`}
+        onClick={onToggleShuffle}
+        disabled={disabled}
+        aria-pressed={shuffleEnabled}
+      >
+        <Shuffle size={14} className="shuffle-icon" />
+        <span className="shuffle-track">
+          <span className="shuffle-thumb" />
         </span>
-        <span className="shuffle-toggle-label">Shuffle</span>
-      </label>
+        <span className="shuffle-label">Shuffle</span>
+      </button>
 
       <div className="review-action-group">
         <button
@@ -44,6 +47,10 @@ export function ReviewControls({ disabled, shuffleEnabled, onRemembered, onForgo
           Remembered →
         </button>
       </div>
+
+      <p className="review-hotkey-hint" aria-label="Keyboard shortcut hint">
+        Use <kbd>←</kbd> for Not Remembered and <kbd>→</kbd> for Remembered
+      </p>
     </div>
   );
 }

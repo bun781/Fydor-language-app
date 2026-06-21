@@ -11,7 +11,7 @@ interface ReviewDeckProps {
 }
 
 export function ReviewDeck({ sentences }: ReviewDeckProps) {
-  const { currentSentence, position, total, saving, error, reviewCurrent, reshuffle, summary, shuffleEnabled, toggleShuffle } = useReviewDeck(sentences);
+  const { currentSentence, position, total, saving, error, reviewCurrent, summary, shuffleEnabled, toggleShuffle } = useReviewDeck(sentences);
   const [revealed, setRevealed] = useState(false);
 
   useEffect(() => {
@@ -20,14 +20,25 @@ export function ReviewDeck({ sentences }: ReviewDeckProps) {
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key !== " ") return;
-      if (event.target instanceof HTMLButtonElement || event.target instanceof HTMLInputElement) return;
-      event.preventDefault();
-      setRevealed(true);
+      if (isInteractiveTarget(event.target)) return;
+      if (event.key === " ") {
+        event.preventDefault();
+        setRevealed(true);
+        return;
+      }
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        void reviewCurrent("forgotten");
+        return;
+      }
+      if (event.key === "ArrowRight") {
+        event.preventDefault();
+        void reviewCurrent("remembered");
+      }
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [reviewCurrent]);
 
   if (!sentences.length) {
     return (
@@ -71,7 +82,13 @@ export function ReviewDeck({ sentences }: ReviewDeckProps) {
 
       {error ? <p className="review-error">{error}</p> : null}
 
-      <ReviewSentenceCard sentence={currentSentence} index={position} total={total} revealed={revealed} />
+      <ReviewSentenceCard
+        sentence={currentSentence}
+        index={position}
+        total={total}
+        revealed={revealed}
+        onReveal={() => setRevealed(true)}
+      />
 
       <ReviewControls
         disabled={saving}
@@ -82,4 +99,10 @@ export function ReviewDeck({ sentences }: ReviewDeckProps) {
       />
     </div>
   );
+}
+
+function isInteractiveTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target.isContentEditable) return true;
+  return ["BUTTON", "INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
 }

@@ -8,9 +8,12 @@ interface ReviewSentenceCardProps {
   index: number;
   total: number;
   revealed: boolean;
+  onReveal: () => void;
 }
 
-export function ReviewSentenceCard({ sentence, index, total, revealed }: ReviewSentenceCardProps) {
+export function ReviewSentenceCard({ sentence, index, total, revealed, onReveal }: ReviewSentenceCardProps) {
+  const revealInstruction = "Click or press Space to reveal translation";
+
   return (
     <section className="review-card">
       <div className="review-card-meta">
@@ -21,11 +24,28 @@ export function ReviewSentenceCard({ sentence, index, total, revealed }: ReviewS
         <p className="review-sentence">{sentence.text}</p>
         <AudioButton sentence={sentence.text} language={sentence.language} compact />
       </div>
-      {revealed ? (
-        <p className="review-translation">{sentence.translation}</p>
-      ) : (
-        <p className="review-reveal-hint">Press Space to reveal</p>
-      )}
+      <div
+        className={`review-translation-wrap${revealed ? " revealed" : ""}`}
+        onClick={revealed ? undefined : onReveal}
+        role={revealed ? undefined : "button"}
+        tabIndex={revealed ? undefined : 0}
+        onKeyDown={
+          revealed
+            ? undefined
+            : (event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  onReveal();
+                }
+              }
+        }
+        aria-label={revealed ? undefined : revealInstruction}
+      >
+        <p className={`review-translation${revealed ? "" : " review-translation-hidden"}`}>
+          {sentence.translation}
+        </p>
+        {!revealed ? <span className="review-translation-overlay">{revealInstruction}</span> : null}
+      </div>
       <div className="review-stats">
         <span>Streak {sentence.reviewStreak}</span>
         <span>{sentence.reviewedAt ? `Last reviewed ${new Date(sentence.reviewedAt).toLocaleString()}` : "Never reviewed"}</span>

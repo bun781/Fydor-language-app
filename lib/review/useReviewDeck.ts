@@ -28,20 +28,16 @@ export function useReviewDeck(initialSentences: ReviewSentence[]) {
   const currentSentence = currentId ? state.sentences.find((sentence) => sentence.id === currentId) ?? null : null;
   const summary = summarizeReviewSentences(asRows(state.sentences));
 
-  const reshuffle = useCallback((currentSentenceId = currentSentence?.id ?? null) => {
-    setState((prev) => {
-      const nextOrder = buildReviewQueue(asRows(prev.sentences), Date.now(), prev.shuffleEnabled);
-      const reordered = currentSentenceId
-        ? [currentSentenceId, ...nextOrder.filter((id) => id !== currentSentenceId)]
-        : nextOrder;
-      return { ...prev, order: reordered, position: 0, error: null };
-    });
-  }, [currentSentence?.id]);
-
   const toggleShuffle = useCallback(() => {
     setState((prev) => {
       const next = !prev.shuffleEnabled;
-      const nextOrder = buildReviewQueue(asRows(prev.sentences), next ? Date.now() : 0, next);
+      const currentId = prev.order[prev.position] ?? null;
+
+      if (currentId) {
+        return { ...prev, shuffleEnabled: next, error: null };
+      }
+
+      const nextOrder = buildReviewQueue(asRows(prev.sentences), Date.now(), next);
       return { ...prev, shuffleEnabled: next, order: nextOrder, position: 0, error: null };
     });
   }, []);
@@ -101,7 +97,6 @@ export function useReviewDeck(initialSentences: ReviewSentence[]) {
     error: state.error,
     shuffleEnabled: state.shuffleEnabled,
     reviewCurrent,
-    reshuffle,
     toggleShuffle
   };
 }

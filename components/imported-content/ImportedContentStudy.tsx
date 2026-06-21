@@ -9,8 +9,9 @@ import type {
   StudySentence
 } from "@/lib/imported-content/types";
 import type { ReviewDecision } from "@/lib/review/types";
-import { getLesson, updateReviewItem } from "@/lib/desktopApi";
+import { getLesson } from "@/lib/desktopApi";
 import { groupLessonsByLanguage } from "@/lib/language/importResources";
+import { useLessonReview } from "@/lib/review/useLessonReview";
 import { CheckpointQuiz } from "./CheckpointQuiz";
 import { SentenceFlashcard } from "./SentenceFlashcard";
 
@@ -41,7 +42,6 @@ export function ImportedContentStudy({ lesson: initialLesson, allLessons }: Prop
   const [cardGrades, setCardGrades] = useState<Map<string, CardGrade>>(new Map());
   const [loadingLesson, setLoadingLesson] = useState(false);
   const [reviewStates, setReviewStates] = useState<Map<string, ReviewDecision>>(new Map());
-  const [reviewSaving, setReviewSaving] = useState(false);
 
   const languageGroups = groupLessonsByLanguage(allLessons);
   const activeLanguageGroup = languageGroups.find((g) => g.language === selectedLanguage) ?? languageGroups[0] ?? null;
@@ -69,6 +69,16 @@ export function ImportedContentStudy({ lesson: initialLesson, allLessons }: Prop
     }
     return { total, reviewed: cardGrades.size, remaining: Math.max(0, total - cardGrades.size), easy, correct, hard, failed };
   }, [cardGrades, total]);
+
+  const applySentenceFamiliarity = useCallback((targetSentence: StudySentence, familiarity: ItemFamiliarity) => {
+    setSessionFamiliarity((prev) => {
+      const next = new Map(prev);
+      for (const w of targetSentence.words) next.set(w.canonicalKey, familiarity);
+      for (const g of targetSentence.grammar) next.set(g.canonicalKey, familiarity);
+      for (const c of targetSentence.chunks) next.set(c.canonicalKey, familiarity);
+      return next;
+    });
+  }, []);
 
   const handlePrev = useCallback(() => {
     setCardIndex((i) => Math.max(0, i - 1));
@@ -123,15 +133,9 @@ export function ImportedContentStudy({ lesson: initialLesson, allLessons }: Prop
       if (!sentenceId || !sentence) return;
       setCardGrades((prev) => new Map(prev).set(sentenceId, grade));
       const familiarity: ItemFamiliarity = grade === "easy" || grade === "correct" ? "known" : "learning";
-      setSessionFamiliarity((prev) => {
-        const next = new Map(prev);
-        for (const w of sentence.words) next.set(w.canonicalKey, familiarity);
-        for (const g of sentence.grammar) next.set(g.canonicalKey, familiarity);
-        for (const c of sentence.chunks) next.set(c.canonicalKey, familiarity);
-        return next;
-      });
+      applySentenceFamiliarity(sentence, familiarity);
     },
-    [sentence, sentenceId]
+    [applySentenceFamiliarity, sentence, sentenceId]
   );
 
   const handleShuffle = useCallback(() => {
@@ -147,22 +151,22 @@ export function ImportedContentStudy({ lesson: initialLesson, allLessons }: Prop
     setReveal(DEFAULT_REVEAL);
   }, [cardIndex, cardOrder]);
 
-  const handleReview = useCallback(async (decision: ReviewDecision) => {
-    if (!sentenceId || reviewSaving) return;
-    setReviewSaving(true);
-    try {
-      await updateReviewItem(sentenceId, decision);
-      setReviewStates((prev) => new Map(prev).set(sentenceId, decision));
-    } catch {
-      // silent — review is best-effort
-    } finally {
-      setReviewSaving(false);
+  const handleLessonReviewDecision = useCallback((reviewSentence: StudySentence, decision: ReviewDecision) => {
+    setReviewStates((prev) => new Map(prev).set(reviewSentence.id, decision));
+    applySentenceFamiliarity(reviewSentence, decision === "remembered" ? "known" : "learning");
+  }, [applySentenceFamiliarity]);
+
+  const review = useLessonReview(lesson?.sentences ?? [], {
+    onDecision: handleLessonReviewDecision,
+    onSaved: (reviewedSentenceId, decision) => {
+      setReviewStates((prev) => new Map(prev).set(reviewedSentenceId, decision));
     }
-  }, [sentenceId, reviewSaving]);
+  });
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (isEditableShortcutTarget(e.target)) return;
+      if (review.active && (e.key === "ArrowLeft" || e.key === "ArrowRight")) return;
       switch (e.key) {
         case "ArrowLeft": handlePrev(); break;
         case "ArrowRight": handleNext(); break;
@@ -174,7 +178,11 @@ export function ImportedContentStudy({ lesson: initialLesson, allLessons }: Prop
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [handlePrev, handleNext, handleRevealTranslation, handleToggleHint, handleToggleWordMeanings, handleToggleGrammar]);
+  }, [handlePrev, handleNext, handleRevealTranslation, handleToggleHint, handleToggleWordMeanings, handleToggleGrammar, review.active]);
+
+  useEffect(() => {
+    if (review.active) setReveal(DEFAULT_REVEAL);
+  }, [review.active, review.currentCard?.id]);
 
   async function switchLesson(lessonId: string) {
     setLoadingLesson(true);
@@ -190,6 +198,7 @@ export function ImportedContentStudy({ lesson: initialLesson, allLessons }: Prop
         setSessionFamiliarity(new Map());
         setCardGrades(new Map());
         setReviewStates(new Map());
+        review.finishReview();
       }
     } finally {
       setLoadingLesson(false);
@@ -213,6 +222,8 @@ export function ImportedContentStudy({ lesson: initialLesson, allLessons }: Prop
   }
 
   const currentReviewState = sentenceId ? (reviewStates.get(sentenceId) ?? null) : null;
+  const activeSentence = review.active ? review.currentCard : sentence;
+  const activeReviewState = activeSentence ? (reviewStates.get(activeSentence.id) ?? null) : null;
   const recentSentences = cardOrder.slice(Math.max(0, cardIndex - 4), cardIndex + 1);
   const recentStudySentences = recentSentences
     .map((id) => sentenceById.get(id))
@@ -247,21 +258,64 @@ export function ImportedContentStudy({ lesson: initialLesson, allLessons }: Prop
           </select>
         ) : null}
         <div className="session-stats">
-          <span className="pill">{summary.remaining > 0 ? `${summary.remaining} remaining` : "Done"}</span>
+          {review.active ? (
+            <>
+              <span className="pill">Review {review.remaining} left</span>
+              {review.stats.remembered > 0 && <span className="pill review-state-remembered">Remembered {review.stats.remembered}</span>}
+              {review.stats.forgotten > 0 && <span className="pill review-state-forgotten">Forgotten {review.stats.forgotten}</span>}
+            </>
+          ) : (
+            <span className="pill">{summary.remaining > 0 ? `${summary.remaining} remaining` : "Done"}</span>
+          )}
           {summary.easy > 0 && <span className="pill grade-stat-easy">Easy {summary.easy}</span>}
           {summary.correct > 0 && <span className="pill grade-stat-good">Good {summary.correct}</span>}
           {summary.hard > 0 && <span className="pill grade-stat-hard">Hard {summary.hard}</span>}
           {summary.failed > 0 && <span className="pill grade-stat-again">Again {summary.failed}</span>}
+          {lesson.sentences.length > 0 ? (
+            <button
+              type="button"
+              className="button secondary lesson-review-toggle"
+              disabled={loadingLesson}
+              onClick={() => {
+                setQuizPendingAt(null);
+                setReveal(DEFAULT_REVEAL);
+                if (review.active) review.finishReview();
+                else review.startReview();
+              }}
+            >
+              {review.active ? "End Review" : "Start Review"}
+            </button>
+          ) : null}
         </div>
       </div>
 
-      {quizPendingAt !== null ? (
+      {review.active && review.finished ? (
+        <section className="card stack">
+          <div className="row">
+            <div>
+              <h2>Review complete</h2>
+              <p className="muted">You remembered every active card in this pass.</p>
+            </div>
+            <span className="pill">Done</span>
+          </div>
+          <div className="session-stats">
+            <span className="pill">Reviewed {review.stats.reviewed}</span>
+            <span className="pill review-state-remembered">Remembered {review.stats.remembered}</span>
+            {review.stats.forgotten > 0 && <span className="pill review-state-forgotten">Forgotten {review.stats.forgotten}</span>}
+          </div>
+          {review.error ? <p className="review-error">{review.error}</p> : null}
+          <div className="row compact-row" style={{ gap: 8 }}>
+            <button type="button" className="button secondary" onClick={review.finishReview}>Return to lesson</button>
+            <button type="button" className="button" onClick={review.startReview}>Review again</button>
+          </div>
+        </section>
+      ) : quizPendingAt !== null && !review.active ? (
         <CheckpointQuiz
           sentences={recentStudySentences}
           allSentences={lesson.sentences}
           onComplete={handleQuizDone}
         />
-      ) : completed ? (
+      ) : completed && !review.active ? (
         <section className="card stack">
           <div className="row">
             <div>
@@ -288,27 +342,32 @@ export function ImportedContentStudy({ lesson: initialLesson, allLessons }: Prop
             </button>
           </div>
         </section>
-      ) : sentence ? (
+      ) : activeSentence ? (
         <SentenceFlashcard
-          key={`${lesson.id}:${sentence.id}:${cardIndex}`}
-          sentence={sentence}
-          cardIndex={cardIndex}
-          totalCards={total}
+          key={`${lesson.id}:${activeSentence.id}:${review.active ? `review-${review.stats.reviewed}` : cardIndex}`}
+          sentence={activeSentence}
+          cardIndex={review.active ? review.stats.reviewed : cardIndex}
+          totalCards={review.active ? Math.max(1, review.stats.reviewed + review.remaining) : total}
           lessonTitle={lesson.title}
           language={lesson.language}
           allSentences={lesson.sentences}
           reveal={reveal}
           sessionFamiliarity={sessionFamiliarity}
-          currentGrade={cardGrades.get(sentence.id) ?? null}
-          reviewState={currentReviewState}
-          isSavingReview={reviewSaving}
+          currentGrade={cardGrades.get(activeSentence.id) ?? null}
+          reviewMode={review.active}
+          reviewState={review.active ? activeReviewState : currentReviewState}
+          isSavingReview={review.saving}
+          reviewError={review.error}
           onRevealTranslation={handleRevealTranslation}
           onToggleWordMeanings={handleToggleWordMeanings}
           onToggleGrammar={handleToggleGrammar}
           onToggleHint={handleToggleHint}
           onGrade={handleGrade}
           onShuffle={handleShuffle}
-          onReview={(decision) => { void handleReview(decision); }}
+          onReview={(decision) => {
+            if (decision === "remembered") review.markRemembered(activeSentence.id);
+            else review.markNotRemembered(activeSentence.id);
+          }}
           onPrev={handlePrev}
           onNext={handleNext}
         />
@@ -324,4 +383,10 @@ function shuffleIds(values: string[]): string[] {
     [copy[i], copy[j]] = [copy[j], copy[i]];
   }
   return copy;
+}
+
+function isEditableShortcutTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target.isContentEditable) return true;
+  return ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
 }

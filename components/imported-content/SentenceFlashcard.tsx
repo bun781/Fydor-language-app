@@ -21,8 +21,10 @@ interface Props {
   reveal: RevealState;
   sessionFamiliarity: Map<string, ItemFamiliarity>;
   currentGrade: string | null;
+  reviewMode: boolean;
   reviewState: ReviewDecision | null;
   isSavingReview: boolean;
+  reviewError: string | null;
   onRevealTranslation: () => void;
   onToggleWordMeanings: () => void;
   onToggleGrammar: () => void;
@@ -51,8 +53,10 @@ export function SentenceFlashcard({
   reveal,
   sessionFamiliarity,
   currentGrade,
+  reviewMode,
   reviewState,
   isSavingReview,
+  reviewError,
   onRevealTranslation,
   onToggleWordMeanings,
   onToggleGrammar,
@@ -93,7 +97,7 @@ export function SentenceFlashcard({
       {/* Header */}
       <div className="row">
         <span className="muted">{lessonTitle}</span>
-        <span className="pill">Card {cardIndex + 1} / {totalCards}</span>
+        <span className="pill">{reviewMode ? "Review" : "Card"} {cardIndex + 1} / {totalCards}</span>
       </div>
 
       {/* Progress bar */}
@@ -102,7 +106,10 @@ export function SentenceFlashcard({
       </div>
 
       {/* Sentence */}
-      <p className="sentence-text">{sentence.text}</p>
+      <div className="sentence-line">
+        <p className="sentence-text">{sentence.text}</p>
+        <AudioButton sentence={sentence.text} language={language} compact />
+      </div>
 
       {/* Word tokens */}
       {sentence.words.length > 0 ? (
@@ -176,8 +183,6 @@ export function SentenceFlashcard({
         onTranslation={onRevealTranslation}
       />
 
-      <AudioButton sentence={sentence.text} language={language} compact />
-
       {/* Translation */}
       <div
         className={`flashcard-translation${reveal.translation ? "" : " translation-hidden"}`}
@@ -204,62 +209,66 @@ export function SentenceFlashcard({
         selectedItem={selectedItem}
       />
 
-      {/* Difficulty grade + Shuffle */}
-      <div className="grade-row">
-        {GRADES.map(({ id, label }) => (
-          <button
-            key={id}
-            type="button"
-            className={`button secondary grade-btn grade-${id}${currentGrade === id ? " active" : ""}`}
-            onClick={() => onGrade(id)}
-          >
-            {label}
+      {!reviewMode ? (
+        <div className="grade-row">
+          {GRADES.map(({ id, label }) => (
+            <button
+              key={id}
+              type="button"
+              className={`button secondary grade-btn grade-${id}${currentGrade === id ? " active" : ""}`}
+              onClick={() => onGrade(id)}
+            >
+              {label}
+            </button>
+          ))}
+          <div className="grade-row-spacer" />
+          <button type="button" className="button secondary" onClick={onShuffle}>
+            Shuffle
           </button>
-        ))}
-        <div className="grade-row-spacer" />
-        <button type="button" className="button secondary" onClick={onShuffle}>
-          Shuffle
-        </button>
-      </div>
+        </div>
+      ) : null}
 
-      {/* Remembered / Not Remembered */}
-      <div className="review-decision-row">
-        <button
-          type="button"
-          className={`button ${reviewState === "forgotten" ? "review-negative" : "secondary review-forgotten"}`}
-          disabled={isSavingReview}
-          onClick={() => onReview("forgotten")}
-        >
-          ✗ Not Remembered
-        </button>
-        <button
-          type="button"
-          className={`button ${reviewState === "remembered" ? "review-positive" : "secondary review-remembered"}`}
-          disabled={isSavingReview}
-          onClick={() => onReview("remembered")}
-        >
-          ✓ Remembered
-        </button>
-      </div>
+      {reviewMode ? (
+        <div className="review-decision-row" aria-busy={isSavingReview}>
+          <button
+            type="button"
+            className={`button review-negative${reviewState === "forgotten" ? " review-selected" : ""}`}
+            onClick={() => onReview("forgotten")}
+            title="Not remembered  ·  ←"
+          >
+            ← Not remembered
+          </button>
+          <button
+            type="button"
+            className={`button review-positive${reviewState === "remembered" ? " review-selected" : ""}`}
+            onClick={() => onReview("remembered")}
+            title="Remembered  ·  →"
+          >
+            Remembered →
+          </button>
+          {reviewError ? <p className="review-error">{reviewError}</p> : null}
+        </div>
+      ) : null}
 
-      {/* Navigation */}
-      <div className="row">
-        <button
-          type="button"
-          className="button secondary"
-          disabled={cardIndex === 0}
-          onClick={onPrev}
-        >
-          ← Previous
-        </button>
-        <button
-          type="button"
-          className="button"
-          onClick={onNext}
-        >
-          {cardIndex >= totalCards - 1 ? "Finish →" : "Next →"}
-        </button>
-      </div>
+      {!reviewMode ? (
+        <div className="row">
+          <button
+            type="button"
+            className="button secondary"
+            disabled={cardIndex === 0}
+            onClick={onPrev}
+          >
+            ← Previous
+          </button>
+          <button
+            type="button"
+            className="button"
+            onClick={onNext}
+          >
+            {cardIndex >= totalCards - 1 ? "Finish →" : "Next →"}
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
