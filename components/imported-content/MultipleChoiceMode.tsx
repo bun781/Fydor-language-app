@@ -24,7 +24,7 @@ export function MultipleChoiceMode({ lesson }: Props) {
     setSubmitted(false);
     setResult(null);
     setScore({ correct: 0, wrong: 0 });
-  }, [lesson?.id]);
+  }, [lesson]);
 
   const question = deck[index] ?? null;
   const completed = deck.length > 0 && index >= deck.length;
@@ -150,22 +150,7 @@ export function MultipleChoiceMode({ lesson }: Props) {
             </div>
           ) : null}
 
-          {!submitted ? (
-            <div className="stack">
-              <input
-                className="input"
-                placeholder="Type your answer or click one above…"
-                value={answer}
-                onChange={(event) => setAnswer(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") submit();
-                }}
-              />
-              <button type="button" className="button" onClick={() => submit()}>
-                Check
-              </button>
-            </div>
-          ) : (
+          {!submitted ? null : (
             <div className="stack">
               <p className={`quiz-result ${result === "correct" ? "quiz-result-ok" : "quiz-result-fail"}`}>
                 {result === "correct" ? "✓ Correct!" : `✗ Answer: ${question.answer}`}
