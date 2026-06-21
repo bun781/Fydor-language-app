@@ -2,7 +2,7 @@
 
 ## Review System Addendum
 
-The new sentence review tab lives at `/review` and uses a separate queue strategy from Sentence Forge so it can be swapped for SRS later without changing the UI.
+The sentence review tab lives at `/review` and uses a separate queue strategy from the lesson library so it can be swapped for SRS later without changing the UI.
 
 ### Files Added
 
@@ -48,11 +48,10 @@ The new sentence review tab lives at `/review` and uses a separate queue strateg
 - `components/language/ImportHelpPanel.tsx`
 - `components/language/ImportPreview.tsx`
 - `db/schema.ts`
-- `db/migrations/0002_lesson_import.sql`
+- `db/migrations/0001_schema_upgrades.sql`
 - `lib/language/importSchema.ts`
 - `lib/language/importLesson.ts`
 - `lib/language/importedContent.ts`
-- `lib/language/generateDrills.ts`
 - `lib/language/normalize.ts`
 - `lib/language/types.ts`
 - `tests/unit/language-import.test.ts`
@@ -77,9 +76,6 @@ Existing tables reused:
 
 - `sentences`
 - `learning_items`
-- `drills`
-- `review_states`
-- `sentence_review_attempts`
 
 ## Lesson Builder Flow
 
@@ -91,14 +87,14 @@ Existing tables reused:
 6. Create or reuse sentences by canonical sentence key.
 7. Create or reuse learning items by canonical key.
 8. Create exact-surface links for vocabulary, grammar, and chunks.
-9. Reuse the same imported sentences for Sentence Forge drills and review states.
+9. Reuse the same imported sentences for the lesson library and review states.
 
 ## Lesson Library Connections
 
 - `/study/imported-content` reads the latest saved lesson from the database and groups the lesson browser by language.
 - It renders sentence text, translation, level, and tags.
 - It uses the sentence-to-vocabulary, sentence-to-grammar, and sentence-to-chunk link tables to show hoverable explanations.
-- Sentence Forge still reads from `drills` and `review_states`, so imported lessons can flow into the existing study queue.
+- The lesson library reads from `lesson_sentences`, `sentences`, `sentence_vocabulary_links`, `sentence_grammar_links`, `sentence_chunk_links`, and `learning_items`.
 
 ## Known Limitations
 

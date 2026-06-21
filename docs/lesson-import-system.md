@@ -74,9 +74,6 @@ Reused tables:
 - `lessons`
 - `sentences`
 - `learning_items`
-- `drills`
-- `review_states`
-- `sentence_review_attempts`
 
 Import-specific additions:
 
@@ -86,7 +83,7 @@ Import-specific additions:
 - `sentence_chunk_links`
 
 Schema lives in `db/schema.ts`.
-Migration lives in `db/migrations/0002_lesson_import.sql`.
+Migration lives in `db/migrations/0001_schema_upgrades.sql`.
 
 ## Import Flow
 
@@ -101,7 +98,7 @@ The server-side flow is:
 7. Create or reuse sentences by canonical sentence key.
 8. Create or reuse learning items by canonical key.
 9. Create exact-surface sentence links.
-10. Create drills and review states for Sentence Forge.
+10. Persist the imported lesson and its sentence/item links.
 
 Important behavior:
 
@@ -111,12 +108,6 @@ Important behavior:
 - Transaction rollback should leave the database unchanged on error.
 
 ## How Study Pages Consume Imported Data
-
-### Sentence Forge
-
-`lib/language/studyQueue.ts` reads `drills`, `review_states`, `sentences`, `sentence_tokens`, and `learning_items`.
-
-Imported lessons become available to Sentence Forge because import creates the same drill and review records that the queue expects.
 
 ### Imported Content Demo
 

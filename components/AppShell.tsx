@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 
 const navLinks: Array<{ href: Route<string>; label: string }> = [
   { href: "/admin/imports", label: "Lesson Builder" },
-  { href: "/study/sentence-forge", label: "Sentence Forge" },
   { href: "/study/imported-content", label: "Lesson Library" },
   { href: "/review", label: "Review" }
 ];

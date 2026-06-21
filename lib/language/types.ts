@@ -1,5 +1,4 @@
 export type LearningItemType = "word" | "grammar" | "chunk";
-export type SentenceDrillType = "recall" | "reconstruction" | "cloze" | "transformation" | "original_sentence";
 export type SentenceGrade = "easy" | "correct" | "hard" | "failed";
 
 export interface LessonWordInput {
@@ -103,11 +102,3 @@ export interface LessonImportSummary {
   linksCreated: number;
   errors: string[];
 }
-
-export interface DrillBlueprint {
-  type: SentenceDrillType;
-  prompt: string;
-  answer: string;
-  payload: Record<string, unknown>;
-}
-

@@ -1,6 +1,6 @@
-# Habitz Sentence Forge
+# Habitz
 
-A focused language-learning app for building lesson JSON, generating Sentence Forge drills, and running a dedicated sentence review tab.
+A focused language-learning app for building lesson JSON, studying imported lessons, and running a lightweight sentence review tab.
 
 Fydor is free for the people: open access, no paywall, and no subscriptions.
 
@@ -17,17 +17,16 @@ Fydor is free for the people: open access, no paywall, and no subscriptions.
 2. Paste, upload, or generate lesson JSON, then validate the lesson.
 3. Preview sentences, focus items, tokens, warnings, and detected duplicates.
 4. Save the lesson.
-5. Save lessons, sentences, tokens, canonical learning items, links, drills, and review states.
-6. Study due drills at `/study/sentence-forge` or browse the Lesson Library at `/study/imported-content`.
-7. Self-grade Sentence Forge with Failed, Hard, Correct, or Easy.
-8. Mark review sentences as Remembered or Not Remembered.
-9. Update the next review date or sentence review state immediately.
+5. Save lessons, sentences, tokens, canonical learning items, and links.
+6. Browse the Lesson Library at `/study/imported-content` or open `/review` for sentence review.
+7. Mark review sentences as Remembered or Not Remembered.
+8. Update the next review date or sentence review state immediately.
 
 ## What Makes It Different
 
 - Built as an open-access learning tool.
 - Designed to stay simple, local-friendly, and focused on study rather than monetization.
-- Surfaces saved lessons, drills, and review state in one workflow.
+- Surfaces saved lessons and sentence review state in one workflow.
 
 ## Local Setup
 

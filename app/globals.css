@@ -274,7 +274,7 @@ button, input, textarea, select {
 }
 
 .review-header {
-  align-items: start;
+  align-items: flex-start;
   display: flex;
   gap: 20px;
   justify-content: space-between;
@@ -467,7 +467,7 @@ textarea.input {
 }
 
 .language-tabs button {
-  align-items: start;
+  align-items: flex-start;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 3px;
@@ -724,7 +724,7 @@ textarea.input {
 }
 
 .builder-layout {
-  align-items: start;
+  align-items: flex-start;
   grid-template-columns: minmax(0, 1fr) 360px;
 }
 
@@ -925,58 +925,10 @@ textarea.input {
   margin-top: 16px;
 }
 
-/* ── Sentence Forge ─────────────────────────────────────── */
-
-.forge-shell {
-  display: grid;
-  gap: 20px;
-  max-width: 820px;
-}
-
-.step-tabs {
-  display: grid;
-  gap: 4px;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-}
-
-.step-tabs button {
-  background: transparent;
-  border: 1px solid var(--line);
-  border-radius: 2px;
-  color: var(--muted);
-  cursor: pointer;
-  font-size: 12px;
-  letter-spacing: 0.02em;
-  min-height: 30px;
-  transition: border-color 0.1s, color 0.1s;
-}
-
-.step-tabs button:hover {
-  border-color: var(--ink);
-  color: var(--ink);
-}
-
-.step-tabs button.active {
-  background: var(--ink);
-  border-color: var(--ink);
-  color: #ffffff;
-}
-
-.token-bank,
 .grade-grid {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-}
-
-.rebuild-line,
-.answer-box {
-  background: var(--surface-muted);
-  border: 1px solid var(--line);
-  border-radius: 3px;
-  font-family: Georgia, serif;
-  min-height: 48px;
-  padding: 12px 14px;
 }
 
 /* ── Button active state (reveal controls) ──────────────── */
@@ -1275,10 +1227,6 @@ textarea.input {
   .annotation-types {
     display: grid;
     grid-auto-flow: row;
-  }
-
-  .step-tabs {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .sentence-text,

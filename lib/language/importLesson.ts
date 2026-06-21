@@ -1,17 +1,14 @@
 import { inArray, eq, and } from "drizzle-orm";
 import {
-  drills,
   lessonSentences,
   learningItems,
   lessons,
-  reviewStates,
   sentenceChunkLinks,
   sentenceGrammarLinks,
   sentenceVocabularyLinks,
   sentences
 } from "@/db/schema";
 import { getDb, db } from "@/lib/server/db";
-import { generateSentenceForgeDrills } from "@/lib/language/generateDrills";
 import { buildCanonicalKey, hashLessonSource, normalizeSentenceText } from "@/lib/language/normalize";
 import type {
   LessonImportInput,
@@ -209,7 +206,10 @@ export async function importApprovedLesson(lesson: LessonImportInput): Promise<L
           language: lesson.language,
           text: sentence.text,
           normalizedText,
-          translation: sentence.translation ?? ""
+          translation: sentence.translation ?? "",
+          reviewState: "unknown",
+          reviewStreak: 0,
+          reviewedAt: null
         }).returning({ id: sentences.id });
         sentenceId = insertedSentence.id;
         sentencesImported += 1;
@@ -232,26 +232,6 @@ export async function importApprovedLesson(lesson: LessonImportInput): Promise<L
         itemIdByKey
       });
       linksCreated += sentenceLinksCreated;
-
-      if (!existingSentence) {
-        const focusItemId = pickFocusItemId(lesson.language, sentence, itemIdByKey);
-        const drillsToInsert = generateSentenceForgeDrills(normalizeSentenceImport(sentence));
-        const insertedDrills = await tx.insert(drills).values(drillsToInsert.map((drill) => ({
-          sentenceId,
-          learningItemId: focusItemId,
-          type: drill.type,
-          prompt: drill.prompt,
-          answer: drill.answer,
-          payload: drill.payload
-        }))).returning({ id: drills.id });
-
-        await tx.insert(reviewStates).values(insertedDrills.map((drill) => ({
-          drillId: drill.id,
-          reviewState: "new",
-          nextReviewAt: new Date(),
-          intervalDays: 0
-        })));
-      }
     }
 
     return {
@@ -468,16 +448,6 @@ function summarizeItemOccurrences(
   };
 }
 
-function normalizeSentenceImport(sentence: LessonSentenceInput) {
-  return {
-    ...sentence,
-    translation: sentence.translation ?? "",
-    words: sentence.words ?? [],
-    grammar: sentence.grammar ?? [],
-    chunks: sentence.chunks ?? []
-  };
-}
-
 async function createSentenceItemLinks({
   tx,
   language,
@@ -535,28 +505,6 @@ async function createSentenceItemLinks({
   }
 
   return inserted;
-}
-
-function pickFocusItemId(language: string, sentence: LessonSentenceInput, itemIdByKey: Map<string, string>): string | undefined {
-  const word = sentence.words?.[0];
-  if (word) {
-    const itemId = itemIdByKey.get(itemLookupKey({ type: "word", canonicalKey: buildCanonicalKey(language, word.lemma ?? word.surface) }));
-    if (itemId) return itemId;
-  }
-
-  const grammar = sentence.grammar?.[0];
-  if (grammar) {
-    const itemId = itemIdByKey.get(itemLookupKey({ type: "grammar", canonicalKey: buildCanonicalKey(language, grammar.pattern) }));
-    if (itemId) return itemId;
-  }
-
-  const chunk = sentence.chunks?.[0];
-  if (chunk) {
-    const itemId = itemIdByKey.get(itemLookupKey({ type: "chunk", canonicalKey: buildCanonicalKey(language, chunk.surface) }));
-    if (itemId) return itemId;
-  }
-
-  return undefined;
 }
 
 function itemLookupKey(item: Pick<CandidateItem, "type" | "canonicalKey">): string {

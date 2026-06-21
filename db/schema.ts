@@ -10,16 +10,8 @@ import {
   uuid
 } from "drizzle-orm/pg-core";
 
-export const reviewRatingEnum = pgEnum("review_rating", ["easy", "correct", "hard", "failed"]);
 export const sentenceReviewStateEnum = pgEnum("sentence_review_state", ["unknown", "remembered", "forgotten"]);
 export const learningItemTypeEnum = pgEnum("learning_item_type", ["word", "grammar", "chunk"]);
-export const sentenceDrillTypeEnum = pgEnum("sentence_drill_type", [
-  "recall",
-  "reconstruction",
-  "cloze",
-  "transformation",
-  "original_sentence"
-]);
 
 const idColumn = () => uuid("id").defaultRandom().primaryKey();
 const timestamps = () => ({
@@ -151,45 +143,4 @@ export const sentenceItemLinks = pgTable("sentence_item_links", {
 }, (table) => ({
   uniqueLinkIdx: uniqueIndex("sentence_item_links_unique_idx").on(table.sentenceId, table.learningItemId, table.role),
   itemIdx: index("sentence_item_links_item_idx").on(table.learningItemId)
-}));
-
-export const drills = pgTable("drills", {
-  id: idColumn(),
-  sentenceId: uuid("sentence_id").notNull().references(() => sentences.id, { onDelete: "cascade" }),
-  learningItemId: uuid("learning_item_id").references(() => learningItems.id, { onDelete: "set null" }),
-  type: sentenceDrillTypeEnum("type").notNull(),
-  prompt: text("prompt").notNull(),
-  answer: text("answer").notNull(),
-  payload: jsonb("payload").$type<Record<string, unknown>>().default({}).notNull(),
-  ...timestamps()
-}, (table) => ({
-  sentenceTypeIdx: uniqueIndex("drills_sentence_type_idx").on(table.sentenceId, table.type),
-  sentenceIdx: index("drills_sentence_idx").on(table.sentenceId)
-}));
-
-export const reviewStates = pgTable("review_states", {
-  id: idColumn(),
-  drillId: uuid("drill_id").notNull().references(() => drills.id, { onDelete: "cascade" }),
-  reviewState: text("review_state").notNull().default("new"),
-  nextReviewAt: timestamp("next_review_at", { withTimezone: true }).defaultNow().notNull(),
-  intervalDays: integer("interval_days").default(0).notNull(),
-  lastGrade: reviewRatingEnum("last_grade"),
-  lastReviewedAt: timestamp("last_reviewed_at", { withTimezone: true }),
-  ...timestamps()
-}, (table) => ({
-  drillIdx: uniqueIndex("review_states_drill_idx").on(table.drillId),
-  dueIdx: index("review_states_due_idx").on(table.nextReviewAt)
-}));
-
-export const sentenceReviewAttempts = pgTable("sentence_review_attempts", {
-  id: idColumn(),
-  reviewStateId: uuid("review_state_id").notNull().references(() => reviewStates.id, { onDelete: "cascade" }),
-  drillId: uuid("drill_id").notNull().references(() => drills.id, { onDelete: "cascade" }),
-  drillType: sentenceDrillTypeEnum("drill_type").notNull(),
-  response: text("response"),
-  grade: reviewRatingEnum("grade").notNull(),
-  attemptedAt: timestamp("attempted_at", { withTimezone: true }).defaultNow().notNull()
-}, (table) => ({
-  stateIdx: index("sentence_review_attempts_state_idx").on(table.reviewStateId),
-  drillIdx: index("sentence_review_attempts_drill_idx").on(table.drillId)
 }));

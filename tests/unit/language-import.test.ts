@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { generateSentenceForgeDrills } from "@/lib/language/generateDrills";
 import { groupLessonsByLanguage, formatLanguageLabel } from "@/lib/language/importResources";
 import { parseLessonJson } from "@/lib/language/importSchema";
 import { buildCanonicalKey, normalizeSentenceText } from "@/lib/language/normalize";
@@ -8,12 +7,10 @@ import {
   lessonSentences,
   learningItems,
   lessons,
-  reviewStates,
   sentenceChunkLinks,
   sentenceGrammarLinks,
   sentenceVocabularyLinks,
-  sentences,
-  drills
+  sentences
 } from "@/db/schema";
 
 const mockDb: MockDb = createMockDb(createStore());
@@ -221,26 +218,6 @@ describe("lesson import validation", () => {
   });
 });
 
-describe("sentence forge generation", () => {
-  it("creates the required five drills for a sentence", () => {
-    const drills = generateSentenceForgeDrills({
-      text: "寿司を食べたい。",
-      translation: "I want to eat sushi.",
-      words: [{ surface: "寿司" }],
-      chunks: [{ surface: "食べたい" }]
-    });
-
-    expect(drills.map((drill) => drill.type)).toEqual([
-      "recall",
-      "reconstruction",
-      "cloze",
-      "transformation",
-      "original_sentence"
-    ]);
-    expect(drills[2].answer).toBe("食べたい");
-  });
-});
-
 describe("language normalization and srs", () => {
   it("normalizes sentence text for duplicate detection", () => {
     expect(normalizeSentenceText("  I   WANT  sushi  ")).toBe("i want sushi");
@@ -294,9 +271,7 @@ function createStore() {
     lessonSentences: [] as Array<Record<string, unknown>>,
     sentenceVocabularyLinks: [] as Array<Record<string, unknown>>,
     sentenceGrammarLinks: [] as Array<Record<string, unknown>>,
-    sentenceChunkLinks: [] as Array<Record<string, unknown>>,
-    drills: [] as Array<Record<string, unknown>>,
-    reviewStates: [] as Array<Record<string, unknown>>
+    sentenceChunkLinks: [] as Array<Record<string, unknown>>
   };
 }
 
@@ -483,18 +458,6 @@ class InsertQuery {
     if (this.table === sentenceChunkLinks) {
       const inserted = { id: `chunk-link-${this.nextId()}`, ...row };
       store.sentenceChunkLinks.push(inserted);
-      return inserted;
-    }
-
-    if (this.table === drills) {
-      const inserted = { id: `drill-${this.nextId()}`, ...row };
-      store.drills.push(inserted);
-      return inserted;
-    }
-
-    if (this.table === reviewStates) {
-      const inserted = { id: `review-${this.nextId()}`, ...row };
-      store.reviewStates.push(inserted);
       return inserted;
     }
 

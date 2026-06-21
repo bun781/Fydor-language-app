@@ -1,7 +1,7 @@
 {
   "name": "Habitz",
   "short_name": "Habitz",
-  "description": "Language study — lesson builder, sentence forge, vocabulary review.",
+  "description": "Language study — lesson builder, lesson library, and sentence review.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#09090b",
