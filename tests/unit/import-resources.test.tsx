@@ -8,7 +8,8 @@ describe("import resources", () => {
       "Required fields",
       "Optional fields",
       "Examples",
-      "Common mistakes"
+      "Common mistakes",
+      "Overlapping annotations"
     ]);
   });
 
@@ -22,6 +23,7 @@ describe("import resources", () => {
 
     for (const template of importPromptTemplates) {
       expect(template.prompt).toContain("Return JSON only");
+      expect(template.prompt).toContain("Word and grammar annotations may overlap");
       expect(template.prompt.length).toBeGreaterThan(200);
     }
   });

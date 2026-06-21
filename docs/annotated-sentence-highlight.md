@@ -27,9 +27,9 @@ Each annotation carries a `surface` (or `surfaceText`) string — the exact subs
 
 1. **Find ranges** — for each word, grammar rule, and chunk, `indexOf(surface)` locates the start position in the sentence string. The end is `start + surface.length`.
 
-2. **Resolve priority** — a character may fall inside multiple overlapping annotations. Priority is `word > grammar > chunk`, matching the lesson builder's behavior. A per-character map (`charMap`) stores the winning `AnnotationRange` for each index.
+2. **Compose layers** — a character may fall inside multiple overlapping annotations. A per-character map (`charMap`) stores every matching `AnnotationRange`, sorted as `word`, `grammar`, then `chunk` for stable tooltip order.
 
-3. **Group into runs** — consecutive characters that share the same `AnnotationRange` object (by reference) form a single annotated run. Gaps between annotations form plain-text runs.
+3. **Group into runs** — consecutive characters that share the same annotation id set form a single annotated run. Gaps between annotations form plain-text runs.
 
 ```
 "나는 학교에 가요"
@@ -38,43 +38,45 @@ Each annotation carries a `surface` (or `surfaceText`) string — the exact subs
               ^^  → grammar (가요)
 ```
 
-Result: `[annotated("나는"), plain(" "), annotated("학교에"), plain(" "), annotated("가요")]`
+If annotations overlap, one run can carry multiple layers. For example, a vocabulary word inside a grammar pattern can render with both word and grammar styling rather than hiding one annotation.
 
 ### 3. Rendering
 
 `AnnotatedSentence` renders the runs inside a `<p className="sentence-text">`:
 
 - **Plain runs** → bare `<span>`
-- **Annotated runs** → a CSS-hover tooltip structure using `<span>` elements so the markup stays valid inside `<p>`:
+- **Annotated runs** → a CSS-hover tooltip structure using `<span>` elements so the markup stays valid inside `<p>`. The inner span receives one or more layer classes:
 
 ```html
 <span class="tooltip-wrap tooltip-bottom sentence-annotated-wrap">
-  <span class="annotated-{kind} sentence-annotated" aria-describedby="…">
+  <span class="sentence-annotated annotated-has-word annotated-has-grammar" aria-describedby="…">
     {text}
   </span>
   <span class="tooltip-bubble" role="tooltip">
     <span class="tooltip-stack">
-      <strong>{displayText}</strong>
-      <span>{meaning}</span>
-      <span class="muted">{explanation}</span>
+      <span class="sentence-annotation-note">
+        <strong>{displayText}</strong>
+        <span>{meaning}</span>
+        <span class="muted">{explanation}</span>
+      </span>
     </span>
   </span>
 </span>
 ```
 
-The tooltip is shown/hidden entirely via CSS (`.tooltip-wrap:hover .tooltip-bubble { opacity: 1 }`), so no JS event handlers are needed.
+The tooltip is shown/hidden entirely via CSS (`.tooltip-wrap:hover .tooltip-bubble { opacity: 1 }`), so no JS event handlers are needed. When a span has multiple annotations, the tooltip lists each note.
 
 ### 4. Color coding
 
 Reuses the same CSS variables and classes as the lesson builder:
 
-| Kind    | Class              | Color variable  |
-|---------|--------------------|-----------------|
-| word    | `.annotated-word`  | `--word` (blue) |
-| grammar | `.annotated-grammar` | `--grammar` (purple) |
-| chunk   | `.annotated-chunk` | `--chunk` (green) |
+| Kind    | Class                    | Color variable  |
+|---------|--------------------------|-----------------|
+| word    | `.annotated-has-word`    | `--word` (blue) |
+| grammar | `.annotated-has-grammar` | `--grammar` (purple) |
+| chunk   | `.annotated-has-chunk`   | `--chunk` (green) |
 
-Each class applies a tinted background (`--{kind}-bg`) and a solid bottom border.
+Word annotations apply a tinted background, grammar annotations apply a purple underline, and chunk annotations apply a green low highlight. These styles can stack on the same text.
 
 ### 5. Trigger
 

@@ -181,6 +181,29 @@ describe("lesson import validation", () => {
     expect(mockDb.store.sentenceChunkLinks).toHaveLength(1);
   });
 
+  it("inserts overlapping vocabulary and grammar links", async () => {
+    const lesson = buildLesson([
+      {
+        text: "책을 읽고 있어요.",
+        translation: "I am reading a book.",
+        words: [{ surface: "읽고", lemma: "읽다", meaning: "to read" }],
+        grammar: [{ pattern: "-고 있다", surface: "읽고 있어요", meaning: "progressive action" }]
+      }
+    ]);
+
+    const parsed = parseLessonJson(JSON.stringify(lesson));
+    expect(parsed.errors).toEqual([]);
+
+    const summary = await importApprovedLesson(parsed.lesson!);
+    expect(summary.linksCreated).toBe(3);
+    expect(mockDb.store.sentenceVocabularyLinks).toEqual([
+      expect.objectContaining({ surfaceText: "읽고" })
+    ]);
+    expect(mockDb.store.sentenceGrammarLinks).toEqual([
+      expect.objectContaining({ surfaceText: "읽고 있어요" })
+    ]);
+  });
+
   it("skips duplicate links for repeated surfaces", async () => {
     const lesson = buildLesson([
       {

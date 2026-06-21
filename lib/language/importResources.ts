@@ -175,6 +175,15 @@ export const importGuideSections: ImportGuideSection[] = [
       "Adding a `word.surface`, `grammar.surface`, or `chunk.surface` that does not appear in the sentence text.",
       "Providing JSON with trailing comments or other non-JSON syntax."
     ]
+  },
+  {
+    title: "Overlapping annotations",
+    description: "Word, grammar, and chunk annotations may share the same characters when multiple explanations are useful.",
+    items: [
+      "Annotate the full grammar surface even when it contains words that are also vocabulary items.",
+      "Add word annotations inside grammar spans when the word is worth studying on its own.",
+      "Use overlap intentionally; do not split or shorten a grammar annotation just to avoid a word annotation."
+    ]
   }
 ];
 
@@ -196,6 +205,8 @@ Rules:
 - Add word annotations for useful vocabulary.
 - Add grammar annotations for one beginner grammar point.
 - Add chunk annotations only when a short phrase is useful for study.
+- Word and grammar annotations may overlap when both are pedagogically useful.
+- Keep grammar surfaces complete even if important vocabulary words inside them are also annotated.
 - Keep every word.surface, grammar.surface, and chunk.surface present inside the sentence text.
 - Do not invent database IDs or extra top-level keys.
 
@@ -227,6 +238,8 @@ Rules:
 - Add vocabulary annotations for non-trivial words or expressions.
 - Add grammar annotations for patterns worth studying.
 - Add chunk annotations for reusable phrases, clauses, or collocations.
+- Word and grammar annotations may overlap when both are pedagogically useful.
+- Keep grammar surfaces complete even if important vocabulary words inside them are also annotated.
 - Avoid duplicate sentences and avoid duplicate learning-item surfaces unless they serve a real study purpose.
 - Keep all annotated surfaces visible in the sentence text.
 - Do not include any field that is not part of the lesson schema.
@@ -259,6 +272,8 @@ Rules:
 - Add one or more word annotations per sentence.
 - Add chunk annotations when a short phrase helps memory.
 - Use grammar annotations only if they support the vocabulary example naturally.
+- Word and grammar annotations may overlap when both are pedagogically useful.
+- Keep grammar surfaces complete even if important vocabulary words inside them are also annotated.
 - Keep the sentence text, translations, and annotations aligned.
 
 Lesson requirements:
@@ -289,6 +304,8 @@ Rules:
 - Add grammar annotations on the exact pattern or surface form.
 - Add vocabulary annotations for key words that support the explanation.
 - Add chunk annotations for reusable clauses or expressions when helpful.
+- Word and grammar annotations may overlap when both are pedagogically useful.
+- For each target grammar pattern, annotate the full surface span in grammar, even if some words inside it are also annotated as vocabulary.
 - Keep explanations short, practical, and learner-friendly.
 
 Lesson requirements:

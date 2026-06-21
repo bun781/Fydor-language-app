@@ -4,6 +4,7 @@ import { useId } from "react";
 import type { StudySentence } from "@/lib/imported-content/types";
 
 interface AnnotationRange {
+  id: string;
   start: number;
   end: number;
   kind: "word" | "grammar" | "chunk";
@@ -14,57 +15,67 @@ interface AnnotationRange {
 
 type Run =
   | { kind: "plain"; text: string }
-  | { kind: "annotated"; text: string; range: AnnotationRange };
+  | { kind: "annotated"; text: string; annotations: AnnotationRange[] };
 
-const PRIORITY: Record<string, number> = { word: 0, grammar: 1, chunk: 2 };
+const KIND_ORDER: Record<AnnotationRange["kind"], number> = { word: 0, grammar: 1, chunk: 2 };
 
-function buildRuns(sentence: StudySentence): Run[] {
+function sameAnnotations(left: AnnotationRange[], right: AnnotationRange[]): boolean {
+  return left.length === right.length && left.every((range, index) => range.id === right[index]?.id);
+}
+
+function annotationClassName(annotations: AnnotationRange[]): string {
+  const kinds = new Set(annotations.map((annotation) => annotation.kind));
+  return [
+    "sentence-annotated",
+    kinds.has("word") ? "annotated-has-word" : null,
+    kinds.has("grammar") ? "annotated-has-grammar" : null,
+    kinds.has("chunk") ? "annotated-has-chunk" : null
+  ].filter(Boolean).join(" ");
+}
+
+export function buildAnnotatedSentenceRuns(sentence: StudySentence): Run[] {
   const { text } = sentence;
   const ranges: AnnotationRange[] = [];
 
-  for (const word of sentence.words) {
+  sentence.words.forEach((word, index) => {
     const start = text.indexOf(word.surface);
     if (start >= 0) {
-      ranges.push({ start, end: start + word.surface.length, kind: "word", displayText: word.displayText, meaning: word.meaning, explanation: word.explanation });
+      ranges.push({ id: `word-${index}`, start, end: start + word.surface.length, kind: "word", displayText: word.displayText, meaning: word.meaning, explanation: word.explanation });
     }
-  }
-  for (const g of sentence.grammar) {
+  });
+  sentence.grammar.forEach((g, index) => {
     const start = text.indexOf(g.surfaceText);
     if (start >= 0) {
-      ranges.push({ start, end: start + g.surfaceText.length, kind: "grammar", displayText: g.pattern, meaning: g.meaning, explanation: g.explanation });
+      ranges.push({ id: `grammar-${index}`, start, end: start + g.surfaceText.length, kind: "grammar", displayText: g.pattern, meaning: g.meaning, explanation: g.explanation });
     }
-  }
-  for (const c of sentence.chunks) {
+  });
+  sentence.chunks.forEach((c, index) => {
     const start = text.indexOf(c.surfaceText);
     if (start >= 0) {
-      ranges.push({ start, end: start + c.surfaceText.length, kind: "chunk", displayText: c.surfaceText, meaning: c.meaning, explanation: c.explanation });
+      ranges.push({ id: `chunk-${index}`, start, end: start + c.surfaceText.length, kind: "chunk", displayText: c.surfaceText, meaning: c.meaning, explanation: c.explanation });
     }
-  }
+  });
 
-  const charMap: (AnnotationRange | null)[] = new Array(text.length).fill(null);
+  const charMap: AnnotationRange[][] = Array.from({ length: text.length }, () => []);
   for (let i = 0; i < text.length; i++) {
-    let best: AnnotationRange | null = null;
-    for (const range of ranges) {
-      if (i >= range.start && i < range.end) {
-        if (!best || PRIORITY[range.kind] < PRIORITY[best.kind]) best = range;
-      }
-    }
-    charMap[i] = best;
+    charMap[i] = ranges
+      .filter((range) => i >= range.start && i < range.end)
+      .sort((a, b) => KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || a.start - b.start || a.id.localeCompare(b.id));
   }
 
   const runs: Run[] = [];
   let i = 0;
   while (i < text.length) {
-    const range = charMap[i];
-    if (!range) {
+    const annotations = charMap[i];
+    if (!annotations.length) {
       let j = i;
-      while (j < text.length && !charMap[j]) j++;
+      while (j < text.length && !charMap[j].length) j++;
       runs.push({ kind: "plain", text: text.slice(i, j) });
       i = j;
     } else {
       let j = i;
-      while (j < text.length && charMap[j] === range) j++;
-      runs.push({ kind: "annotated", text: text.slice(i, j), range });
+      while (j < text.length && sameAnnotations(charMap[j], annotations)) j++;
+      runs.push({ kind: "annotated", text: text.slice(i, j), annotations });
       i = j;
     }
   }
@@ -74,7 +85,7 @@ function buildRuns(sentence: StudySentence): Run[] {
 
 export function AnnotatedSentence({ sentence }: { sentence: StudySentence }) {
   const baseId = useId();
-  const runs = buildRuns(sentence);
+  const runs = buildAnnotatedSentenceRuns(sentence);
   const hasAnnotations = runs.some((r) => r.kind === "annotated");
 
   if (!hasAnnotations) {
@@ -89,14 +100,18 @@ export function AnnotatedSentence({ sentence }: { sentence: StudySentence }) {
         const tipId = `${baseId}-t${i}`;
         return (
           <span key={i} className="tooltip-wrap tooltip-bottom sentence-annotated-wrap">
-            <span className={`annotated-${run.range.kind} sentence-annotated`} aria-describedby={tipId}>
+            <span className={annotationClassName(run.annotations)} aria-describedby={tipId}>
               {run.text}
             </span>
             <span className="tooltip-bubble" role="tooltip" id={tipId}>
               <span className="tooltip-stack">
-                <strong>{run.range.displayText}</strong>
-                {run.range.meaning ? <span>{run.range.meaning}</span> : null}
-                {run.range.explanation ? <span className="muted">{run.range.explanation}</span> : null}
+                {run.annotations.map((annotation) => (
+                  <span className="sentence-annotation-note" key={annotation.id}>
+                    <strong>{annotation.displayText}</strong>
+                    {annotation.meaning ? <span>{annotation.meaning}</span> : null}
+                    {annotation.explanation ? <span className="muted">{annotation.explanation}</span> : null}
+                  </span>
+                ))}
               </span>
             </span>
           </span>

@@ -497,12 +497,12 @@ export default function LessonImportsPage() {
                 <div className="selectable-sentence" onMouseUp={captureSelection} onKeyUp={captureSelection}>
                   {activeSentence.text ? (
                     Array.from(activeSentence.text).map((char, index) => {
-                      const kind = getCharAnnotationKind(activeSentence, char, index);
+                      const annotationClassName = getCharAnnotationClassName(activeSentence, char, index);
                       return (
                         <span
                           data-char-index={index}
                           key={`${char}-${index}`}
-                          className={kind ? `annotated-${kind}` : undefined}
+                          className={annotationClassName}
                         >
                           {char}
                         </span>
@@ -780,8 +780,8 @@ function getCharIndex(node: Node | null): number | null {
   return value === undefined ? null : Number(value);
 }
 
-function getCharAnnotationKind(sentence: LessonSentenceInput, char: string, index: number): AnnotationKind | null {
-  if (!sentence.text || char.trim() === "") return null;
+function getCharAnnotationClassName(sentence: LessonSentenceInput, char: string, index: number): string | undefined {
+  if (!sentence.text || char.trim() === "") return undefined;
   const left = Array.from(sentence.text).slice(0, index).join("");
   const right = Array.from(sentence.text).slice(0, index + 1).join("");
 
@@ -793,8 +793,11 @@ function getCharAnnotationKind(sentence: LessonSentenceInput, char: string, inde
     return left.length >= start && right.length <= end;
   }
 
-  if ((sentence.words ?? []).some((w) => overlaps(w.surface))) return "word";
-  if ((sentence.grammar ?? []).some((g) => overlaps(g.surface))) return "grammar";
-  if ((sentence.chunks ?? []).some((c) => overlaps(c.surface))) return "chunk";
-  return null;
+  const classes = [
+    (sentence.words ?? []).some((w) => overlaps(w.surface)) ? "annotated-has-word" : null,
+    (sentence.grammar ?? []).some((g) => overlaps(g.surface)) ? "annotated-has-grammar" : null,
+    (sentence.chunks ?? []).some((c) => overlaps(c.surface)) ? "annotated-has-chunk" : null
+  ].filter(Boolean);
+
+  return classes.length ? classes.join(" ") : undefined;
 }
