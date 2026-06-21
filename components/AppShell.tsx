@@ -7,7 +7,8 @@ import { GuidedTour, replayGuidedTour } from "@/components/system/GuidedTour";
 
 const navLinks: Array<{ href: Route<string>; label: string }> = [
   { href: "/admin/imports", label: "Lesson Builder" },
-  { href: "/study/imported-content", label: "Lesson Library" }
+  { href: "/study/imported-content", label: "Lesson Library" },
+  { href: "/study/multiple-choice", label: "Multiple Choice" }
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {

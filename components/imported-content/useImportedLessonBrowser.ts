@@ -9,15 +9,35 @@ import type { ChangeEvent } from "react";
 export function useImportedLessonBrowser(initialLesson: StudyLesson | null, allLessons: StudyLessonMeta[]) {
   const languageGroups = useMemo(() => groupLessonsByLanguage(allLessons), [allLessons]);
   const [lesson, setLesson] = useState(initialLesson);
+  const [selectedLessonId, setSelectedLessonId] = useState(initialLesson?.id ?? allLessons[0]?.id ?? "");
   const [selectedLanguage, setSelectedLanguage] = useState(
     initialLesson?.language ?? allLessons[0]?.language ?? ""
   );
   const [loadingLesson, setLoadingLesson] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setLesson(initialLesson);
-    setSelectedLanguage(initialLesson?.language ?? allLessons[0]?.language ?? "");
-  }, [allLessons, initialLesson]);
+    if (initialLesson) {
+      setLesson(initialLesson);
+      setSelectedLessonId(initialLesson.id);
+      setSelectedLanguage(initialLesson.language);
+    }
+  }, [initialLesson]);
+
+  useEffect(() => {
+    if (!allLessons.length) {
+      setLesson(null);
+      setSelectedLessonId("");
+      setSelectedLanguage("");
+      return;
+    }
+
+    if (!selectedLessonId || !allLessons.some((item) => item.id === selectedLessonId)) {
+      const fallback = allLessons[0];
+      setSelectedLessonId(fallback.id);
+      setSelectedLanguage(fallback.language);
+    }
+  }, [allLessons, selectedLessonId]);
 
   const activeLanguageGroup = languageGroups.find((group) => group.language === selectedLanguage) ?? languageGroups[0] ?? null;
   const languageLessons = activeLanguageGroup?.lessons ?? [];
@@ -28,17 +48,43 @@ export function useImportedLessonBrowser(initialLesson: StudyLesson | null, allL
     }
   }, [languageGroups, selectedLanguage]);
 
-  async function switchLesson(lessonId: string) {
+  useEffect(() => {
+    if (!selectedLessonId || lesson?.id === selectedLessonId) return;
+
+    let cancelled = false;
     setLoadingLesson(true);
-    try {
-      const next = await getLesson(lessonId);
-      if (next) {
-        setLesson(next);
-        setSelectedLanguage(next.language);
-      }
-    } finally {
-      setLoadingLesson(false);
-    }
+    setError(null);
+
+    getLesson(selectedLessonId)
+      .then((next) => {
+        if (cancelled) return;
+        if (next) {
+          setLesson(next);
+          setSelectedLanguage(next.language);
+        } else {
+          setLesson(null);
+          setError("Selected lesson could not be loaded.");
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setLesson(null);
+          setError(err instanceof Error ? err.message : "Unable to load selected lesson.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingLesson(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [lesson?.id, selectedLessonId]);
+
+  function switchLesson(lessonId: string) {
+    setSelectedLessonId(lessonId);
+    const selectedMeta = allLessons.find((item) => item.id === lessonId);
+    if (selectedMeta) setSelectedLanguage(selectedMeta.language);
   }
 
   function handleLanguageChange(event: ChangeEvent<HTMLSelectElement>) {
@@ -51,10 +97,12 @@ export function useImportedLessonBrowser(initialLesson: StudyLesson | null, allL
 
   return {
     handleLanguageChange,
+    error,
     languageGroups,
     languageLessons,
     lesson,
     loadingLesson,
+    selectedLessonId,
     selectedLanguage,
     switchLesson
   };

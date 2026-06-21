@@ -5,19 +5,16 @@ import type {
   ItemFamiliarity,
   RevealState,
   StudyLesson,
-  StudyLessonMeta,
   StudySentence
 } from "@/lib/imported-content/types";
 import type { ReviewDecision } from "@/lib/review/types";
-import { getLesson } from "@/lib/desktopApi";
-import { groupLessonsByLanguage } from "@/lib/language/importResources";
 import { useLessonReview } from "@/lib/review/useLessonReview";
 import { CheckpointQuiz } from "./CheckpointQuiz";
 import { SentenceFlashcard } from "./SentenceFlashcard";
 
 interface Props {
   lesson: StudyLesson | null;
-  allLessons: StudyLessonMeta[];
+  loadingLesson?: boolean;
 }
 
 const DEFAULT_REVEAL: RevealState = {
@@ -29,9 +26,8 @@ const DEFAULT_REVEAL: RevealState = {
 
 type CardGrade = "easy" | "correct" | "hard" | "failed";
 
-export function ImportedContentStudy({ lesson: initialLesson, allLessons }: Props) {
+export function ImportedContentStudy({ lesson: initialLesson, loadingLesson = false }: Props) {
   const [lesson, setLesson] = useState(initialLesson);
-  const [selectedLanguage, setSelectedLanguage] = useState(initialLesson?.language ?? allLessons[0]?.language ?? "");
   const [cardIndex, setCardIndex] = useState(0);
   const [cardOrder, setCardOrder] = useState<string[]>(
     () => initialLesson?.sentences.map((s) => s.id) ?? []
@@ -41,12 +37,7 @@ export function ImportedContentStudy({ lesson: initialLesson, allLessons }: Prop
   const [reveal, setReveal] = useState<RevealState>(DEFAULT_REVEAL);
   const [sessionFamiliarity, setSessionFamiliarity] = useState<Map<string, ItemFamiliarity>>(new Map());
   const [cardGrades, setCardGrades] = useState<Map<string, CardGrade>>(new Map());
-  const [loadingLesson, setLoadingLesson] = useState(false);
   const [reviewStates, setReviewStates] = useState<Map<string, ReviewDecision>>(new Map());
-
-  const languageGroups = groupLessonsByLanguage(allLessons);
-  const activeLanguageGroup = languageGroups.find((g) => g.language === selectedLanguage) ?? languageGroups[0] ?? null;
-  const languageLessons = activeLanguageGroup?.lessons ?? [];
 
   const sentenceById = useMemo(
     () => new Map(lesson?.sentences.map((s) => [s.id, s]) ?? []),
@@ -172,10 +163,10 @@ export function ImportedContentStudy({ lesson: initialLesson, allLessons }: Prop
       setReviewStates((prev) => new Map(prev).set(reviewedSentenceId, decision));
     }
   });
+  const { finishReview } = review;
 
   useEffect(() => {
     setLesson(initialLesson);
-    setSelectedLanguage(initialLesson?.language ?? allLessons[0]?.language ?? "");
     setCardIndex(0);
     setCardOrder(initialLesson?.sentences.map((s) => s.id) ?? []);
     setRandomOrderEnabled(false);
@@ -184,8 +175,8 @@ export function ImportedContentStudy({ lesson: initialLesson, allLessons }: Prop
     setSessionFamiliarity(new Map());
     setCardGrades(new Map());
     setReviewStates(new Map());
-    review.finishReview();
-  }, [allLessons, initialLesson, review.finishReview]);
+    finishReview();
+  }, [finishReview, initialLesson]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -208,40 +199,12 @@ export function ImportedContentStudy({ lesson: initialLesson, allLessons }: Prop
     if (review.active) setReveal(DEFAULT_REVEAL);
   }, [review.active, review.currentCard?.id]);
 
-  async function switchLesson(lessonId: string) {
-    setLoadingLesson(true);
-    try {
-      const next = await getLesson(lessonId);
-      if (next) {
-        setLesson(next);
-        setSelectedLanguage(next.language);
-        setCardIndex(0);
-        const sourceOrder = next.sentences.map((s) => s.id);
-        setCardOrder(randomOrderEnabled ? shuffleIds(sourceOrder) : sourceOrder);
-        setQuizPendingAt(null);
-        setReveal(DEFAULT_REVEAL);
-        setSessionFamiliarity(new Map());
-        setCardGrades(new Map());
-        setReviewStates(new Map());
-        review.finishReview();
-      }
-    } finally {
-      setLoadingLesson(false);
-    }
-  }
-
-  function handleLanguageChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    const lang = e.target.value;
-    setSelectedLanguage(lang);
-    const group = languageGroups.find((g) => g.language === lang);
-    const first = group?.lessons[0];
-    if (first) void switchLesson(first.id);
-  }
-
   if (!lesson) {
     return (
       <section className="card stack">
-        <p className="muted">No lessons yet. Save a lesson to start studying.</p>
+        <p className="muted">
+          {loadingLesson ? "Loading selected lesson..." : "Select a lesson to start studying."}
+        </p>
       </section>
     );
   }
@@ -257,30 +220,6 @@ export function ImportedContentStudy({ lesson: initialLesson, allLessons }: Prop
   return (
     <div className="study-shell stack">
       <div className="lesson-selector-bar">
-        {languageGroups.length > 1 ? (
-          <select
-            className="input selector-compact"
-            value={selectedLanguage}
-            disabled={loadingLesson}
-            onChange={handleLanguageChange}
-          >
-            {languageGroups.map((g) => (
-              <option key={g.language} value={g.language}>{g.label}</option>
-            ))}
-          </select>
-        ) : null}
-        {languageLessons.length > 1 ? (
-          <select
-            className="input selector-compact"
-            value={lesson.id}
-            disabled={loadingLesson}
-            onChange={(e) => void switchLesson(e.target.value)}
-          >
-            {languageLessons.map((l) => (
-              <option key={l.id} value={l.id}>{l.title}</option>
-            ))}
-          </select>
-        ) : null}
         <div className="session-stats">
           {review.active ? (
             <>

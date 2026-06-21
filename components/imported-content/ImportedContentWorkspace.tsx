@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { PageState } from "@/components/system/PageState";
-import { getLesson, getLessons } from "@/lib/desktopApi";
-import type { StudyLesson, StudyLessonMeta } from "@/lib/imported-content/types";
+import { getLessons } from "@/lib/desktopApi";
+import type { StudyLessonMeta } from "@/lib/imported-content/types";
 import { useImportedLessonBrowser } from "./useImportedLessonBrowser";
 import { ImportedContentStudy } from "./ImportedContentStudy";
 import { MultipleChoiceMode } from "./MultipleChoiceMode";
@@ -11,18 +11,23 @@ import { MultipleChoiceMode } from "./MultipleChoiceMode";
 type StudyMode = "lesson" | "multiple-choice";
 
 interface Props {
-  initialMode?: StudyMode;
+  mode?: StudyMode;
 }
 
-const modeLabels: Record<StudyMode, string> = {
-  lesson: "Imported lesson",
-  "multiple-choice": "Multiple choice"
+const modeContent: Record<StudyMode, { title: string; description: string }> = {
+  lesson: {
+    title: "Lesson Library",
+    description: "Study and review saved lessons sentence by sentence."
+  },
+  "multiple-choice": {
+    title: "Multiple Choice",
+    description: "Quiz yourself on the same imported lesson pool with multiple-choice prompts."
+  }
 };
 
-export function ImportedContentWorkspace({ initialMode = "lesson" }: Props) {
-  const [mode, setMode] = useState<StudyMode>(initialMode);
+export function ImportedContentWorkspace({ mode = "lesson" }: Props) {
+  const content = modeContent[mode];
   const [allLessons, setAllLessons] = useState<StudyLessonMeta[]>([]);
-  const [latestLesson, setLatestLesson] = useState<StudyLesson | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,11 +36,9 @@ export function ImportedContentWorkspace({ initialMode = "lesson" }: Props) {
 
     async function loadLessons() {
       const lessons = await getLessons();
-      const firstLesson = lessons[0] ? await getLesson(lessons[0].id) : null;
 
       if (!cancelled) {
         setAllLessons(lessons);
-        setLatestLesson(firstLesson);
       }
     }
 
@@ -52,7 +55,7 @@ export function ImportedContentWorkspace({ initialMode = "lesson" }: Props) {
     };
   }, []);
 
-  const browser = useImportedLessonBrowser(latestLesson, allLessons);
+  const browser = useImportedLessonBrowser(null, allLessons);
 
   if (loading) {
     return <PageState eyebrow="Loading" title="Loading lessons" description="Opening your local lesson library." />;
@@ -85,25 +88,9 @@ export function ImportedContentWorkspace({ initialMode = "lesson" }: Props) {
     <div className="stack">
       <div className="topbar">
         <div>
-          <h1>{modeLabels[mode]}</h1>
-          <p className="muted">
-            {mode === "lesson"
-              ? "Study and review saved lessons sentence by sentence."
-              : "Quiz yourself on the same imported lesson pool with multiple-choice prompts."}
-          </p>
+          <h1>{content.title}</h1>
+          <p className="muted">{content.description}</p>
         </div>
-      </div>
-
-      <div className="mode-tabs study-mode-tabs" role="tablist" aria-label="Imported lesson modes">
-        <button type="button" className={mode === "lesson" ? "active" : ""} onClick={() => setMode("lesson")}>
-          Imported lesson
-        </button>
-        <button
-          type="button"
-          className={mode === "multiple-choice" ? "active" : ""} onClick={() => setMode("multiple-choice")}
-        >
-          Multiple choice
-        </button>
       </div>
 
       <div className="lesson-selector-bar">
@@ -125,7 +112,7 @@ export function ImportedContentWorkspace({ initialMode = "lesson" }: Props) {
         {browser.languageLessons.length > 1 ? (
           <select
             className="input selector-compact"
-            value={browser.lesson?.id ?? ""}
+            value={browser.selectedLessonId}
             disabled={browser.loadingLesson}
             onChange={(event) => void browser.switchLesson(event.target.value)}
           >
@@ -140,8 +127,10 @@ export function ImportedContentWorkspace({ initialMode = "lesson" }: Props) {
         {browser.loadingLesson ? <span className="pill">Loading lesson…</span> : null}
       </div>
 
+      {browser.error ? <p className="review-error">{browser.error}</p> : null}
+
       {mode === "lesson" ? (
-        <ImportedContentStudy lesson={browser.lesson} allLessons={allLessons} />
+        <ImportedContentStudy lesson={browser.lesson} loadingLesson={browser.loadingLesson} />
       ) : (
         <MultipleChoiceMode lesson={browser.lesson} />
       )}
