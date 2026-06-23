@@ -53,10 +53,11 @@ export function ReviewDeck({ sentences }: ReviewDeckProps) {
     return (
       <section className="card review-empty">
         <h2>Review queue complete</h2>
-        <p className="muted">Turn random order on to start another pass through the current review set.</p>
+        <p className="muted">Random order is always on in review mode. Add more sentences to keep practicing.</p>
         <ReviewControls
           disabled={saving}
           shuffleEnabled={shuffleEnabled}
+          shuffleDisabled
           onRemembered={() => reviewCurrent("remembered")}
           onForgotten={() => reviewCurrent("forgotten")}
           onToggleShuffle={toggleShuffle}
@@ -93,6 +94,7 @@ export function ReviewDeck({ sentences }: ReviewDeckProps) {
       <ReviewControls
         disabled={saving}
         shuffleEnabled={shuffleEnabled}
+        shuffleDisabled
         onRemembered={() => reviewCurrent("remembered")}
         onForgotten={() => reviewCurrent("forgotten")}
         onToggleShuffle={toggleShuffle}

@@ -1,4 +1,7 @@
 import type { QuizQuestion, SelectedItem, StudySentence } from "./types";
+import { buildAnnotationRanges, type AnnotationRange } from "./text-spans";
+
+export type ClozeCandidate = AnnotationRange;
 
 export function findRelatedSentences(
   current: StudySentence,
@@ -40,6 +43,23 @@ export function getHint(sentence: StudySentence): string | null {
   const firstGrammar = sentence.grammar.find((g) => g.meaning);
   if (firstGrammar) return `${firstGrammar.surfaceText} = ${firstGrammar.meaning}`;
   return null;
+}
+
+export function buildClozeCandidates(sentence: StudySentence): ClozeCandidate[] {
+  const ranges = buildAnnotationRanges(sentence);
+  const seen = new Set<string>();
+
+  return ranges
+    .sort((a, b) => {
+      const kindOrder = { chunk: 0, grammar: 1, word: 2 };
+      return kindOrder[a.kind] - kindOrder[b.kind] || a.start - b.start || b.end - b.start - (a.end - a.start);
+    })
+    .filter((range) => {
+      const key = `${range.kind}:${range.answerText}:${range.start}:${range.end}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return Boolean(range.answerText.trim());
+    });
 }
 
 export function generateQuizQuestion(

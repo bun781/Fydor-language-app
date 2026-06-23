@@ -5,7 +5,6 @@ import { updateReviewItem } from "@/lib/desktopApi";
 import {
   applyReviewDecision,
   buildReviewQueue,
-  buildReviewQueueWithCurrent,
   getReviewShortcutAction,
   summarizeReviewSentences
 } from "./algorithm";
@@ -17,31 +16,22 @@ interface ReviewDeckState {
   sentences: ReviewSentence[];
   saving: boolean;
   error: string | null;
-  shuffleEnabled: boolean;
 }
 
 export function useReviewDeck(initialSentences: ReviewSentence[]) {
   const [state, setState] = useState<ReviewDeckState>(() => ({
-    order: buildReviewQueue(asRows(initialSentences), 0, false),
+    order: buildReviewQueue(asRows(initialSentences), 0, true),
     position: 0,
     sentences: initialSentences,
     saving: false,
-    error: null,
-    shuffleEnabled: false
+    error: null
   }));
 
   const currentId = state.order[state.position] ?? null;
   const currentSentence = currentId ? state.sentences.find((sentence) => sentence.id === currentId) ?? null : null;
   const summary = summarizeReviewSentences(asRows(state.sentences));
 
-  const toggleShuffle = useCallback(() => {
-    setState((prev) => {
-      const next = !prev.shuffleEnabled;
-      const currentId = prev.order[prev.position] ?? null;
-      const nextOrder = buildReviewQueueWithCurrent(asRows(prev.sentences), currentId, Date.now(), next);
-      return { ...prev, shuffleEnabled: next, order: nextOrder, position: 0, error: null };
-    });
-  }, []);
+  const toggleShuffle = useCallback(() => {}, []);
 
   const reviewCurrent = useCallback(async (decision: ReviewDecision) => {
     if (!currentSentence || state.saving) return;
@@ -56,9 +46,7 @@ export function useReviewDeck(initialSentences: ReviewSentence[]) {
       sentences: nextSentences,
       saving: true,
       error: null,
-      order: nextPosition >= prev.order.length
-        ? buildReviewQueue(asRows(nextSentences), prev.shuffleEnabled ? reviewedAt.getTime() : 0, prev.shuffleEnabled)
-        : prev.order,
+      order: nextPosition >= prev.order.length ? buildReviewQueue(asRows(nextSentences), reviewedAt.getTime(), true) : prev.order,
       position: nextPosition >= prev.order.length ? 0 : nextPosition
     }));
 
@@ -98,7 +86,7 @@ export function useReviewDeck(initialSentences: ReviewSentence[]) {
     total: state.sentences.length,
     saving: state.saving,
     error: state.error,
-    shuffleEnabled: state.shuffleEnabled,
+    shuffleEnabled: true,
     reviewCurrent,
     toggleShuffle
   };

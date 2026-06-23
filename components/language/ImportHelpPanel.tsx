@@ -47,6 +47,7 @@ export function ImportHelpPanel() {
         <button
           className={isOpen && tab === "guide" ? "active" : ""}
           type="button"
+          data-tour="import-guide"
           onClick={() => toggleTab("guide")}
         >
           Guide
@@ -54,6 +55,7 @@ export function ImportHelpPanel() {
         <button
           className={isOpen && tab === "prompts" ? "active" : ""}
           type="button"
+          data-tour="import-prompts"
           onClick={() => toggleTab("prompts")}
         >
           Prompts

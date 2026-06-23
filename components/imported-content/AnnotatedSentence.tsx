@@ -2,16 +2,7 @@
 
 import { useId } from "react";
 import type { StudySentence } from "@/lib/imported-content/types";
-
-interface AnnotationRange {
-  id: string;
-  start: number;
-  end: number;
-  kind: "word" | "grammar" | "chunk";
-  displayText: string;
-  meaning: string | null;
-  explanation: string | null;
-}
+import { buildAnnotationRanges, type AnnotationRange } from "@/lib/imported-content/text-spans";
 
 type Run =
   | { kind: "plain"; text: string }
@@ -35,26 +26,7 @@ function annotationClassName(annotations: AnnotationRange[]): string {
 
 export function buildAnnotatedSentenceRuns(sentence: StudySentence): Run[] {
   const { text } = sentence;
-  const ranges: AnnotationRange[] = [];
-
-  sentence.words.forEach((word, index) => {
-    const start = text.indexOf(word.surface);
-    if (start >= 0) {
-      ranges.push({ id: `word-${index}`, start, end: start + word.surface.length, kind: "word", displayText: word.displayText, meaning: word.meaning, explanation: word.explanation });
-    }
-  });
-  sentence.grammar.forEach((g, index) => {
-    const start = text.indexOf(g.surfaceText);
-    if (start >= 0) {
-      ranges.push({ id: `grammar-${index}`, start, end: start + g.surfaceText.length, kind: "grammar", displayText: g.pattern, meaning: g.meaning, explanation: g.explanation });
-    }
-  });
-  sentence.chunks.forEach((c, index) => {
-    const start = text.indexOf(c.surfaceText);
-    if (start >= 0) {
-      ranges.push({ id: `chunk-${index}`, start, end: start + c.surfaceText.length, kind: "chunk", displayText: c.surfaceText, meaning: c.meaning, explanation: c.explanation });
-    }
-  });
+  const ranges = buildAnnotationRanges(sentence);
 
   const charMap: AnnotationRange[][] = Array.from({ length: text.length }, () => []);
   for (let i = 0; i < text.length; i++) {

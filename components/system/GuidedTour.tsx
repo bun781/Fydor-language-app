@@ -9,8 +9,10 @@ type TourPlacement = "top" | "bottom" | "left" | "right";
 
 interface TourStep {
   route: Route<string>;
+  section: string;
   title: string;
   description: string;
+  details?: string[];
   targetSelectors: string[];
   placement?: TourPlacement;
   primaryLabel?: string;
@@ -27,40 +29,154 @@ const TOUR_REPLAY_EVENT = "fydor-guided-tour:replay";
 const tourSteps: TourStep[] = [
   {
     route: "/admin/imports",
-    title: "Is this your first time using Fydor to help you learn a language?",
-    description: "Start with a sample lesson so you can see the builder, save it, and move into the library.",
+    section: "Start here",
+    title: "Fydor turns lessons into study cards",
+    description: "The usual flow is: make or paste a lesson, check it, save it, then study it from the library.",
+    details: [
+      "A lesson is built from sentences, translations, vocabulary, grammar notes, and useful phrase chunks.",
+      "You can write those details yourself or ask an AI assistant to prepare the lesson JSON for you.",
+      "Use the Sample lesson button when you want a safe first example before making your own."
+    ],
     targetSelectors: ['[data-tour="lesson-sample"]'],
     placement: "bottom",
     primaryLabel: "Next"
   },
   {
     route: "/admin/imports",
+    section: "Lesson Builder",
+    title: "Start from an example",
+    description: "Click Sample lesson to load a complete beginner lesson. It is the easiest way to see the shape Fydor expects.",
+    details: [
+      "After it loads, read the title, language, sentence, translation, and annotation fields.",
+      "Nothing is sent anywhere by this button. It only fills the editor with local sample content.",
+      "You can replace the sample text with your own once the structure feels familiar."
+    ],
+    targetSelectors: ['[data-tour="lesson-sample"]'],
+    placement: "bottom",
+    primaryLabel: "Next"
+  },
+  {
+    route: "/admin/imports",
+    section: "Lesson Builder",
+    title: "Choose the editor that feels comfortable",
+    description: "Builder mode is friendlier for manual editing. JSON mode is better when you paste output from an AI assistant.",
+    details: [
+      "Use Builder when you want visible fields and buttons.",
+      "Use JSON when an AI gives you a full lesson file to paste in.",
+      "Both modes describe the same lesson, so you can switch between them."
+    ],
+    targetSelectors: ['[data-tour="lesson-editor-mode"]'],
+    placement: "bottom",
+    primaryLabel: "Next"
+  },
+  {
+    route: "/admin/imports",
+    section: "AI help",
+    title: "Use the guide when the format is confusing",
+    description: "The Guide explains the required fields, optional fields, examples, and common mistakes.",
+    details: [
+      "Open this when Check says the JSON is invalid.",
+      "Compare your lesson with the examples instead of trying to memorize every field.",
+      "The most important fields are title, language, baseLanguage, and at least one sentence with text and translation."
+    ],
+    targetSelectors: ['[data-tour="import-guide"]'],
+    placement: "bottom",
+    primaryLabel: "Next"
+  },
+  {
+    route: "/admin/imports",
+    section: "AI help",
+    title: "Copy a prompt if you are new to LLMs",
+    description: "Prompts are ready-made instructions you can paste into ChatGPT or another AI assistant.",
+    details: [
+      "Pick the prompt closest to what you want: beginner, intermediate, vocabulary, or grammar.",
+      "Replace the language, topic, and number of sentences with your goal.",
+      "Ask follow-up requests plainly, like: make it easier, add pronunciation notes, or fix the JSON error."
+    ],
+    targetSelectors: ['[data-tour="import-prompts"]'],
+    placement: "bottom",
+    primaryLabel: "Next"
+  },
+  {
+    route: "/admin/imports",
+    section: "AI help",
+    title: "Paste AI output into JSON mode",
+    description: "When the AI returns a lesson, paste only the JSON into this editor. Avoid copying extra explanation around it.",
+    details: [
+      "Good AI output usually starts with { and ends with }.",
+      "If the AI includes notes before or after the JSON, delete those notes before checking.",
+      "If Check fails, paste the error back into the AI and ask it to return corrected JSON only."
+    ],
+    targetSelectors: ['[data-tour="lesson-json-mode"]', '[data-tour="lesson-editor-mode"]'],
+    placement: "bottom",
+    primaryLabel: "Next"
+  },
+  {
+    route: "/admin/imports",
+    section: "Check and Save",
+    title: "Check before saving",
+    description: "Check validates the lesson and shows format problems early. Preview shows what will be saved.",
+    details: [
+      "Use Check after manual edits or after pasting AI-generated JSON.",
+      "Use Preview when you want to inspect vocabulary, grammar, chunks, and duplicate warnings.",
+      "Validation errors are normal while drafting; they are clues, not failures."
+    ],
+    targetSelectors: ['[data-tour="lesson-check"]'],
+    placement: "top",
+    primaryLabel: "Next"
+  },
+  {
+    route: "/admin/imports",
+    section: "Check and Save",
     title: "Save the lesson",
     description: "When the lesson looks right, save it so it appears in your local lesson library.",
+    details: [
+      "Saved lessons stay in your local library.",
+      "After saving, go to Lesson Library to study the lesson sentence by sentence.",
+      "You can come back later and import more lessons for the same language."
+    ],
     targetSelectors: ['[data-tour="lesson-save"]'],
     placement: "top",
     primaryLabel: "Next"
   },
   {
     route: "/study/imported-content",
+    section: "Study",
     title: "Open the Lesson Library",
     description: "This sidebar link takes you from lesson building to studying the lessons you saved.",
+    details: [
+      "If the library is empty, Fydor will point you back to the builder.",
+      "Once lessons exist, you can choose a language and lesson from the selectors.",
+      "Use this page for focused sentence-by-sentence study."
+    ],
     targetSelectors: ['[data-tour="nav-library"]'],
     placement: "right",
     primaryLabel: "Next"
   },
   {
     route: "/study/imported-content",
-    title: "Start a study pass",
-    description: "Use Start Review when a lesson is ready. If the library is empty, this page will guide you toward importing one.",
+    section: "Study",
+    title: "Start a review pass",
+    description: "Start Review turns the saved lesson into a review session. You decide whether each card was remembered or forgotten.",
+    details: [
+      "Do not worry about getting every card right at first.",
+      "Marking a card as forgotten helps Fydor keep it in your learning pile.",
+      "Short, honest review sessions are better than forcing long perfect sessions."
+    ],
     targetSelectors: ['[data-tour="study-start-review"]', '[data-tour="study-import"]'],
     placement: "top",
     primaryLabel: "Next"
   },
   {
     route: "/study/imported-content",
+    section: "Study",
     title: "Reveal one layer at a time",
     description: "Translation, words, grammar, and hints can be turned on separately while you study.",
+    details: [
+      "First try to understand the sentence without help.",
+      "Reveal hints, words, or grammar when you are stuck.",
+      "Reveal the translation last, then grade yourself honestly."
+    ],
     targetSelectors: ['[data-tour="study-translation"]'],
     placement: "top",
     primaryLabel: "Finish"
@@ -229,11 +345,16 @@ export function GuidedTour() {
       {target ? <div className="guided-tour-spotlight" style={spotlightStyle} /> : null}
       <section className="guided-tour-panel card" style={panelStyle} role="dialog" aria-modal="true" aria-labelledby="guided-tour-title">
         <div className="guided-tour-meta">
-          <span className="page-state-eyebrow">Guided tour</span>
+          <span className="page-state-eyebrow">{activeStep.section}</span>
           <span className="guided-tour-step">{activeStepIndex + 1} of {tourSteps.length}</span>
         </div>
         <h1 id="guided-tour-title">{activeStep.title}</h1>
         <p className="muted">{activeStep.description}</p>
+        {activeStep.details?.length ? (
+          <ol className="guided-tour-detail-list">
+            {activeStep.details.map((detail) => <li key={detail}>{detail}</li>)}
+          </ol>
+        ) : null}
         {!isOnStepRoute ? (
           <p className="guided-tour-note">You are on a different page, so this step will move you to the right screen.</p>
         ) : null}
@@ -294,27 +415,30 @@ function isVisible(element: HTMLElement): boolean {
 }
 
 function buildPanelStyle(rect: DOMRect | undefined, placement: TourPlacement): CSSProperties {
-  const width = Math.min(360, typeof window !== "undefined" ? window.innerWidth - 24 : 360);
+  const width = Math.min(420, typeof window !== "undefined" ? window.innerWidth - 24 : 420);
   const margin = 20;
   const viewportWidth = typeof window !== "undefined" ? window.innerWidth : 1280;
   const viewportHeight = typeof window !== "undefined" ? window.innerHeight : 800;
+  const estimatedPanelHeight = Math.min(420, viewportHeight - margin * 2);
+  const maxTop = Math.max(margin, viewportHeight - estimatedPanelHeight - margin);
+  const clampTop = (value: number) => Math.max(margin, Math.min(value, maxTop));
 
   let left = margin;
-  let top = viewportHeight - 220 - margin;
+  let top = maxTop;
 
   if (rect) {
     if (placement === "right") {
       left = Math.min(rect.right + margin, viewportWidth - width - margin);
-      top = Math.max(margin, Math.min(rect.top - 8, viewportHeight - 260 - margin));
+      top = clampTop(rect.top - 8);
     } else if (placement === "top") {
       left = Math.max(margin, Math.min(rect.left, viewportWidth - width - margin));
-      top = Math.max(margin, rect.top - 260 - margin);
+      top = clampTop(rect.top - estimatedPanelHeight - margin);
     } else if (placement === "bottom") {
       left = Math.max(margin, Math.min(rect.left, viewportWidth - width - margin));
-      top = Math.min(viewportHeight - 260 - margin, rect.bottom + margin);
+      top = clampTop(rect.bottom + margin);
     } else {
       left = Math.max(margin, rect.left - width - margin);
-      top = Math.max(margin, Math.min(rect.top, viewportHeight - 260 - margin));
+      top = clampTop(rect.top);
     }
   }
 

@@ -384,14 +384,14 @@ export default function LessonImportsPage() {
         <div className="lesson-builder-topbar">
           <div className="lesson-builder-topbar-left">
             <div className="mode-tabs" role="tablist" aria-label="Lesson editor mode">
-              <button className={mode === "builder" ? "active" : ""} type="button" onClick={() => setMode("builder")}>
+              <button className={mode === "builder" ? "active" : ""} type="button" data-tour="lesson-editor-mode" onClick={() => setMode("builder")}>
                 <BookOpen size={17} />
                 Builder
               </button>
               <button className={mode === "json" ? "active" : ""} type="button" onClick={() => {
                 setSource(stringifyLesson(lesson));
                 setMode("json");
-              }}>
+              }} data-tour="lesson-json-mode">
                 <FileJson size={17} />
                 JSON
               </button>
@@ -403,7 +403,7 @@ export default function LessonImportsPage() {
           <div className="lesson-builder-topbar-right">
             <ImportHelpPanel />
             <div className="lesson-builder-actions">
-              <button className="button secondary compact-button" type="button" disabled={loading} onClick={() => requestPreview("validate")}>
+              <button className="button secondary compact-button" type="button" data-tour="lesson-check" disabled={loading} onClick={() => requestPreview("validate")}>
                 <Check size={16} />
                 Check
               </button>

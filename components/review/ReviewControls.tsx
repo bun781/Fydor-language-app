@@ -5,22 +5,33 @@ import { Shuffle } from "lucide-react";
 interface ReviewControlsProps {
   disabled?: boolean;
   shuffleEnabled: boolean;
+  shuffleDisabled?: boolean;
   onRemembered: () => void;
   onForgotten: () => void;
   onToggleShuffle: () => void;
 }
 
-export function ReviewControls({ disabled, shuffleEnabled, onRemembered, onForgotten, onToggleShuffle }: ReviewControlsProps) {
+export function ReviewControls({
+  disabled,
+  shuffleEnabled,
+  shuffleDisabled,
+  onRemembered,
+  onForgotten,
+  onToggleShuffle
+}: ReviewControlsProps) {
+  const shufflePressedLabel = shuffleEnabled ? "Random order on" : "Random order off";
+  const shuffleLockedLabel = "Random order locked on";
+
   return (
     <div className="review-controls">
       <button
         type="button"
         className={`shuffle-toggle${shuffleEnabled ? " shuffle-toggle--on" : ""}`}
         onClick={onToggleShuffle}
-        disabled={disabled}
+        disabled={disabled || shuffleDisabled}
         aria-pressed={shuffleEnabled}
-        aria-label={shuffleEnabled ? "Random order on" : "Random order off"}
-        title={shuffleEnabled ? "Random order on" : "Random order off"}
+        aria-label={shuffleDisabled ? shuffleLockedLabel : shufflePressedLabel}
+        title={shuffleDisabled ? shuffleLockedLabel : shufflePressedLabel}
       >
         <Shuffle size={14} className="shuffle-icon" />
         <span className="shuffle-track">
@@ -51,7 +62,7 @@ export function ReviewControls({ disabled, shuffleEnabled, onRemembered, onForgo
       </div>
 
       <p className="review-hotkey-hint" aria-label="Keyboard shortcut hint">
-        Sequential when off, random when on. Use <kbd>←</kbd> for Not Remembered and <kbd>→</kbd> for Remembered.
+        Random order is always on. Use <kbd>←</kbd> for Not Remembered and <kbd>→</kbd> for Remembered.
       </p>
     </div>
   );
