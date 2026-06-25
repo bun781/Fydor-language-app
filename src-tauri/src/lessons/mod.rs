@@ -62,6 +62,20 @@ pub fn export_lesson(lesson_id: String, state: State<db::AppState>) -> Result<Le
 }
 
 #[tauri::command]
+pub fn update_lesson(lesson_id: String, source: String, state: State<db::AppState>) -> Result<LessonImportSummary, String> {
+    let mut conn = state.conn.lock().map_err(|err| err.to_string())?;
+    let (lesson, raw_value) = parse_lesson_json(&source).map_err(|errors| errors.join("\n"))?;
+    let plan = build_import_plan(&conn, lesson, raw_value, Some(lesson_id.as_str())).map_err(|err| err.to_string())?;
+    replace_lesson(&mut conn, &lesson_id, plan).map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+pub fn delete_lesson(lesson_id: String, state: State<db::AppState>) -> Result<(), String> {
+    let conn = state.conn.lock().map_err(|err| err.to_string())?;
+    delete_lesson_inner(&conn, &lesson_id).map_err(|err| err.to_string())
+}
+
+#[tauri::command]
 pub fn preview_lesson_import(source: String, lesson_id: Option<String>, state: State<db::AppState>) -> Result<LessonImportPreviewResult, String> {
     let conn = state.conn.lock().map_err(|err| err.to_string())?;
     let (lesson, raw_value) = parse_lesson_json(&source).map_err(|errors| errors.join("\n"))?;
@@ -686,6 +700,193 @@ fn import_plan(conn: &mut Connection, plan: ImportPlan) -> Result<LessonImportSu
         links_created,
         errors: Vec::new(),
     })
+}
+
+fn replace_lesson(conn: &mut Connection, lesson_id: &str, plan: ImportPlan) -> Result<LessonImportSummary> {
+    let tx = conn.transaction()?;
+    let now = db::now();
+    let previous_sentence_ids = plan
+        .target_lesson
+        .as_ref()
+        .map(|target| target.existing_sentence_ids.clone())
+        .unwrap_or_default();
+
+    tx.execute(
+        r#"
+        UPDATE lessons
+        SET target_language = ?1,
+            base_language = ?2,
+            description = ?3,
+            source = ?4,
+            level = ?5,
+            title = ?6,
+            source_hash = ?7,
+            tags = ?8,
+            updated_at = ?9
+        WHERE id = ?10
+        "#,
+        params![
+            plan.lesson.language,
+            plan.lesson.base_language,
+            plan.lesson.description,
+            plan.lesson.source,
+            plan.lesson.level,
+            plan.lesson.title,
+            plan.source_hash,
+            db::json_array(&plan.lesson.tags.clone().unwrap_or_default()),
+            now,
+            lesson_id,
+        ],
+    )?;
+
+    tx.execute("DELETE FROM lesson_sentences WHERE lesson_id = ?1", [lesson_id])?;
+
+    let mut item_id_by_key = HashMap::new();
+    for item in plan.existing_items_by_key.values() {
+        item_id_by_key.insert(item_lookup_key(&item.item_type, &item.canonical_key), item.id.clone());
+    }
+
+    let new_items = plan
+        .candidate_items
+        .iter()
+        .filter(|candidate| !plan.existing_items_by_key.contains_key(&item_lookup_key(&candidate.item_type, &candidate.canonical_key)))
+        .cloned()
+        .collect::<Vec<_>>();
+    for item in &new_items {
+        let item_id = db::id();
+        tx.execute(
+            r#"
+            INSERT INTO learning_items
+            (id, language, type, canonical_key, display_text, meaning, explanation, common_mistakes, created_at, updated_at)
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, '[]', ?8, ?8)
+            "#,
+            params![
+                item_id,
+                plan.lesson.language,
+                item.item_type,
+                item.canonical_key,
+                item.display_text,
+                item.meaning,
+                item.explanation,
+                db::now(),
+            ],
+        )?;
+        item_id_by_key.insert(item_lookup_key(&item.item_type, &item.canonical_key), item_id);
+    }
+
+    for candidate in &plan.candidate_items {
+        if let Some(existing) = plan.existing_items_by_key.get(&item_lookup_key(&candidate.item_type, &candidate.canonical_key)) {
+            if existing.meaning.is_none() && candidate.meaning.is_some() {
+                tx.execute("UPDATE learning_items SET meaning = ?1, updated_at = ?2 WHERE id = ?3", params![candidate.meaning, db::now(), existing.id])?;
+            }
+            if existing.explanation.is_none() && candidate.explanation.is_some() {
+                tx.execute("UPDATE learning_items SET explanation = ?1, updated_at = ?2 WHERE id = ?3", params![candidate.explanation, db::now(), existing.id])?;
+            }
+        }
+    }
+
+    let summary_counts = summarize_item_occurrences(&plan);
+    let mut sentences_imported = 0;
+    let mut sentences_skipped = 0;
+    let mut links_created = 0;
+    let mut kept_sentence_ids = HashSet::new();
+
+    for (index, sentence) in plan.lesson.sentences.iter().enumerate() {
+        let normalized = normalize::normalize_sentence_text(&sentence.text);
+        let existing_sentence = tx
+            .query_row(
+                "SELECT id FROM sentences WHERE language = ?1 AND normalized_text = ?2",
+                params![plan.lesson.language, normalized],
+                |row| row.get::<_, String>(0),
+            )
+            .optional()?;
+
+        let sentence_id = if let Some(existing_id) = existing_sentence {
+            sentences_skipped += 1;
+            tx.execute(
+                r#"
+                UPDATE sentences
+                SET text = ?1,
+                    normalized_text = ?2,
+                    translation = ?3,
+                    updated_at = ?4
+                WHERE id = ?5
+                "#,
+                params![
+                    sentence.text,
+                    normalized,
+                    sentence.translation.clone().unwrap_or_default(),
+                    now,
+                    existing_id,
+                ],
+            )?;
+            existing_id
+        } else {
+            let sentence_id = db::id();
+            tx.execute(
+                r#"
+                INSERT INTO sentences
+                (id, lesson_id, language, text, normalized_text, translation, review_state, review_streak, reviewed_at, created_at, updated_at)
+                VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'unknown', 0, NULL, ?7, ?7)
+                "#,
+                params![
+                    sentence_id,
+                    lesson_id,
+                    plan.lesson.language,
+                    sentence.text,
+                    normalized,
+                    sentence.translation.clone().unwrap_or_default(),
+                    db::now(),
+                ],
+            )?;
+            sentences_imported += 1;
+            sentence_id
+        };
+
+        tx.execute("DELETE FROM sentence_vocabulary_links WHERE sentence_id = ?1", [&sentence_id])?;
+        tx.execute("DELETE FROM sentence_grammar_links WHERE sentence_id = ?1", [&sentence_id])?;
+        tx.execute("DELETE FROM sentence_chunk_links WHERE sentence_id = ?1", [&sentence_id])?;
+        tx.execute("INSERT INTO lesson_sentences (id, lesson_id, sentence_id, position, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?5)", params![db::id(), lesson_id, sentence_id, index as i64, now])?;
+        kept_sentence_ids.insert(sentence_id.clone());
+        links_created += create_sentence_item_links(&tx, &plan.lesson.language, &sentence_id, sentence, &item_id_by_key)?;
+    }
+
+    for sentence_id in previous_sentence_ids.difference(&kept_sentence_ids) {
+        let link_count: i64 = tx.query_row(
+            "SELECT COUNT(*) FROM lesson_sentences WHERE sentence_id = ?1",
+            [sentence_id],
+            |row| row.get(0),
+        )?;
+        if link_count == 0 {
+            tx.execute("DELETE FROM sentences WHERE id = ?1", [sentence_id])?;
+        }
+    }
+
+    tx.commit()?;
+
+    Ok(LessonImportSummary {
+        lesson_created: false,
+        lesson_updated: true,
+        sentences_imported,
+        sentences_skipped,
+        vocabulary_created: summary_counts.0,
+        vocabulary_reused: summary_counts.1,
+        grammar_created: summary_counts.2,
+        grammar_reused: summary_counts.3,
+        chunks_created: summary_counts.4,
+        chunks_reused: summary_counts.5,
+        links_created,
+        errors: Vec::new(),
+    })
+}
+
+fn delete_lesson_inner(conn: &Connection, lesson_id: &str) -> Result<()> {
+    let deleted = conn.execute("DELETE FROM lessons WHERE id = ?1", [lesson_id])?;
+    if deleted == 0 {
+        return Err(anyhow::anyhow!("Selected lesson was not found."));
+    }
+
+    Ok(())
 }
 
 fn create_sentence_item_links(

@@ -5,15 +5,15 @@ import { AppShell } from "@/components/AppShell";
 
 export default function LessonImportPreviewPage() {
   useEffect(() => {
-    window.location.replace("/admin/imports");
+    window.location.replace("/lessons/manage");
   }, []);
 
   return (
     <AppShell>
       <section className="card stack">
         <h1>Import Preview</h1>
-        <p className="muted">Opening the lesson importer.</p>
-        <a className="button" href="/admin/imports">Open importer</a>
+        <p className="muted">Opening the lesson manager.</p>
+        <a className="button" href="/lessons/manage">Open lesson manager</a>
       </section>
     </AppShell>
   );

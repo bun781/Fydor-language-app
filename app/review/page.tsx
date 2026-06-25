@@ -50,7 +50,7 @@ export default function ReviewPage() {
           eyebrow="No data yet"
           title="No sentences to review"
           description="Import a lesson first. Once a lesson saves sentences into the database, they will appear here for review."
-          actions={<a className="button" href="/admin/imports">Import a lesson</a>}
+          actions={<a className="button" href="/lessons/manage">Open lesson manager</a>}
         />
       )}
     </AppShell>

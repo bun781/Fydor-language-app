@@ -28,10 +28,10 @@ const TOUR_REPLAY_EVENT = "fydor-guided-tour:replay";
 
 const tourSteps: TourStep[] = [
   {
-    route: "/admin/imports",
+    route: "/lessons/manage",
     section: "Start here",
     title: "Fydor turns lessons into study cards",
-    description: "The usual flow is: make or paste a lesson, check it, save it, then study it from saved lessons.",
+    description: "The usual flow is: make or paste a lesson, check it, save it, then study it from flashcards.",
     details: [
       "A lesson is built from sentences, translations, vocabulary, grammar notes, and useful phrase chunks.",
       "You can write those details yourself or ask an AI assistant to prepare the lesson JSON for you.",
@@ -42,8 +42,8 @@ const tourSteps: TourStep[] = [
     primaryLabel: "Next"
   },
   {
-    route: "/admin/imports",
-    section: "Lesson Builder",
+    route: "/lessons/manage",
+    section: "Lesson Manager",
     title: "Start from an example",
     description: "Click Sample lesson to load a complete beginner lesson. It is the easiest way to see the shape Fydor expects.",
     details: [
@@ -56,8 +56,8 @@ const tourSteps: TourStep[] = [
     primaryLabel: "Next"
   },
   {
-    route: "/admin/imports",
-    section: "Lesson Builder",
+    route: "/lessons/manage",
+    section: "Lesson Manager",
     title: "Choose the editor that feels comfortable",
     description: "Builder mode is friendlier for manual editing. JSON mode is better when you paste output from an AI assistant.",
     details: [
@@ -70,7 +70,7 @@ const tourSteps: TourStep[] = [
     primaryLabel: "Next"
   },
   {
-    route: "/admin/imports",
+    route: "/lessons/manage",
     section: "AI help",
     title: "Use the guide when the format is confusing",
     description: "The Guide explains the required fields, optional fields, examples, and common mistakes.",
@@ -84,7 +84,7 @@ const tourSteps: TourStep[] = [
     primaryLabel: "Next"
   },
   {
-    route: "/admin/imports",
+    route: "/lessons/manage",
     section: "AI help",
     title: "Copy a prompt if you are new to LLMs",
     description: "Prompts are ready-made instructions you can paste into ChatGPT or another AI assistant.",
@@ -98,7 +98,7 @@ const tourSteps: TourStep[] = [
     primaryLabel: "Next"
   },
   {
-    route: "/admin/imports",
+    route: "/lessons/manage",
     section: "AI help",
     title: "Paste AI output into JSON mode",
     description: "When the AI returns a lesson, paste only the JSON into this editor. Avoid copying extra explanation around it.",
@@ -112,7 +112,7 @@ const tourSteps: TourStep[] = [
     primaryLabel: "Next"
   },
   {
-    route: "/admin/imports",
+    route: "/lessons/manage",
     section: "Check and Save",
     title: "Check before saving",
     description: "Check validates the lesson and shows format problems early. Preview shows what will be saved.",
@@ -126,13 +126,13 @@ const tourSteps: TourStep[] = [
     primaryLabel: "Next"
   },
   {
-    route: "/admin/imports",
+    route: "/lessons/manage",
     section: "Check and Save",
     title: "Save the lesson",
-    description: "When the lesson looks right, save it so it appears in your saved lessons.",
+    description: "When the lesson looks right, save it so it appears in your flashcards.",
     details: [
       "Saved lessons stay on your device.",
-      "After saving, go to Saved Lessons to study the lesson sentence by sentence.",
+      "After saving, go to Flashcards to study the lesson sentence by sentence.",
       "You can come back later and import more lessons for the same language."
     ],
     targetSelectors: ['[data-tour="lesson-save"]'],
@@ -142,10 +142,10 @@ const tourSteps: TourStep[] = [
   {
     route: "/study/imported-content",
     section: "Study",
-    title: "Open Saved Lessons",
-    description: "This sidebar link takes you from lesson building to studying the lessons you saved.",
+    title: "Open Flashcards",
+    description: "This sidebar link takes you from lesson management to studying the lessons you saved.",
     details: [
-      "If saved lessons are empty, Fydor will point you back to the builder.",
+      "If saved lessons are empty, Fydor will point you back to the lesson manager.",
       "Once lessons exist, you can choose a language and lesson from the selectors.",
       "Use this page for focused sentence-by-sentence study."
     ],

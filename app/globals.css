@@ -1159,6 +1159,107 @@ textarea.input {
   grid-column: span 2;
 }
 
+.lesson-mode-note {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
+.lesson-edit-note {
+  align-items: center;
+  background: var(--surface-muted);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  display: flex;
+  font-size: 13px;
+  min-height: 38px;
+  padding: 6px 10px;
+}
+
+.lesson-library-shell {
+  display: grid;
+  gap: 16px;
+}
+
+.lesson-library-header {
+  align-items: flex-start;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 16px;
+}
+
+.lesson-library-grid {
+  align-items: start;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(260px, 0.85fr) minmax(0, 1.15fr);
+}
+
+.lesson-library-list,
+.lesson-library-detail {
+  min-height: 360px;
+}
+
+.lesson-library-items {
+  display: grid;
+  gap: 8px;
+  max-height: 560px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.lesson-library-item {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  color: var(--ink);
+  cursor: pointer;
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  text-align: left;
+  transition: background 0.15s, border-color 0.15s, transform 0.12s;
+  width: 100%;
+}
+
+.lesson-library-item:hover {
+  border-color: rgba(28, 25, 23, 0.35);
+  transform: translateY(-1px);
+}
+
+.lesson-library-item.active {
+  background: var(--surface-muted);
+  border-color: var(--ink);
+}
+
+.lesson-library-item-top {
+  align-items: flex-start;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.lesson-library-item-top strong {
+  line-height: 1.3;
+}
+
+.lesson-library-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.lesson-delete-button {
+  border-color: rgba(146, 64, 14, 0.35);
+  color: var(--warn);
+}
+
+.lesson-library-empty {
+  align-content: center;
+  display: grid;
+  gap: 6px;
+  min-height: 260px;
+  text-align: center;
+}
+
 .builder-layout {
   align-items: flex-start;
   grid-template-columns: minmax(0, 1fr) 360px;
@@ -2035,6 +2136,10 @@ textarea.input {
   }
 
   .builder-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .lesson-library-grid {
     grid-template-columns: 1fr;
   }
 

@@ -17,6 +17,14 @@ export async function exportLesson(lessonId: string): Promise<LessonImportInput>
   return invoke("export_lesson", { lessonId });
 }
 
+export async function updateLesson(lessonId: string, source: string): Promise<LessonImportSummary> {
+  return invoke("update_lesson", { lessonId, source });
+}
+
+export async function deleteLesson(lessonId: string): Promise<void> {
+  return invoke("delete_lesson", { lessonId });
+}
+
 export async function previewLessonImport(source: string, lessonId?: string): Promise<LessonImportPreviewResult> {
   return invoke("preview_lesson_import", { source, ...(lessonId ? { lessonId } : {}) });
 }

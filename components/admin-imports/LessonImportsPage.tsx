@@ -5,6 +5,7 @@ import {
   Check,
   FileJson,
   Highlighter,
+  Library,
   Plus,
   Save,
   Sparkles,
@@ -13,11 +14,19 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import { LessonLibraryPanel } from "@/components/admin-imports/LessonLibraryPanel";
 import { LanguageField } from "@/components/admin-imports/LanguageField";
 import { ImportHelpPanel } from "@/components/language/ImportHelpPanel";
 import { ImportPreview } from "@/components/language/ImportPreview";
 import { Tooltip } from "@/components/ui/Tooltip";
-import { getLessons, importLesson as importLessonApi, previewLessonImport } from "@/lib/desktopApi";
+import {
+  deleteLesson as deleteLessonApi,
+  exportLesson as exportLessonApi,
+  getLessons,
+  importLesson as importLessonApi,
+  previewLessonImport,
+  updateLesson as updateLessonApi
+} from "@/lib/desktopApi";
 import type { StudyLessonMeta } from "@/lib/imported-content/types";
 import type {
   LessonChunkInput,
@@ -42,12 +51,16 @@ import {
 } from "./lesson-import-utils";
 import type { AnnotationDraft, SelectedSpan } from "./lesson-import-utils";
 
-type BuilderMode = "builder" | "json";
+type WorkspaceMode = "builder" | "json" | "lessons";
 type AnnotationKind = AnnotationDraft["kind"];
 
+interface LessonImportsPageProps {
+  initialMode?: WorkspaceMode;
+}
+
 // Chunk: editor state and data loading
-export default function LessonImportsPage() {
-  const [mode, setMode] = useState<BuilderMode>("builder");
+export default function LessonImportsPage({ initialMode = "builder" }: LessonImportsPageProps) {
+  const [mode, setMode] = useState<WorkspaceMode>(initialMode);
   const [lesson, setLesson] = useState<LessonImportInput>(initialLesson);
   const [activeSentenceIndex, setActiveSentenceIndex] = useState(0);
   const [selection, setSelection] = useState<SelectedSpan | null>(null);
@@ -62,9 +75,12 @@ export default function LessonImportsPage() {
   const [lessonOptions, setLessonOptions] = useState<StudyLessonMeta[]>([]);
   const [lessonsLoading, setLessonsLoading] = useState(true);
   const [targetLessonId, setTargetLessonId] = useState("new");
+  const [editorLessonId, setEditorLessonId] = useState<string | null>(null);
+  const [selectedLibraryLessonId, setSelectedLibraryLessonId] = useState<string | null>(null);
 
   const activeSentence = lesson.sentences[activeSentenceIndex] ?? createEmptySentence();
-  const appendingToExistingLesson = targetLessonId !== "new";
+  const appendingToExistingLesson = editorLessonId === null && targetLessonId !== "new";
+  const editingExistingLesson = editorLessonId !== null;
   const activeAnnotations = useMemo(
     () => [
       ...(activeSentence.words ?? []).map((item, index) => ({ kind: "word" as const, index, label: item.surface, detail: item.meaning })),
@@ -73,20 +89,14 @@ export default function LessonImportsPage() {
     ],
     [activeSentence]
   );
+  const currentTargetLessonId = editorLessonId ?? (targetLessonId !== "new" ? targetLessonId : undefined);
 
   useEffect(() => {
     let cancelled = false;
 
-    getLessons()
-      .then((items) => {
-        if (!cancelled) setLessonOptions(items);
-      })
-      .catch((error) => {
-        if (!cancelled) setErrors([error instanceof Error ? error.message : "Unable to load lessons."]);
-      })
-      .finally(() => {
-        if (!cancelled) setLessonsLoading(false);
-      });
+    refreshLessons().finally(() => {
+      if (!cancelled) setLessonsLoading(false);
+    });
 
     return () => {
       cancelled = true;
@@ -110,9 +120,20 @@ export default function LessonImportsPage() {
     setErrors([]);
   }
 
-  function loadLessonSource(text: string, fallbackMode: BuilderMode) {
+  async function refreshLessons() {
+    try {
+      const items = await getLessons();
+      setLessonOptions(items);
+    } catch (error) {
+      setErrors([error instanceof Error ? error.message : "Unable to load lessons."]);
+    }
+  }
+
+  function loadLessonSource(text: string, fallbackMode: WorkspaceMode, lessonId: string | null = null) {
     setSource(text);
     setTargetLessonId("new");
+    setEditorLessonId(lessonId);
+    setSelectedLibraryLessonId(lessonId);
     setActiveSentenceIndex(0);
     setSelection(null);
     setDraft(createDraft());
@@ -263,16 +284,17 @@ export default function LessonImportsPage() {
     });
   }
 
-  async function importLesson() {
+  async function saveLesson() {
     await withJsonSource(async (jsonSource, lessonId) => {
       setImporting(true);
       setErrors([]);
       setStatus("");
       try {
-        const result = await importLessonApi(jsonSource, lessonId);
+        const result = editorLessonId ? await updateLessonApi(editorLessonId, jsonSource) : await importLessonApi(jsonSource, lessonId);
         setPreview(null);
         setSummary(result);
-        setStatus(lessonId ? "Sentences appended." : "Lesson saved.");
+        setStatus(editorLessonId ? "Lesson updated." : lessonId ? "Sentences appended." : "Lesson saved.");
+        await refreshLessons();
       } catch (error) {
         setErrors([error instanceof Error ? error.message : "Unable to import lesson."]);
       } finally {
@@ -282,7 +304,7 @@ export default function LessonImportsPage() {
   }
 
   async function withJsonSource(callback: (jsonSource: string, lessonId?: string) => Promise<void>) {
-    const lessonId = appendingToExistingLesson ? targetLessonId : undefined;
+    const lessonId = currentTargetLessonId;
 
     if (mode === "builder") {
       await callback(stringifyLesson(lesson), lessonId);
@@ -304,10 +326,66 @@ export default function LessonImportsPage() {
     loadLessonSource(text, "json");
   }
 
-  const selectedLesson = lessonOptions.find((item) => item.id === targetLessonId) ?? null;
-
   function loadSample() {
     loadLessonSource(sampleLesson, "builder");
+  }
+
+  async function openLessonInEditor(lessonId: string) {
+    try {
+      const exportedLesson = await exportLessonApi(lessonId);
+      loadLessonSource(stringifyLesson(exportedLesson), "builder", lessonId);
+      setMode("builder");
+    } catch (error) {
+      setErrors([error instanceof Error ? error.message : "Unable to open the selected lesson."]);
+    }
+  }
+
+  function startNewLesson() {
+    loadLessonSource(stringifyLesson(initialLesson), "builder", null);
+    setMode("builder");
+  }
+
+  async function exportLessonToFile(lessonId: string) {
+    try {
+      const exportedLesson = await exportLessonApi(lessonId);
+      const blob = new Blob([JSON.stringify(exportedLesson, null, 2)], { type: "application/json" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${slugifyLessonTitle(exportedLesson.title)}.json`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+      setStatus(`Exported ${exportedLesson.title}.`);
+    } catch (error) {
+      setErrors([error instanceof Error ? error.message : "Unable to export lesson."]);
+    }
+  }
+
+  async function deleteLesson(lessonId: string) {
+    const lesson = lessonOptions.find((item) => item.id === lessonId);
+    if (!window.confirm(`Delete ${lesson?.title ?? "this lesson"}? This cannot be undone.`)) return;
+
+    try {
+      await deleteLessonApi(lessonId);
+      await refreshLessons();
+      if (editorLessonId === lessonId) {
+        startNewLesson();
+      }
+      if (selectedLibraryLessonId === lessonId) {
+        setSelectedLibraryLessonId(null);
+      }
+      setStatus("Lesson deleted.");
+    } catch (error) {
+      setErrors([error instanceof Error ? error.message : "Unable to delete lesson."]);
+    }
+  }
+
+  function slugifyLessonTitle(title: string) {
+    return title
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "lesson";
   }
 
   // Chunk: rendered editor layout
@@ -315,8 +393,8 @@ export default function LessonImportsPage() {
     <AppShell>
       <div className="topbar">
         <div>
-          <h1>Lesson Builder</h1>
-          <p className="muted">Create lesson files, validate the JSON, and save lessons with vocabulary, grammar, and chunk notes.</p>
+          <h1>Lesson Manager</h1>
+          <p className="muted">Add, import, export, rename, edit, and delete lessons from one place.</p>
         </div>
         <div className="row compact-row">
           <button className="button secondary" type="button" data-tour="lesson-sample" onClick={loadSample}>
@@ -346,81 +424,115 @@ export default function LessonImportsPage() {
                 <FileJson size={17} />
                 JSON
               </button>
+              <button className={mode === "lessons" ? "active" : ""} type="button" onClick={() => setMode("lessons")}>
+                <Library size={17} />
+                Lessons
+              </button>
             </div>
             <span className="sentence-count-badge">
               {lesson.sentences.length} sentence{lesson.sentences.length === 1 ? "" : "s"}
             </span>
           </div>
-          <div className="lesson-builder-topbar-right">
-            <ImportHelpPanel />
-            <div className="lesson-builder-actions">
-              <button className="button secondary compact-button" type="button" data-tour="lesson-check" disabled={loading} onClick={() => requestPreview("validate")}>
-                <Check size={16} />
-                Check
-              </button>
-              <button className="button secondary compact-button" type="button" disabled={loading} onClick={() => requestPreview("preview")}>
-                <Upload size={16} />
-                {loading ? "Checking…" : "Preview"}
-              </button>
-              <button className="button compact-button" type="button" data-tour="lesson-save" disabled={importing} onClick={importLesson}>
-                <Save size={16} />
-                {importing ? "Saving…" : "Save"}
-              </button>
-            </div>
-          </div>
         </div>
 
-        <div className="lesson-meta-grid">
-          <label className="field lesson-meta-title">
-            <span>Title</span>
-            <input className="input" value={lesson.title} onChange={(event) => updateLessonField("title", event.target.value)} />
-          </label>
-          <LanguageField label="Language" value={lesson.language} onChange={(value) => updateLessonField("language", value)} />
-          <LanguageField label="Base" value={lesson.baseLanguage} onChange={(value) => updateLessonField("baseLanguage", value)} />
-          <label className="field">
-            <span>Level</span>
-            <input className="input" value={lesson.level ?? ""} onChange={(event) => updateLessonField("level", event.target.value)} />
-          </label>
-          <label className="field">
-            <span>Source</span>
-            <input className="input" value={lesson.source ?? ""} onChange={(event) => updateLessonField("source", event.target.value)} />
-          </label>
-          <label className="field lesson-meta-tags">
-            <span>Tags</span>
-            <input className="input" value={(lesson.tags ?? []).join(", ")} onChange={(event) => updateLessonField("tags", splitTags(event.target.value))} />
-          </label>
-          <label className="field lesson-meta-description">
-            <span>Description</span>
-            <input className="input" value={lesson.description ?? ""} onChange={(event) => updateLessonField("description", event.target.value)} />
-          </label>
-          <label className="field lesson-meta-description">
-            <span>Import target</span>
-            <select
-              className="input"
-              disabled={lessonsLoading}
-              value={targetLessonId}
-              onChange={(event) => {
-                setTargetLessonId(event.target.value);
-                setPreview(null);
-                setSummary(null);
-                setStatus("");
-              }}
-            >
-              <option value="new">Create new lesson</option>
-              {lessonOptions.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.title} ({item.language})
-                </option>
-              ))}
-            </select>
-            <span className="muted">
-              {selectedLesson ? "Imported sentences will be appended to the selected lesson." : "Choose an existing lesson to append sentences instead of creating a new lesson."}
-            </span>
-          </label>
-        </div>
+        {mode === "lessons" ? (
+          <p className="muted lesson-mode-note">
+            Browse saved lessons, export them, or open one in the editor to rename and modify it.
+          </p>
+        ) : (
+          <>
+            <div className="lesson-builder-topbar-right">
+              <ImportHelpPanel />
+              <div className="lesson-builder-actions">
+                <button className="button secondary compact-button" type="button" data-tour="lesson-check" disabled={loading} onClick={() => requestPreview("validate")}>
+                  <Check size={16} />
+                  Check
+                </button>
+                <button className="button secondary compact-button" type="button" disabled={loading} onClick={() => requestPreview("preview")}>
+                  <Upload size={16} />
+                  {loading ? "Checking…" : "Preview"}
+                </button>
+                <button className="button compact-button" type="button" data-tour="lesson-save" disabled={importing} onClick={saveLesson}>
+                  <Save size={16} />
+                  {importing ? "Saving…" : editingExistingLesson ? "Update" : "Save"}
+                </button>
+              </div>
+            </div>
+
+            <div className="lesson-meta-grid">
+              <label className="field lesson-meta-title">
+                <span>Title</span>
+                <input className="input" value={lesson.title} onChange={(event) => updateLessonField("title", event.target.value)} />
+              </label>
+              <LanguageField label="Language" value={lesson.language} onChange={(value) => updateLessonField("language", value)} />
+              <LanguageField label="Base" value={lesson.baseLanguage} onChange={(value) => updateLessonField("baseLanguage", value)} />
+              <label className="field">
+                <span>Level</span>
+                <input className="input" value={lesson.level ?? ""} onChange={(event) => updateLessonField("level", event.target.value)} />
+              </label>
+              <label className="field">
+                <span>Source</span>
+                <input className="input" value={lesson.source ?? ""} onChange={(event) => updateLessonField("source", event.target.value)} />
+              </label>
+              <label className="field lesson-meta-tags">
+                <span>Tags</span>
+                <input className="input" value={(lesson.tags ?? []).join(", ")} onChange={(event) => updateLessonField("tags", splitTags(event.target.value))} />
+              </label>
+              <label className="field lesson-meta-description">
+                <span>Description</span>
+                <input className="input" value={lesson.description ?? ""} onChange={(event) => updateLessonField("description", event.target.value)} />
+              </label>
+              <label className="field lesson-meta-description">
+                <span>Import target</span>
+                {editingExistingLesson ? (
+                  <div className="lesson-edit-note">
+                    Saving updates the loaded lesson in place.
+                  </div>
+                ) : (
+                  <>
+                    <select
+                      className="input"
+                      disabled={lessonsLoading}
+                      value={targetLessonId}
+                      onChange={(event) => {
+                        setTargetLessonId(event.target.value);
+                        setPreview(null);
+                        setSummary(null);
+                        setStatus("");
+                      }}
+                    >
+                      <option value="new">Create new lesson</option>
+                      {lessonOptions.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.title} ({item.language})
+                        </option>
+                      ))}
+                    </select>
+                    <span className="muted">
+                      {lessonOptions.find((item) => item.id === targetLessonId)
+                        ? "Imported sentences will be appended to the selected lesson."
+                        : "Choose an existing lesson to append sentences instead of creating a new lesson."}
+                    </span>
+                  </>
+                )}
+              </label>
+            </div>
+          </>
+        )}
       </section>
 
-      {mode === "builder" ? (
+      {mode === "lessons" ? (
+        <LessonLibraryPanel
+          lessons={lessonOptions}
+          loading={lessonsLoading}
+          selectedLessonId={selectedLibraryLessonId}
+          onSelectLesson={setSelectedLibraryLessonId}
+          onNewLesson={startNewLesson}
+          onEditLesson={openLessonInEditor}
+          onExportLesson={exportLessonToFile}
+          onDeleteLesson={deleteLesson}
+        />
+      ) : mode === "builder" ? (
         <div className="lesson-builder">
           <section className="builder-layout">
             <div className="stack">
@@ -638,8 +750,8 @@ export default function LessonImportsPage() {
           <ImportPreview
             preview={preview}
             importing={importing}
-            approveLabel={appendingToExistingLesson ? "Append sentences" : "Save lesson"}
-            onApprove={importLesson}
+            approveLabel={editingExistingLesson ? "Update lesson" : appendingToExistingLesson ? "Append sentences" : "Save lesson"}
+            onApprove={saveLesson}
             onCancel={() => setPreview(null)}
           />
         </div>

@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Download, Upload } from "lucide-react";
 import { PageState } from "@/components/system/PageState";
-import { exportLesson, getLessons } from "@/lib/desktopApi";
+import { getLessons } from "@/lib/desktopApi";
 import type { StudyLessonMeta } from "@/lib/imported-content/types";
 import { useImportedLessonBrowser } from "./useImportedLessonBrowser";
 import { ImportedContentStudy } from "./ImportedContentStudy";
@@ -16,11 +15,9 @@ interface Props {
   mode?: StudyMode;
 }
 
-const LESSON_IMPORT_DRAFT_KEY = "fydor:lesson-import-draft";
-
 const modeContent: Record<StudyMode, { title: string; description: string }> = {
   lesson: {
-    title: "Saved Lessons",
+    title: "Flashcards",
     description: "Study and review saved lessons sentence by sentence."
   },
   "fill-blank": {
@@ -38,7 +35,6 @@ export function ImportedContentWorkspace({ mode = "lesson" }: Props) {
   const [allLessons, setAllLessons] = useState<StudyLessonMeta[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -67,7 +63,7 @@ export function ImportedContentWorkspace({ mode = "lesson" }: Props) {
   const browser = useImportedLessonBrowser(null, allLessons);
 
   if (loading) {
-    return <PageState eyebrow="Loading" title="Loading lessons" description="Opening your saved lessons." />;
+    return <PageState eyebrow="Loading" title="Loading flashcards" description="Opening your saved lessons." />;
   }
 
   if (error) {
@@ -75,7 +71,7 @@ export function ImportedContentWorkspace({ mode = "lesson" }: Props) {
       <PageState
         eyebrow="Storage error"
         tone="error"
-        title="Saved Lessons failed to load"
+        title="Flashcards failed to load"
         description={error}
         actions={<a className="button" href="/study/imported-content">Retry</a>}
       />
@@ -86,49 +82,11 @@ export function ImportedContentWorkspace({ mode = "lesson" }: Props) {
     return (
       <PageState
         eyebrow="No data yet"
-        title="No saved lessons yet"
+        title="No flashcards yet"
         description="Save a lesson first. When lessons exist, this page will show them grouped by language and let you study them sentence by sentence."
-        actions={<a className="button" href="/admin/imports">Import a lesson</a>}
+        actions={<a className="button" href="/lessons/manage">Open lesson manager</a>}
       />
     );
-  }
-
-  async function downloadActiveLesson() {
-    if (!browser.lesson || browser.loadingLesson) return;
-
-    try {
-      setActionError(null);
-      const lesson = await exportLesson(browser.lesson.id);
-      const blob = new Blob([JSON.stringify(lesson, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const filename = `${slugifyLessonTitle(lesson.title)}.json`;
-
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = filename;
-      anchor.rel = "noopener";
-      anchor.click();
-
-      window.setTimeout(() => URL.revokeObjectURL(url), 0);
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Unable to export the lesson.");
-    }
-  }
-
-  async function importLessonFile(file: File | undefined) {
-    if (!file) return;
-    const text = await file.text();
-
-    try {
-      JSON.parse(text);
-    } catch {
-      setActionError("The selected file is not valid JSON.");
-      return;
-    }
-
-    setActionError(null);
-    window.localStorage.setItem(LESSON_IMPORT_DRAFT_KEY, text);
-    window.location.href = "/admin/imports";
   }
 
   return (
@@ -138,20 +96,7 @@ export function ImportedContentWorkspace({ mode = "lesson" }: Props) {
           <h1>{content.title}</h1>
           <p className="muted">{content.description}</p>
         </div>
-        <div className="row compact-row">
-          <button className="button secondary" type="button" disabled={!browser.lesson || browser.loadingLesson} onClick={() => void downloadActiveLesson()}>
-            <Download size={18} />
-            Export JSON
-          </button>
-          <label className="button secondary">
-            <Upload size={18} />
-            Import lesson
-            <input className="hidden-input" type="file" accept="application/json,.json" onChange={(event) => void importLessonFile(event.target.files?.[0])} />
-          </label>
-        </div>
       </div>
-
-      {actionError ? <p className="review-error">{actionError}</p> : null}
 
       <div className="lesson-selector-bar">
         {browser.languageGroups.length > 1 ? (
@@ -198,13 +143,4 @@ export function ImportedContentWorkspace({ mode = "lesson" }: Props) {
       )}
     </div>
   );
-}
-
-function slugifyLessonTitle(title: string) {
-  return title
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 60) || "lesson";
 }

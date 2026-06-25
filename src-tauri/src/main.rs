@@ -34,6 +34,8 @@ fn main() {
             lessons::get_lessons,
             lessons::get_lesson,
             lessons::export_lesson,
+            lessons::update_lesson,
+            lessons::delete_lesson,
             lessons::preview_lesson_import,
             lessons::import_lesson,
             review::get_review_queue,
