@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import type { ItemFamiliarity, RevealState, SelectedItem, StudySentence } from "@/lib/imported-content/types";
 import type { ReviewDecision } from "@/lib/review/types";
 import { getHint } from "@/lib/imported-content/study-utils";
-import { useSpeech } from "@/lib/useSpeech";
+import { useSpeechService } from "@/lib/speech/useSpeechService";
 import { InteractiveToken } from "./InteractiveToken";
 import { ProgressiveRevealControls } from "./ProgressiveRevealControls";
 import { RelatedSentences } from "./RelatedSentences";
@@ -71,7 +71,8 @@ export function SentenceFlashcard({
   onNext
 }: Props) {
   const [selectedItem, setSelectedItem] = useState<SelectedItem | null>(null);
-  const speak = useSpeech(language);
+  const speech = useSpeechService(language);
+  const speak = useCallback((text: string) => speech.speak(text), [speech]);
 
   const progress = ((cardIndex + 1) / totalCards) * 100;
   const hint = reveal.hint ? getHint(sentence) : null;

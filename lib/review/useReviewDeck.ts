@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { updateReviewItem } from "@/lib/desktopApi";
 import {
   applyReviewDecision,
@@ -29,6 +29,16 @@ export function useReviewDeck(initialSentences: ReviewSentence[]) {
     filter: "mixed",
     started: false
   }));
+
+  useEffect(() => {
+    setState((prev) => ({
+      ...prev,
+      order: [],
+      position: 0,
+      sentences: initialSentences,
+      started: false
+    }));
+  }, [initialSentences]);
 
   const currentId = state.order[state.position] ?? null;
   const currentSentence = currentId ? state.sentences.find((sentence) => sentence.id === currentId) ?? null : null;

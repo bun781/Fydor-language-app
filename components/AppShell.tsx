@@ -54,6 +54,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className={`app-shell${sidebarPinned ? " sidebar-pinned" : ""}`}>
       <aside className="sidebar" aria-label="App navigation">
         <div className="sidebar-top">
+          <div className="sidebar-brand" aria-label="Fydor">
+            <span className="sidebar-brand-mark" aria-hidden="true">F</span>
+            <span className="sidebar-brand-name">Fydor</span>
+          </div>
           <button
             type="button"
             className="icon-button sidebar-toggle"
@@ -63,7 +67,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           >
             <Menu size={19} />
           </button>
-          <div className="sidebar-brand">Fydor</div>
         </div>
 
         <nav aria-label="Primary navigation">

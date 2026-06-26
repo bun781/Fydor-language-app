@@ -7,7 +7,7 @@ Sentence playback now goes through `lib/speech/speechService.ts`.
 - `SpeechService` owns the provider boundary and language selection.
 - `createSpeechProvider()` returns the browser `speechSynthesis` provider when available.
 - `useSpeechPlayback()` adds the click vs double-click timing so slow speech does not duplicate TTS logic.
-- `lib/useSpeech.ts` remains as a small compatibility wrapper for older call sites.
+- Speech call sites use `lib/speech/useSpeechService.ts` or `lib/speech/useSpeechPlayback.ts` directly.
 
 ## Tooltip usage
 

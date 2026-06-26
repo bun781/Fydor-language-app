@@ -97,8 +97,9 @@ button, input, textarea, select {
   align-items: center;
   border-bottom: 1px solid transparent;
   display: flex;
+  flex-direction: column;
   gap: 10px;
-  min-height: 34px;
+  min-height: 82px;
   padding-bottom: 12px;
 }
 
@@ -106,6 +107,9 @@ button, input, textarea, select {
 .sidebar:focus-within .sidebar-top,
 .sidebar-pinned .sidebar-top {
   border-bottom-color: var(--line);
+  flex-direction: row;
+  justify-content: space-between;
+  min-height: 48px;
 }
 
 .sidebar-toggle {
@@ -120,23 +124,57 @@ button, input, textarea, select {
 }
 
 .sidebar-brand {
+  align-items: center;
   color: var(--ink);
+  display: flex;
   font-family: Georgia, serif;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 400;
-  letter-spacing: 0.22em;
-  opacity: 0;
+  gap: 9px;
+  height: 36px;
+  justify-content: center;
+  letter-spacing: 0.18em;
+  min-width: 42px;
   overflow: hidden;
   text-transform: uppercase;
+  transition: width 0.18s ease;
+  white-space: nowrap;
+  width: 42px;
+}
+
+.sidebar-brand-mark {
+  align-items: center;
+  background: var(--ink);
+  border-radius: 6px;
+  color: var(--surface);
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 18px;
+  font-weight: 700;
+  height: 34px;
+  justify-content: center;
+  letter-spacing: 0;
+  line-height: 1;
+  width: 34px;
+}
+
+.sidebar-brand-name {
+  opacity: 0;
+  overflow: hidden;
   transform: translateX(-4px);
   transition: opacity 0.12s ease, transform 0.18s ease;
-  white-space: nowrap;
   width: 0;
 }
 
 .sidebar:hover .sidebar-brand,
 .sidebar:focus-within .sidebar-brand,
 .sidebar-pinned .sidebar-brand {
+  width: auto;
+}
+
+.sidebar:hover .sidebar-brand-name,
+.sidebar:focus-within .sidebar-brand-name,
+.sidebar-pinned .sidebar-brand-name {
   opacity: 1;
   transform: translateX(0);
   width: auto;
@@ -504,6 +542,64 @@ button, input, textarea, select {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.review-lesson-panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.review-lesson-panel-top {
+  align-items: flex-start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.review-lesson-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.review-lesson-option {
+  align-items: flex-start;
+  background: var(--surface-muted);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  gap: 10px;
+  min-height: 68px;
+  padding: 12px;
+}
+
+.review-lesson-option:has(input:checked) {
+  background: rgba(47, 107, 79, 0.08);
+  border-color: rgba(47, 107, 79, 0.35);
+}
+
+.review-lesson-option input {
+  margin-top: 3px;
+}
+
+.review-lesson-option span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.review-lesson-option strong,
+.review-lesson-option small {
+  overflow-wrap: anywhere;
+}
+
+.review-lesson-option small {
+  color: var(--muted);
 }
 
 .review-card {

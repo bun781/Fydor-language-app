@@ -62,7 +62,6 @@ This repo is organized into small, labeled units so Codex can load only the slic
 - [lib/speech/useSpeechService.ts](/Users/user/Habitz/lib/speech/useSpeechService.ts)
 - [lib/speech/useSpeechPlayback.ts](/Users/user/Habitz/lib/speech/useSpeechPlayback.ts)
 - [lib/speech/speechPlayback.ts](/Users/user/Habitz/lib/speech/speechPlayback.ts)
-- [lib/useSpeech.ts](/Users/user/Habitz/lib/useSpeech.ts)
 - [components/ui/AudioButton.tsx](/Users/user/Habitz/components/ui/AudioButton.tsx)
 
 ### `chunk:tauri-lessons`

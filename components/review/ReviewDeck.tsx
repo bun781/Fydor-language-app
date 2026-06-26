@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { StudyLessonMeta } from "@/lib/imported-content/types";
 import { getReviewShortcutAction } from "@/lib/review/queue";
 import type { ReviewSentence } from "@/lib/review/types";
 import { useReviewDeck } from "@/lib/review/useReviewDeck";
@@ -8,10 +9,24 @@ import { ReviewControls } from "./ReviewControls";
 import { ReviewSentenceCard } from "./ReviewSentenceCard";
 
 interface ReviewDeckProps {
+  allSentenceCount?: number;
+  lessons?: StudyLessonMeta[];
+  sentenceCountByLesson?: Map<string, number>;
+  selectedLessonIds?: string[];
   sentences: ReviewSentence[];
+  onSelectedLessonIdsChange?: (lessonIds: string[]) => void;
 }
 
-export function ReviewDeck({ sentences }: ReviewDeckProps) {
+export function ReviewDeck({
+  sentences,
+  allSentenceCount,
+  lessons = [],
+  sentenceCountByLesson,
+  selectedLessonIds = lessons.map((lesson) => lesson.id),
+  onSelectedLessonIdsChange
+}: ReviewDeckProps) {
+  const totalSentenceCount = allSentenceCount ?? sentences.length;
+  const lessonSentenceCounts = sentenceCountByLesson ?? getSentenceCountByLesson(sentences);
   const {
     currentSentence,
     position,
@@ -52,6 +67,24 @@ export function ReviewDeck({ sentences }: ReviewDeckProps) {
   }, [revealed, reviewCurrent, started]);
 
   if (!sentences.length) {
+    if (totalSentenceCount > 0) {
+      return (
+        <div className="review-shell">
+          <ReviewStartHeader summary={summary} />
+          <ReviewLessonSelector
+            lessons={lessons}
+            selectedLessonIds={selectedLessonIds}
+            sentenceCountByLesson={lessonSentenceCounts}
+            onChange={onSelectedLessonIdsChange}
+          />
+          <section className="review-start-panel">
+            <p className="muted">Select at least one lesson to build a review queue.</p>
+          </section>
+          <LearningSciencePanel />
+        </div>
+      );
+    }
+
     return (
       <section className="card review-empty">
         <h2>No sentences to review yet</h2>
@@ -64,18 +97,13 @@ export function ReviewDeck({ sentences }: ReviewDeckProps) {
     if (!started) {
       return (
         <div className="review-shell">
-          <header className="review-header">
-            <div>
-              <h1>Review</h1>
-              <p className="muted">Build a mixed queue from due, new, and older mastered sentences.</p>
-            </div>
-            <div className="review-summary">
-              <span className="pill">Total {summary.total}</span>
-              <span className="pill">Unknown {summary.unknown}</span>
-              <span className="pill review-state-forgotten">Forgotten {summary.forgotten}</span>
-              <span className="pill review-state-remembered">Remembered {summary.remembered}</span>
-            </div>
-          </header>
+          <ReviewStartHeader summary={summary} />
+          <ReviewLessonSelector
+            lessons={lessons}
+            selectedLessonIds={selectedLessonIds}
+            sentenceCountByLesson={lessonSentenceCounts}
+            onChange={onSelectedLessonIdsChange}
+          />
           <section className="review-start-panel">
             <button className="button" type="button" onClick={() => startReview("mixed")}>
               Start Mixed Review
@@ -83,7 +111,7 @@ export function ReviewDeck({ sentences }: ReviewDeckProps) {
             <div className="review-filter-row" aria-label="Review filters">
               <button className="button secondary" type="button" onClick={() => startReview("due")}>Due only</button>
               <button className="button secondary" type="button" onClick={() => startReview("new")}>New only</button>
-              <button className="button secondary" type="button" onClick={() => startReview("all")}>All lessons</button>
+              <button className="button secondary" type="button" onClick={() => startReview("all")}>All selected</button>
             </div>
           </section>
           <LearningSciencePanel />
@@ -149,6 +177,95 @@ export function ReviewDeck({ sentences }: ReviewDeckProps) {
       <LearningSciencePanel compact />
     </div>
   );
+}
+
+function ReviewStartHeader({ summary }: { summary: ReturnType<typeof useReviewDeck>["summary"] }) {
+  return (
+    <header className="review-header">
+      <div>
+        <h1>Review</h1>
+        <p className="muted">Build a mixed queue from due, new, and older mastered sentences.</p>
+      </div>
+      <div className="review-summary">
+        <span className="pill">Total {summary.total}</span>
+        <span className="pill">Unknown {summary.unknown}</span>
+        <span className="pill review-state-forgotten">Forgotten {summary.forgotten}</span>
+        <span className="pill review-state-remembered">Remembered {summary.remembered}</span>
+      </div>
+    </header>
+  );
+}
+
+function ReviewLessonSelector({
+  lessons,
+  selectedLessonIds,
+  sentenceCountByLesson,
+  onChange
+}: {
+  lessons: StudyLessonMeta[];
+  selectedLessonIds: string[];
+  sentenceCountByLesson: Map<string, number>;
+  onChange?: (lessonIds: string[]) => void;
+}) {
+  if (!lessons.length || !onChange) return null;
+
+  const handleChange = onChange;
+  const selected = new Set(selectedLessonIds);
+  const allSelected = lessons.length > 0 && lessons.every((lesson) => selected.has(lesson.id));
+
+  function toggleLesson(lessonId: string) {
+    if (selected.has(lessonId)) {
+      handleChange(selectedLessonIds.filter((id) => id !== lessonId));
+      return;
+    }
+    handleChange([...selectedLessonIds, lessonId]);
+  }
+
+  return (
+    <section className="review-lesson-panel" aria-label="Lessons to review">
+      <div className="review-lesson-panel-top">
+        <div>
+          <h2>Lessons</h2>
+          <p className="muted">Choose which saved lessons feed this review session.</p>
+        </div>
+        <div className="review-filter-row">
+          <button className="button secondary" type="button" onClick={() => handleChange(lessons.map((lesson) => lesson.id))} disabled={allSelected}>
+            Select all
+          </button>
+          <button className="button secondary" type="button" onClick={() => handleChange([])} disabled={!selectedLessonIds.length}>
+            Clear
+          </button>
+        </div>
+      </div>
+      <div className="review-lesson-grid">
+        {lessons.map((lesson) => {
+          const count = sentenceCountByLesson.get(lesson.id) ?? 0;
+          return (
+            <label className="review-lesson-option" key={lesson.id}>
+              <input
+                type="checkbox"
+                checked={selected.has(lesson.id)}
+                onChange={() => toggleLesson(lesson.id)}
+              />
+              <span>
+                <strong>{lesson.title}</strong>
+                <small>{count} review sentences</small>
+              </span>
+            </label>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function getSentenceCountByLesson(sentences: ReviewSentence[]) {
+  const counts = new Map<string, number>();
+  for (const sentence of sentences) {
+    if (!sentence.lessonId) continue;
+    counts.set(sentence.lessonId, (counts.get(sentence.lessonId) ?? 0) + 1);
+  }
+  return counts;
 }
 
 function isInteractiveTarget(target: EventTarget | null): boolean {

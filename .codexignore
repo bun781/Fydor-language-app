@@ -1,0 +1,27 @@
+node_modules/
+.next/
+out/
+src-tauri/target/
+src-tauri/next-standalone/*
+!src-tauri/next-standalone/.gitkeep
+dist-share/
+coverage/
+test-results/
+playwright-report/
+
+# Local generated/imported learning data
+/cleaned-*-course.json
+/*course*.json
+/*learning*.json
+
+# Runtime database files
+test-pglite/
+.pglite-data/
+pglite/
+runtime-db/
+runtime-data/
+*.sqlite
+*.sqlite3
+*.db
+*.db-wal
+*.db-shm
