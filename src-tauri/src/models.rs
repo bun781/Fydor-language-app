@@ -128,12 +128,25 @@ pub struct StudyLesson {
 #[serde(rename_all = "camelCase")]
 pub struct ReviewSentence {
     pub id: String,
+    pub sentence_id: String,
+    pub lesson_id: String,
+    pub import_id: String,
     pub language: String,
     pub text: String,
     pub translation: String,
     pub review_state: String,
     pub review_streak: i64,
     pub reviewed_at: Option<String>,
+    pub due_at: String,
+    pub last_reviewed_at: Option<String>,
+    pub repetitions: i64,
+    pub lapses: i64,
+    pub difficulty: f64,
+    pub stability: f64,
+    pub recall_mode: String,
+    pub focus_text: Option<String>,
+    pub focus_meaning: Option<String>,
+    pub focus_explanation: Option<String>,
 }
 
 #[derive(Debug, Serialize)]

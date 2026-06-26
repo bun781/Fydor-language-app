@@ -4,6 +4,7 @@ import {
   jsonb,
   pgEnum,
   pgTable,
+  real,
   text,
   timestamp,
   uniqueIndex,
@@ -69,6 +70,25 @@ export const sentences = pgTable("sentences", {
 }, (table) => ({
   duplicateIdx: uniqueIndex("sentences_language_normalized_idx").on(table.language, table.normalizedText),
   lessonIdx: index("sentences_lesson_idx").on(table.lessonId)
+}));
+
+export const reviewItems = pgTable("review_items", {
+  id: idColumn(),
+  sentenceId: uuid("sentence_id").notNull().references(() => sentences.id, { onDelete: "cascade" }),
+  lessonId: uuid("lesson_id").notNull().references(() => lessons.id, { onDelete: "cascade" }),
+  importId: uuid("import_id").notNull().references(() => lessons.id, { onDelete: "cascade" }),
+  dueAt: timestamp("due_at", { withTimezone: true }).defaultNow().notNull(),
+  lastReviewedAt: timestamp("last_reviewed_at", { withTimezone: true }),
+  repetitions: integer("repetitions").notNull().default(0),
+  lapses: integer("lapses").notNull().default(0),
+  difficulty: real("difficulty").notNull().default(0.3),
+  stability: real("stability").notNull().default(0),
+  recallMode: text("recall_mode").notNull().default("full_support"),
+  ...timestamps()
+}, (table) => ({
+  sentenceIdx: uniqueIndex("review_items_sentence_idx").on(table.sentenceId),
+  dueIdx: index("review_items_due_idx").on(table.dueAt),
+  lessonIdx: index("review_items_lesson_idx").on(table.lessonId)
 }));
 
 export const lessonSentences = pgTable("lesson_sentences", {

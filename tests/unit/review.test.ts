@@ -10,8 +10,12 @@ import type { ReviewSentenceRow } from "@/lib/review/types";
 
 describe("review keyboard shortcuts", () => {
   it("maps arrow keys to review decisions", () => {
-    expect(getReviewShortcutAction("ArrowLeft")).toBe("forgotten");
+    expect(getReviewShortcutAction("ArrowLeft")).toBe("forgot");
     expect(getReviewShortcutAction("ArrowRight")).toBe("remembered");
+    expect(getReviewShortcutAction("1")).toBe("forgot");
+    expect(getReviewShortcutAction("2")).toBe("hard");
+    expect(getReviewShortcutAction("3")).toBe("remembered");
+    expect(getReviewShortcutAction("4")).toBe("easy");
     expect(getReviewShortcutAction("Enter")).toBeNull();
   });
 });
@@ -36,6 +40,8 @@ describe("review state updates", () => {
     expect(updated.reviewState).toBe("remembered");
     expect(updated.reviewStreak).toBe(1);
     expect(updated.reviewedAt).toBe(reviewedAt.toISOString());
+    expect(updated.dueAt).toBe("2026-06-24T10:00:00.000Z");
+    expect(updated.recallMode).toBe("translation_hidden");
   });
 
   it("resets streak when a sentence is forgotten", () => {
@@ -54,6 +60,31 @@ describe("review state updates", () => {
 
     expect(updated.reviewState).toBe("forgotten");
     expect(updated.reviewStreak).toBe(0);
+    expect(updated.lapses).toBe(1);
+    expect(updated.recallMode).toBe("full_support");
+  });
+
+  it("keeps recall mode on hard and moves two stages on easy", () => {
+    const hard = applyReviewDecision(
+      {
+        id: "sentence-1",
+        language: "ko",
+        text: "안녕하세요.",
+        translation: "Hello.",
+        reviewState: "unknown",
+        reviewStreak: 0,
+        reviewedAt: null,
+        recallMode: "sentence_only"
+      },
+      "hard",
+      new Date("2026-06-21T10:00:00.000Z")
+    );
+    const easy = applyReviewDecision(hard, "easy", new Date("2026-06-22T10:00:00.000Z"));
+
+    expect(hard.recallMode).toBe("sentence_only");
+    expect(hard.dueAt).toBe("2026-06-22T10:00:00.000Z");
+    expect(easy.recallMode).toBe("reverse_translate");
+    expect(easy.dueAt).toBe("2026-06-29T10:00:00.000Z");
   });
 });
 

@@ -228,6 +228,51 @@ fn migrate(conn: &Connection) -> Result<()> {
         )?;
     }
 
+    if current < 2 {
+        conn.execute_batch(
+            r#"
+            CREATE TABLE IF NOT EXISTS review_items (
+              id TEXT PRIMARY KEY,
+              sentence_id TEXT NOT NULL REFERENCES sentences(id) ON DELETE CASCADE,
+              lesson_id TEXT NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+              import_id TEXT NOT NULL,
+              due_at TEXT NOT NULL,
+              last_reviewed_at TEXT,
+              repetitions INTEGER NOT NULL DEFAULT 0,
+              lapses INTEGER NOT NULL DEFAULT 0,
+              difficulty REAL NOT NULL DEFAULT 0.3,
+              stability REAL NOT NULL DEFAULT 0,
+              recall_mode TEXT NOT NULL DEFAULT 'full_support' CHECK (recall_mode IN ('full_support', 'translation_hidden', 'sentence_only', 'fill_blank', 'reverse_translate')),
+              created_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL,
+              UNIQUE(sentence_id)
+            );
+            CREATE INDEX IF NOT EXISTS review_items_due_idx ON review_items(due_at);
+            CREATE INDEX IF NOT EXISTS review_items_lesson_idx ON review_items(lesson_id);
+
+            INSERT OR IGNORE INTO review_items
+            (id, sentence_id, lesson_id, import_id, due_at, last_reviewed_at, repetitions, lapses, difficulty, stability, recall_mode, created_at, updated_at)
+            SELECT
+              lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))), 2) || '-' || substr('89ab', abs(random()) % 4 + 1, 1) || substr(lower(hex(randomblob(2))), 2) || '-' || lower(hex(randomblob(6))),
+              id,
+              lesson_id,
+              lesson_id,
+              COALESCE(reviewed_at, datetime('now')),
+              reviewed_at,
+              review_streak,
+              CASE WHEN review_state = 'forgotten' THEN 1 ELSE 0 END,
+              0.3,
+              review_streak,
+              'full_support',
+              datetime('now'),
+              datetime('now')
+            FROM sentences;
+
+            INSERT INTO schema_migrations(version, applied_at) VALUES (2, datetime('now'));
+            "#,
+        )?;
+    }
+
     Ok(())
 }
 

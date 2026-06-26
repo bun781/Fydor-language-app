@@ -371,6 +371,23 @@ button, input, textarea, select {
   justify-content: flex-end;
 }
 
+.review-start-panel {
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 18px;
+}
+
+.review-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .review-card {
   align-content: center;
   background: var(--surface);
@@ -394,7 +411,40 @@ button, input, textarea, select {
   font-family: Georgia, "Times New Roman", serif;
   font-size: clamp(28px, 4vw, 52px);
   line-height: 1.15;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
+}
+
+.review-reverse-prompt {
+  display: grid;
+  gap: 8px;
+}
+
+.review-reverse-prompt p {
+  color: var(--ink);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 30px;
+  line-height: 1.25;
+}
+
+.review-annotations {
+  background: var(--surface-muted);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+.review-annotations span {
+  border-right: 1px solid var(--line);
+  padding-right: 8px;
+}
+
+.review-annotations span:last-child {
+  border-right: 0;
+  padding-right: 0;
 }
 
 .review-stats {
@@ -418,6 +468,11 @@ button, input, textarea, select {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
+}
+
+.review-action-group .button {
+  justify-content: center;
+  min-width: 104px;
 }
 
 .review-hotkey-hint {
@@ -526,6 +581,47 @@ button, input, textarea, select {
 
 .review-translation-wrap.revealed .review-translation {
   filter: none;
+}
+
+.learning-science {
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+.learning-science-compact {
+  align-self: end;
+}
+
+.learning-science-grid {
+  display: grid;
+  gap: 8px 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.learning-science-grid p,
+.learning-science-more p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.learning-science-grid strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.learning-science-more {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.learning-science-more summary {
+  cursor: pointer;
+  font-weight: 600;
 }
 
 /* ── Shuffle toggle ──────────────────────────────────────── */

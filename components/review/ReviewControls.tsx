@@ -6,8 +6,11 @@ interface ReviewControlsProps {
   disabled?: boolean;
   shuffleEnabled: boolean;
   shuffleDisabled?: boolean;
+  visible?: boolean;
+  onForgot: () => void;
+  onHard: () => void;
   onRemembered: () => void;
-  onForgotten: () => void;
+  onEasy: () => void;
   onToggleShuffle: () => void;
 }
 
@@ -15,8 +18,11 @@ export function ReviewControls({
   disabled,
   shuffleEnabled,
   shuffleDisabled,
+  visible = true,
+  onForgot,
+  onHard,
   onRemembered,
-  onForgotten,
+  onEasy,
   onToggleShuffle
 }: ReviewControlsProps) {
   const shufflePressedLabel = shuffleEnabled ? "Random order on" : "Random order off";
@@ -44,25 +50,43 @@ export function ReviewControls({
         <button
           className="button review-negative"
           type="button"
-          disabled={disabled}
-          onClick={onForgotten}
-          title="Not remembered  ·  ←"
+          disabled={disabled || !visible}
+          onClick={onForgot}
+          title="Forgot  ·  ← or 1"
         >
-          ← Not Remembered
+          Forgot
+        </button>
+        <button
+          className="button secondary"
+          type="button"
+          disabled={disabled || !visible}
+          onClick={onHard}
+          title="Hard  ·  2"
+        >
+          Hard
         </button>
         <button
           className="button review-positive"
           type="button"
-          disabled={disabled}
+          disabled={disabled || !visible}
           onClick={onRemembered}
-          title="Remembered  ·  →"
+          title="Remembered  ·  → or 3"
         >
-          Remembered →
+          Remembered
+        </button>
+        <button
+          className="button secondary"
+          type="button"
+          disabled={disabled || !visible}
+          onClick={onEasy}
+          title="Easy  ·  4"
+        >
+          Easy
         </button>
       </div>
 
       <p className="review-hotkey-hint" aria-label="Keyboard shortcut hint">
-        Random order is always on. Use <kbd>←</kbd> for Not Remembered and <kbd>→</kbd> for Remembered.
+        Grade after reveal. <kbd>←</kbd> Forgot, <kbd>→</kbd> Remembered, or <kbd>1</kbd>-<kbd>4</kbd>.
       </p>
     </div>
   );

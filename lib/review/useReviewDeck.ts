@@ -1,13 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { updateReviewItem } from "@/lib/desktopApi";
 import {
   applyReviewDecision,
-  buildReviewQueue,
-  getReviewShortcutAction,
   summarizeReviewSentences
 } from "./algorithm";
+import { buildInterleavedReviewQueue, type ReviewQueueFilter } from "./queue";
 import type { ReviewDecision, ReviewSentence } from "./types";
 
 interface ReviewDeckState {
@@ -16,22 +15,36 @@ interface ReviewDeckState {
   sentences: ReviewSentence[];
   saving: boolean;
   error: string | null;
+  filter: ReviewQueueFilter;
+  started: boolean;
 }
 
 export function useReviewDeck(initialSentences: ReviewSentence[]) {
   const [state, setState] = useState<ReviewDeckState>(() => ({
-    order: buildReviewQueue(asRows(initialSentences), 0, true),
+    order: [],
     position: 0,
     sentences: initialSentences,
     saving: false,
-    error: null
+    error: null,
+    filter: "mixed",
+    started: false
   }));
 
   const currentId = state.order[state.position] ?? null;
   const currentSentence = currentId ? state.sentences.find((sentence) => sentence.id === currentId) ?? null : null;
-  const summary = summarizeReviewSentences(asRows(state.sentences));
+  const summary = summarizeReviewSentences(state.sentences);
 
   const toggleShuffle = useCallback(() => {}, []);
+
+  const startReview = useCallback((filter: ReviewQueueFilter = "mixed") => {
+    setState((prev) => ({
+      ...prev,
+      filter,
+      started: true,
+      position: 0,
+      order: buildInterleavedReviewQueue(prev.sentences, { filter, seed: Date.now(), shuffled: true })
+    }));
+  }, []);
 
   const reviewCurrent = useCallback(async (decision: ReviewDecision) => {
     if (!currentSentence || state.saving) return;
@@ -46,7 +59,7 @@ export function useReviewDeck(initialSentences: ReviewSentence[]) {
       sentences: nextSentences,
       saving: true,
       error: null,
-      order: nextPosition >= prev.order.length ? buildReviewQueue(asRows(nextSentences), reviewedAt.getTime(), true) : prev.order,
+      order: nextPosition >= prev.order.length ? [] : prev.order,
       position: nextPosition >= prev.order.length ? 0 : nextPosition
     }));
 
@@ -66,35 +79,19 @@ export function useReviewDeck(initialSentences: ReviewSentence[]) {
     }
   }, [currentSentence, state.position, state.saving, state.sentences]);
 
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      const decision = getReviewShortcutAction(event.key);
-      if (!decision) return;
-      if (event.target instanceof HTMLButtonElement) return;
-      event.preventDefault();
-      void reviewCurrent(decision);
-    }
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [currentSentence?.id, reviewCurrent, state.saving]);
-
   return {
     currentSentence,
     position: state.position,
     summary,
     total: state.sentences.length,
+    queueTotal: state.order.length,
     saving: state.saving,
     error: state.error,
+    started: state.started,
+    filter: state.filter,
+    startReview,
     shuffleEnabled: true,
     reviewCurrent,
     toggleShuffle
   };
-}
-
-function asRows(sentences: ReviewSentence[]) {
-  return sentences.map((sentence) => ({
-    ...sentence,
-    reviewedAt: sentence.reviewedAt ? new Date(sentence.reviewedAt) : null
-  }));
 }
