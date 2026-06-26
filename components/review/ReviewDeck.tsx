@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { StudyLessonMeta } from "@/lib/imported-content/types";
+import { isSpaceKey, shouldIgnoreReviewHotkey } from "@/lib/review/keyboard";
 import { getReviewShortcutAction } from "@/lib/review/queue";
+import type { ReviewSourceBucket } from "@/lib/review/sessionSummary";
 import type { ReviewSentence } from "@/lib/review/types";
 import { useReviewDeck } from "@/lib/review/useReviewDeck";
 import { ReviewControls } from "./ReviewControls";
@@ -43,22 +45,28 @@ export function ReviewDeck({
     summary,
     started,
     startReview,
+    startFocusedReview,
+    completedSession,
     shuffleEnabled,
     toggleShuffle
   } = useReviewDeck(sentences);
   const [revealed, setRevealed] = useState(false);
+  const spacePressSentenceIdRef = useRef<string | null>(null);
+  const availableBreakdown = summarizeAvailableSentences(sentences);
+  const lessonTitleById = new Map(lessonOptions.map((lesson) => [lesson.id, lesson.title]));
 
   useEffect(() => {
     setRevealed(false);
+    spacePressSentenceIdRef.current = null;
   }, [currentSentence?.id]);
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
-      if (isInteractiveTarget(event.target)) return;
+      if (shouldIgnoreReviewHotkey(event)) return;
       if (!started) return;
-      if (event.key === " ") {
+      if (isSpaceKey(event.key)) {
         event.preventDefault();
-        setRevealed(true);
+        spacePressSentenceIdRef.current = currentSentence?.id ?? null;
         return;
       }
 
@@ -68,9 +76,26 @@ export function ReviewDeck({
         void reviewCurrent(decision);
       }
     }
+
+    function handleKeyUp(event: KeyboardEvent) {
+      if (shouldIgnoreReviewHotkey(event)) return;
+      if (!started) return;
+      if (!isSpaceKey(event.key)) return;
+
+      event.preventDefault();
+      if (!revealed && spacePressSentenceIdRef.current === currentSentence?.id) {
+        setRevealed(true);
+      }
+      spacePressSentenceIdRef.current = null;
+    }
+
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [revealed, reviewCurrent, started]);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [currentSentence?.id, revealed, reviewCurrent, started]);
 
   if (!sentences.length) {
     if (totalSentenceCount > 0) {
@@ -130,21 +155,18 @@ export function ReviewDeck({
     }
 
     return (
-      <section className="card review-empty">
-        <h2>Review queue complete</h2>
-        <p className="muted">This review pass is complete. Start another mixed review whenever you are ready.</p>
-        <ReviewControls
-          disabled={saving}
-          shuffleEnabled={shuffleEnabled}
-          shuffleDisabled
-          visible={false}
-          onForgot={() => reviewCurrent("forgot")}
-          onHard={() => reviewCurrent("hard")}
-          onRemembered={() => reviewCurrent("remembered")}
-          onEasy={() => reviewCurrent("easy")}
-          onToggleShuffle={toggleShuffle}
-        />
-      </section>
+      <ReviewSessionComplete
+        availableBreakdown={availableBreakdown}
+        completedSession={completedSession}
+        lessonTitleById={lessonTitleById}
+        onRetryWeakCards={() => {
+          if (!completedSession?.summary.retrySentenceIds.length) return;
+          startFocusedReview(completedSession.summary.retrySentenceIds, "Weak-card retry");
+        }}
+        onStartDue={() => startReview("due")}
+        onStartMixed={() => startReview("mixed")}
+        onStartNew={() => startReview("new")}
+      />
     );
   }
 
@@ -189,6 +211,118 @@ export function ReviewDeck({
   );
 }
 
+function ReviewSessionComplete({
+  availableBreakdown,
+  completedSession,
+  lessonTitleById,
+  onRetryWeakCards,
+  onStartDue,
+  onStartMixed,
+  onStartNew
+}: {
+  availableBreakdown: Record<ReviewSourceBucket, number>;
+  completedSession: ReturnType<typeof useReviewDeck>["completedSession"];
+  lessonTitleById: Map<string, string>;
+  onRetryWeakCards: () => void;
+  onStartDue: () => void;
+  onStartMixed: () => void;
+  onStartNew: () => void;
+}) {
+  const sessionSummary = completedSession?.summary;
+
+  if (!sessionSummary) {
+    return (
+      <section className="card review-empty">
+        <h2>Review queue complete</h2>
+        <p className="muted">This review pass is complete. Start another mixed review whenever you are ready.</p>
+        <div className="review-complete-actions">
+          <button className="button" type="button" onClick={onStartMixed}>Start Mixed Review</button>
+          <button className="button secondary" type="button" onClick={onStartDue} disabled={availableBreakdown.due === 0}>Due only</button>
+          <button className="button secondary" type="button" onClick={onStartNew} disabled={availableBreakdown.new === 0}>New only</button>
+        </div>
+      </section>
+    );
+  }
+
+  const retryDisabled = sessionSummary.retrySentenceIds.length === 0;
+  const strongestOutcome = sessionSummary.retrySoon === 0
+    ? "Clean pass. Nothing needs an immediate retry."
+    : `${sessionSummary.retrySoon} card${sessionSummary.retrySoon === 1 ? "" : "s"} should come back soon.`;
+
+  return (
+    <section className="card review-empty review-complete-card">
+      <div className="review-complete-header">
+        <div>
+          <h2>{completedSession.label} complete</h2>
+          <p className="muted">Strong recall rate {sessionSummary.strongRecallRate}%. {strongestOutcome}</p>
+        </div>
+        <span className="pill">Done</span>
+      </div>
+
+      <div className="review-summary">
+        <span className="pill">Reviewed {sessionSummary.reviewed}</span>
+        {sessionSummary.easy > 0 && <span className="pill grade-stat-easy">Easy {sessionSummary.easy}</span>}
+        {sessionSummary.remembered > 0 && <span className="pill review-state-remembered">Remembered {sessionSummary.remembered}</span>}
+        {sessionSummary.hard > 0 && <span className="pill grade-stat-hard">Hard {sessionSummary.hard}</span>}
+        {sessionSummary.forgot > 0 && <span className="pill review-state-forgotten">Forgot {sessionSummary.forgot}</span>}
+      </div>
+
+      <div className="review-complete-grid">
+        <StatBlock label="Needs another pass" value={sessionSummary.retrySoon} detail="Forgot + hard answers from this pass." />
+        <StatBlock label="Recall promoted" value={sessionSummary.promotedRecallModes} detail="Cards pushed to a tougher recall mode." />
+        <StatBlock label="Lessons mixed" value={sessionSummary.lessonCount} detail="Distinct lessons practiced in this session." />
+        <StatBlock
+          label="Queue mix"
+          value={`${sessionSummary.dueCount}/${sessionSummary.newCount}/${sessionSummary.masteredCount}`}
+          detail="Due / new / mastered cards reviewed."
+        />
+      </div>
+
+      <div className="review-complete-focus">
+        <h3>Focus next</h3>
+        <p className="muted">Use the next pass to either clean up weak cards or shift into fresh material.</p>
+        <div className="review-complete-actions">
+          <button className="button" type="button" onClick={onRetryWeakCards} disabled={retryDisabled}>
+            Retry Weak Cards
+          </button>
+          <button className="button secondary" type="button" onClick={onStartDue} disabled={availableBreakdown.due === 0}>
+            Due Only
+          </button>
+          <button className="button secondary" type="button" onClick={onStartNew} disabled={availableBreakdown.new === 0}>
+            New Only
+          </button>
+          <button className="button secondary" type="button" onClick={onStartMixed}>
+            Mixed Again
+          </button>
+        </div>
+      </div>
+
+      {sessionSummary.toughestLessons.length > 0 ? (
+        <div className="review-complete-focus">
+          <h3>Where recall slipped</h3>
+          <div className="review-summary">
+            {sessionSummary.toughestLessons.map((lesson) => (
+              <span className="pill review-state-forgotten" key={lesson.lessonId}>
+                {lessonTitleById.get(lesson.lessonId) ?? "Untitled lesson"} {lesson.misses}
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function StatBlock({ label, value, detail }: { label: string; value: number | string; detail: string }) {
+  return (
+    <div className="review-complete-stat">
+      <strong>{value}</strong>
+      <span>{label}</span>
+      <small>{detail}</small>
+    </div>
+  );
+}
+
 function ReviewStartHeader({ summary }: { summary: ReturnType<typeof useReviewDeck>["summary"] }) {
   return (
     <header className="review-header">
@@ -224,41 +358,49 @@ function ReviewLessonSelect({
   const handleChange = onChange;
   const selected = new Set(selectedLessonIds);
   const allSelected = lessons.length > 0 && lessons.every((lesson) => selected.has(lesson.id));
-  const selectedValue = allSelected
-    ? "all"
-    : selectedLessonIds.length === 1
-      ? selectedLessonIds[0]
-      : "custom";
+  const selectedCount = lessons.reduce((count, lesson) => count + (selected.has(lesson.id) ? (sentenceCountByLesson.get(lesson.id) ?? 0) : 0), 0);
 
-  function chooseLesson(value: string) {
-    if (value === "all") {
-      handleChange(lessons.map((lesson) => lesson.id));
+  function toggleLesson(lessonId: string) {
+    if (selected.has(lessonId)) {
+      handleChange(selectedLessonIds.filter((id) => id !== lessonId));
       return;
     }
-    if (value === "custom") return;
-    handleChange([value]);
+    handleChange([...selectedLessonIds, lessonId]);
   }
 
   return (
-    <label className="review-lesson-select">
-      <span>Lesson</span>
-      <select
-        className="input"
-        value={selectedValue}
-        onChange={(event) => chooseLesson(event.target.value)}
-      >
-        <option value="all">All lessons ({totalSentenceCount})</option>
-        {selectedValue === "custom" ? <option value="custom">Selected lessons ({selectedLessonIds.length})</option> : null}
+    <fieldset className="review-lesson-select">
+      <div className="review-lesson-select-top">
+        <legend>Lessons</legend>
+        <span className="muted">{selectedCount} of {totalSentenceCount} sentences</span>
+      </div>
+      <div className="review-lesson-tools">
+        <button className="button secondary" type="button" onClick={() => handleChange(lessons.map((lesson) => lesson.id))} disabled={allSelected}>
+          Select all
+        </button>
+        <button className="button secondary" type="button" onClick={() => handleChange([])} disabled={!selectedLessonIds.length}>
+          Clear
+        </button>
+      </div>
+      <div className="review-lesson-checks">
         {lessons.map((lesson) => {
           const count = sentenceCountByLesson.get(lesson.id) ?? 0;
           return (
-            <option value={lesson.id} key={lesson.id}>
-              {lesson.title} ({count})
-            </option>
+            <label className="review-lesson-check" key={lesson.id}>
+              <input
+                type="checkbox"
+                checked={selected.has(lesson.id)}
+                onChange={() => toggleLesson(lesson.id)}
+              />
+              <span>
+                <strong>{lesson.title}</strong>
+                <small>{count} sentences</small>
+              </span>
+            </label>
           );
         })}
-      </select>
-    </label>
+      </div>
+    </fieldset>
   );
 }
 
@@ -282,10 +424,14 @@ function getSentenceCountByLesson(sentences: ReviewSentence[]) {
   return counts;
 }
 
-function isInteractiveTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  if (target.isContentEditable) return true;
-  return ["BUTTON", "INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
+function summarizeAvailableSentences(sentences: ReviewSentence[]) {
+  const now = new Date();
+  return sentences.reduce<Record<ReviewSourceBucket, number>>((totals, sentence) => {
+    if ((sentence.repetitions ?? 0) === 0) totals.new += 1;
+    else if (new Date(sentence.dueAt ?? 0).getTime() <= now.getTime()) totals.due += 1;
+    else totals.mastered += 1;
+    return totals;
+  }, { due: 0, new: 0, mastered: 0 });
 }
 
 function LearningSciencePanel({ compact = false }: { compact?: boolean }) {

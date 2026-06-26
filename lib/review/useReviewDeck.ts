@@ -7,6 +7,12 @@ import {
   summarizeReviewSentences
 } from "./algorithm";
 import { buildInterleavedReviewQueue, type ReviewQueueFilter } from "./queue";
+import {
+  buildReviewSessionSummary,
+  classifyReviewSource,
+  type ReviewSessionEvent,
+  type ReviewSessionSummary
+} from "./sessionSummary";
 import type { ReviewDecision, ReviewSentence } from "./types";
 
 interface ReviewDeckState {
@@ -17,6 +23,16 @@ interface ReviewDeckState {
   error: string | null;
   filter: ReviewQueueFilter;
   started: boolean;
+  activeSession: {
+    startedAt: Date;
+    queueIds: string[];
+    reviewed: ReviewSessionEvent[];
+  } | null;
+  completedSession: {
+    filter: ReviewQueueFilter | "custom";
+    label: string;
+    summary: ReviewSessionSummary;
+  } | null;
 }
 
 export function useReviewDeck(initialSentences: ReviewSentence[]) {
@@ -27,7 +43,9 @@ export function useReviewDeck(initialSentences: ReviewSentence[]) {
     saving: false,
     error: null,
     filter: "mixed",
-    started: false
+    started: false,
+    activeSession: null,
+    completedSession: null
   }));
 
   useEffect(() => {
@@ -36,7 +54,9 @@ export function useReviewDeck(initialSentences: ReviewSentence[]) {
       order: [],
       position: 0,
       sentences: initialSentences,
-      started: false
+      started: false,
+      activeSession: null,
+      completedSession: null
     }));
   }, [initialSentences]);
 
@@ -47,30 +67,96 @@ export function useReviewDeck(initialSentences: ReviewSentence[]) {
   const toggleShuffle = useCallback(() => {}, []);
 
   const startReview = useCallback((filter: ReviewQueueFilter = "mixed") => {
-    setState((prev) => ({
-      ...prev,
-      filter,
-      started: true,
-      position: 0,
-      order: buildInterleavedReviewQueue(prev.sentences, { filter, seed: Date.now(), shuffled: true })
-    }));
+    setState((prev) => {
+      const startedAt = new Date();
+      const order = buildInterleavedReviewQueue(prev.sentences, { filter, seed: startedAt.getTime(), shuffled: true, now: startedAt });
+
+      return {
+        ...prev,
+        filter,
+        started: order.length > 0,
+        position: 0,
+        order,
+        error: null,
+        activeSession: order.length > 0 ? { startedAt, queueIds: order, reviewed: [] } : null,
+        completedSession: null
+      };
+    });
+  }, []);
+
+  const startFocusedReview = useCallback((sentenceIds: string[], label = "Targeted retry") => {
+    setState((prev) => {
+      const seen = new Set<string>();
+      const order = sentenceIds.filter((id) => {
+        if (seen.has(id)) return false;
+        seen.add(id);
+        return prev.sentences.some((sentence) => sentence.id === id);
+      });
+
+      return {
+        ...prev,
+        started: order.length > 0,
+        position: 0,
+        order,
+        error: null,
+        activeSession: order.length > 0
+          ? {
+              startedAt: new Date(),
+              queueIds: order,
+              reviewed: []
+            }
+          : null,
+        completedSession: order.length > 0
+          ? null
+          : {
+              filter: "custom",
+              label,
+              summary: buildReviewSessionSummary([])
+            }
+      };
+    });
   }, []);
 
   const reviewCurrent = useCallback(async (decision: ReviewDecision) => {
-    if (!currentSentence || state.saving) return;
+    if (!currentSentence || state.saving || !state.activeSession) return;
 
     const reviewedAt = new Date();
     const updatedSentence = applyReviewDecision(currentSentence, decision, reviewedAt);
     const nextSentences = state.sentences.map((sentence) => (sentence.id === currentSentence.id ? updatedSentence : sentence));
     const nextPosition = state.position + 1;
+    const event: ReviewSessionEvent = {
+      sentenceId: currentSentence.id,
+      lessonId: currentSentence.lessonId,
+      text: currentSentence.text,
+      translation: currentSentence.translation,
+      decision,
+      before: currentSentence,
+      after: updatedSentence,
+      sourceBucket: classifyReviewSource(currentSentence, state.activeSession.startedAt)
+    };
+    const reviewedEvents = [...state.activeSession.reviewed, event];
+    const sessionFinished = nextPosition >= state.order.length;
 
     setState((prev) => ({
       ...prev,
       sentences: nextSentences,
       saving: true,
       error: null,
-      order: nextPosition >= prev.order.length ? [] : prev.order,
-      position: nextPosition >= prev.order.length ? 0 : nextPosition
+      order: sessionFinished ? [] : prev.order,
+      position: sessionFinished ? 0 : nextPosition,
+      activeSession: sessionFinished
+        ? null
+        : {
+            ...prev.activeSession!,
+            reviewed: reviewedEvents
+          },
+      completedSession: sessionFinished
+        ? {
+            filter: prev.filter,
+            label: getSessionLabel(prev.filter),
+            summary: buildReviewSessionSummary(reviewedEvents)
+          }
+        : null
     }));
 
     try {
@@ -87,7 +173,7 @@ export function useReviewDeck(initialSentences: ReviewSentence[]) {
     } finally {
       setState((prev) => ({ ...prev, saving: false }));
     }
-  }, [currentSentence, state.position, state.saving, state.sentences]);
+  }, [currentSentence, state.activeSession, state.order.length, state.position, state.saving, state.sentences]);
 
   return {
     currentSentence,
@@ -100,8 +186,17 @@ export function useReviewDeck(initialSentences: ReviewSentence[]) {
     started: state.started,
     filter: state.filter,
     startReview,
+    startFocusedReview,
+    completedSession: state.completedSession,
     shuffleEnabled: true,
     reviewCurrent,
     toggleShuffle
   };
+}
+
+function getSessionLabel(filter: ReviewQueueFilter) {
+  if (filter === "due") return "Due review";
+  if (filter === "new") return "New cards";
+  if (filter === "all") return "Full review";
+  return "Mixed review";
 }
