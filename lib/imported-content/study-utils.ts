@@ -73,7 +73,7 @@ export function generateQuizQuestion(
 export function buildQuizDeck(recent: StudySentence[], all: StudySentence[]): QuizQuestion[] {
   const wordQuestions = buildWordQuestions(recent, all);
   const sentenceQuestions = buildSentenceQuestions(recent);
-  return shuffle([...wordQuestions, ...sentenceQuestions]);
+  return oneQuestionPerSentence(shuffle([...wordQuestions, ...sentenceQuestions]));
 }
 
 function buildWordQuestions(recent: StudySentence[], all: StudySentence[]): QuizQuestion[] {
@@ -107,7 +107,7 @@ function buildWordQuestions(recent: StudySentence[], all: StudySentence[]): Quiz
   const questions: QuizQuestion[] = [];
 
   for (const target of uniqueTargets.values()) {
-    const distractors = allMeanings.filter((meaning) => meaning !== target.meaning).slice(0, 3);
+    const distractors = shuffle(allMeanings.filter((meaning) => meaning !== target.meaning)).slice(0, 3);
     if (distractors.length < 2) continue;
 
     questions.push({
@@ -141,7 +141,7 @@ function buildSentenceQuestions(sentences: StudySentence[]): QuizQuestion[] {
   const questions: QuizQuestion[] = [];
 
   for (const target of sentencePool) {
-    const distractors = translations.filter((translation) => translation !== target.answer).slice(0, 3);
+    const distractors = shuffle(translations.filter((translation) => translation !== target.answer)).slice(0, 3);
     if (distractors.length < 2) continue;
 
     questions.push({
@@ -156,6 +156,19 @@ function buildSentenceQuestions(sentences: StudySentence[]): QuizQuestion[] {
   }
 
   return questions;
+}
+
+function oneQuestionPerSentence(questions: QuizQuestion[]): QuizQuestion[] {
+  const seen = new Set<string>();
+  const unique: QuizQuestion[] = [];
+
+  for (const question of questions) {
+    if (seen.has(question.sentenceId)) continue;
+    seen.add(question.sentenceId);
+    unique.push(question);
+  }
+
+  return unique;
 }
 
 function shuffle<T>(arr: T[]): T[] {

@@ -9,8 +9,7 @@ describe("multiple choice deck", () => {
 
     expect(deck.length).toBeGreaterThan(0);
     expect(deck.every((question) => question.type === "multiple-choice")).toBe(true);
-    expect(deck.some((question) => question.focusType === "word")).toBe(true);
-    expect(deck.some((question) => question.focusType === "sentence")).toBe(true);
+    expect(new Set(deck.map((question) => question.sentenceId)).size).toBe(deck.length);
   });
 });
 

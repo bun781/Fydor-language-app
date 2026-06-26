@@ -11,6 +11,7 @@ import type { ReviewDecision } from "@/lib/review/types";
 import { useLessonReview } from "@/lib/review/useLessonReview";
 import { CheckpointQuiz } from "./CheckpointQuiz";
 import { SentenceFlashcard } from "./SentenceFlashcard";
+import { readSessionProgress, writeSessionProgress } from "./sessionProgress";
 
 interface Props {
   lesson: StudyLesson | null;
@@ -25,6 +26,17 @@ const DEFAULT_REVEAL: RevealState = {
 };
 
 type CardGrade = "easy" | "correct" | "hard" | "failed";
+
+interface FlashcardProgress {
+  cardIndex: number;
+  cardOrder: string[];
+  randomOrderEnabled: boolean;
+  quizPendingAt: number | null;
+  reveal: RevealState;
+  sessionFamiliarity: Array<[string, ItemFamiliarity]>;
+  cardGrades: Array<[string, CardGrade]>;
+  reviewStates: Array<[string, ReviewDecision]>;
+}
 
 export function ImportedContentStudy({ lesson: initialLesson, loadingLesson = false }: Props) {
   const [lesson, setLesson] = useState(initialLesson);
@@ -167,16 +179,31 @@ export function ImportedContentStudy({ lesson: initialLesson, loadingLesson = fa
 
   useEffect(() => {
     setLesson(initialLesson);
-    setCardIndex(0);
-    setCardOrder(initialLesson?.sentences.map((s) => s.id) ?? []);
-    setRandomOrderEnabled(false);
-    setQuizPendingAt(null);
-    setReveal(DEFAULT_REVEAL);
-    setSessionFamiliarity(new Map());
-    setCardGrades(new Map());
-    setReviewStates(new Map());
+    const restored = initialLesson ? restoreFlashcardProgress(initialLesson) : null;
+    setCardIndex(restored?.cardIndex ?? 0);
+    setCardOrder(restored?.cardOrder ?? initialLesson?.sentences.map((s) => s.id) ?? []);
+    setRandomOrderEnabled(restored?.randomOrderEnabled ?? false);
+    setQuizPendingAt(restored?.quizPendingAt ?? null);
+    setReveal(restored?.reveal ?? DEFAULT_REVEAL);
+    setSessionFamiliarity(new Map(restored?.sessionFamiliarity ?? []));
+    setCardGrades(new Map(restored?.cardGrades ?? []));
+    setReviewStates(new Map(restored?.reviewStates ?? []));
     finishReview();
   }, [finishReview, initialLesson]);
+
+  useEffect(() => {
+    if (!lesson) return;
+    writeSessionProgress(getFlashcardProgressKey(lesson.id), {
+      cardIndex,
+      cardOrder,
+      randomOrderEnabled,
+      quizPendingAt,
+      reveal,
+      sessionFamiliarity: Array.from(sessionFamiliarity.entries()),
+      cardGrades: Array.from(cardGrades.entries()),
+      reviewStates: Array.from(reviewStates.entries())
+    } satisfies FlashcardProgress);
+  }, [cardGrades, cardIndex, cardOrder, lesson, quizPendingAt, randomOrderEnabled, reveal, reviewStates, sessionFamiliarity]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -359,6 +386,94 @@ function shuffleIds(values: string[]): string[] {
     copy.push(copy.shift() as string);
   }
   return copy;
+}
+
+function restoreFlashcardProgress(lesson: StudyLesson): FlashcardProgress | null {
+  const saved = readSessionProgress(getFlashcardProgressKey(lesson.id), validateFlashcardProgress);
+  if (!saved) return null;
+
+  const sentenceIds = new Set(lesson.sentences.map((sentence) => sentence.id));
+  const cardOrder = [
+    ...saved.cardOrder.filter((id) => sentenceIds.has(id)),
+    ...lesson.sentences.map((sentence) => sentence.id).filter((id) => !saved.cardOrder.includes(id))
+  ];
+  const maxIndex = cardOrder.length;
+
+  return {
+    ...saved,
+    cardIndex: Math.min(Math.max(0, saved.cardIndex), maxIndex),
+    cardOrder,
+    quizPendingAt:
+      saved.quizPendingAt === null
+        ? null
+        : Math.min(Math.max(0, saved.quizPendingAt), maxIndex),
+    sessionFamiliarity: saved.sessionFamiliarity.filter(([key]) => Boolean(key)),
+    cardGrades: saved.cardGrades.filter(([id]) => sentenceIds.has(id)),
+    reviewStates: saved.reviewStates.filter(([id]) => sentenceIds.has(id))
+  };
+}
+
+function getFlashcardProgressKey(lessonId: string) {
+  return `flashcards.${lessonId}`;
+}
+
+function validateFlashcardProgress(value: unknown): FlashcardProgress | null {
+  if (!value || typeof value !== "object") return null;
+  const item = value as Partial<FlashcardProgress>;
+  const cardIndex = item.cardIndex;
+  const quizPendingAt = item.quizPendingAt;
+
+  if (typeof cardIndex !== "number" || !Number.isInteger(cardIndex)) return null;
+  if (!Array.isArray(item.cardOrder) || !item.cardOrder.every((id) => typeof id === "string")) return null;
+  if (typeof item.randomOrderEnabled !== "boolean") return null;
+  if (quizPendingAt !== null && (typeof quizPendingAt !== "number" || !Number.isInteger(quizPendingAt))) return null;
+  if (!isRevealState(item.reveal)) return null;
+  if (!isEntryArray(item.sessionFamiliarity, isItemFamiliarity)) return null;
+  if (!isEntryArray(item.cardGrades, isCardGrade)) return null;
+  if (!isEntryArray(item.reviewStates, isReviewDecision)) return null;
+
+  return {
+    cardIndex,
+    cardOrder: item.cardOrder,
+    randomOrderEnabled: item.randomOrderEnabled,
+    quizPendingAt,
+    reveal: item.reveal,
+    sessionFamiliarity: item.sessionFamiliarity,
+    cardGrades: item.cardGrades,
+    reviewStates: item.reviewStates
+  };
+}
+
+function isRevealState(value: unknown): value is RevealState {
+  if (!value || typeof value !== "object") return false;
+  const item = value as Partial<RevealState>;
+  return (
+    typeof item.translation === "boolean" &&
+    typeof item.wordMeanings === "boolean" &&
+    typeof item.grammar === "boolean" &&
+    typeof item.hint === "boolean"
+  );
+}
+
+function isEntryArray<T extends string>(value: unknown, validateValue: (item: unknown) => item is T): value is Array<[string, T]> {
+  return Array.isArray(value) && value.every((entry) =>
+    Array.isArray(entry) &&
+    entry.length === 2 &&
+    typeof entry[0] === "string" &&
+    validateValue(entry[1])
+  );
+}
+
+function isItemFamiliarity(value: unknown): value is ItemFamiliarity {
+  return value === "known" || value === "learning";
+}
+
+function isCardGrade(value: unknown): value is CardGrade {
+  return value === "easy" || value === "correct" || value === "hard" || value === "failed";
+}
+
+function isReviewDecision(value: unknown): value is ReviewDecision {
+  return value === "remembered" || value === "forgotten";
 }
 
 function isEditableShortcutTarget(target: EventTarget | null): boolean {

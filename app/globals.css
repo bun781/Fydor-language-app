@@ -2836,6 +2836,10 @@ textarea.input {
   text-align: left;
 }
 
+.quiz-choice.selected {
+  border-color: var(--ink);
+}
+
 .quiz-correct {
   background: rgba(22, 101, 52, 0.10);
   border-color: var(--ok);
@@ -2897,6 +2901,47 @@ textarea.input {
   flex-wrap: wrap;
   gap: 6px;
   margin-left: auto;
+}
+
+.test-setup-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.8fr);
+}
+
+.test-lesson-list,
+.past-results {
+  display: grid;
+  gap: 8px;
+}
+
+.test-check-row,
+.past-result-row {
+  align-items: center;
+  background: var(--surface-muted);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+.test-check-row input {
+  flex: 0 0 auto;
+}
+
+.test-check-row span {
+  display: grid;
+  gap: 2px;
+}
+
+.test-check-row small,
+.past-result-row small {
+  color: var(--muted);
+}
+
+.past-result-row {
+  justify-content: space-between;
 }
 
 .grade-stat-easy { border-color: rgba(22, 101, 52, 0.45); color: var(--ok); }

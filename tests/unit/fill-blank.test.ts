@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildChoices } from "@/components/imported-content/FillBlankMode";
+import { buildChoices, buildFillBlankDeck } from "@/components/imported-content/FillBlankMode";
 
 describe("fill blank choices", () => {
   it("always keeps the correct answer in the visible choices", () => {
@@ -16,6 +16,40 @@ describe("fill blank choices", () => {
 
     expect(choices).toContain("right answer");
     expect(choices.length).toBeLessThanOrEqual(4);
+  });
+
+  it("builds at most one card for each sentence", () => {
+    const lesson = {
+      id: "lesson-1",
+      language: "ko",
+      baseLanguage: "en",
+      title: "Basics",
+      description: null,
+      source: null,
+      level: null,
+      tags: [],
+      sentences: [
+        {
+          id: "s1",
+          text: "저는 학생입니다.",
+          translation: "I am a student.",
+          audioUrl: null,
+          words: [
+            { surface: "저", displayText: "저", meaning: "I", explanation: null, commonMistakes: [], canonicalKey: "ko:i" },
+            { surface: "학생", displayText: "학생", meaning: "student", explanation: null, commonMistakes: [], canonicalKey: "ko:student" }
+          ],
+          grammar: [
+            { surfaceText: "입니다", pattern: "입니다", meaning: "to be", explanation: null, commonMistakes: [], canonicalKey: "ko:be" }
+          ],
+          chunks: []
+        }
+      ]
+    };
+
+    const deck = buildFillBlankDeck(lesson);
+
+    expect(deck).toHaveLength(1);
+    expect(new Set(deck.map((card) => card.sentence.id)).size).toBe(deck.length);
   });
 });
 
@@ -40,6 +74,8 @@ function makeDeck(answerTexts: string[]) {
       answerText,
       meaning: null,
       explanation: null
-    }
+    },
+    lessonId: "lesson-1",
+    lessonTitle: "Basics"
   }));
 }

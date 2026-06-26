@@ -98,8 +98,9 @@ export function ImportedContentWorkspace({ mode = "lesson" }: Props) {
         </div>
       </div>
 
-      <div className="lesson-selector-bar">
-        {browser.languageGroups.length > 1 ? (
+      {mode === "lesson" ? (
+        <div className="lesson-selector-bar">
+          {browser.languageGroups.length > 1 ? (
           <select
             className="input selector-compact"
             value={browser.selectedLanguage}
@@ -112,9 +113,9 @@ export function ImportedContentWorkspace({ mode = "lesson" }: Props) {
               </option>
             ))}
           </select>
-        ) : null}
+          ) : null}
 
-        {browser.languageLessons.length > 1 ? (
+          {browser.languageLessons.length > 1 ? (
           <select
             className="input selector-compact"
             value={browser.selectedLessonId}
@@ -127,19 +128,20 @@ export function ImportedContentWorkspace({ mode = "lesson" }: Props) {
               </option>
             ))}
           </select>
-        ) : null}
+          ) : null}
 
-        {browser.loadingLesson ? <span className="pill">Loading lesson…</span> : null}
-      </div>
+          {browser.loadingLesson ? <span className="pill">Loading lesson...</span> : null}
+        </div>
+      ) : null}
 
       {browser.error ? <p className="review-error">{browser.error}</p> : null}
 
       {mode === "lesson" ? (
         <ImportedContentStudy lesson={browser.lesson} loadingLesson={browser.loadingLesson} />
       ) : mode === "fill-blank" ? (
-        <FillBlankMode lesson={browser.lesson} />
+        <FillBlankMode lesson={browser.lesson} lessons={allLessons} />
       ) : (
-        <MultipleChoiceMode lesson={browser.lesson} />
+        <MultipleChoiceMode lesson={browser.lesson} lessons={allLessons} />
       )}
     </div>
   );

@@ -5,13 +5,24 @@ import { getLesson } from "@/lib/desktopApi";
 import { groupLessonsByLanguage } from "@/lib/language/importResources";
 import type { StudyLesson, StudyLessonMeta } from "@/lib/imported-content/types";
 import type { ChangeEvent } from "react";
+import { readSessionProgress, writeSessionProgress } from "./sessionProgress";
+
+const SELECTED_LESSON_KEY = "selected-lesson";
+
+interface SelectedLessonProgress {
+  lessonId: string;
+}
 
 export function useImportedLessonBrowser(initialLesson: StudyLesson | null, allLessons: StudyLessonMeta[]) {
   const languageGroups = useMemo(() => groupLessonsByLanguage(allLessons), [allLessons]);
+  const savedSelection = readSessionProgress(SELECTED_LESSON_KEY, validateSelectedLessonProgress);
+  const savedLesson = savedSelection
+    ? allLessons.find((item) => item.id === savedSelection.lessonId) ?? null
+    : null;
   const [lesson, setLesson] = useState(initialLesson);
-  const [selectedLessonId, setSelectedLessonId] = useState(initialLesson?.id ?? allLessons[0]?.id ?? "");
+  const [selectedLessonId, setSelectedLessonId] = useState(initialLesson?.id ?? savedLesson?.id ?? allLessons[0]?.id ?? "");
   const [selectedLanguage, setSelectedLanguage] = useState(
-    initialLesson?.language ?? allLessons[0]?.language ?? ""
+    initialLesson?.language ?? savedLesson?.language ?? allLessons[0]?.language ?? ""
   );
   const [loadingLesson, setLoadingLesson] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -83,6 +94,7 @@ export function useImportedLessonBrowser(initialLesson: StudyLesson | null, allL
 
   function switchLesson(lessonId: string) {
     setSelectedLessonId(lessonId);
+    writeSessionProgress(SELECTED_LESSON_KEY, { lessonId });
     const selectedMeta = allLessons.find((item) => item.id === lessonId);
     if (selectedMeta) setSelectedLanguage(selectedMeta.language);
   }
@@ -106,4 +118,10 @@ export function useImportedLessonBrowser(initialLesson: StudyLesson | null, allL
     selectedLanguage,
     switchLesson
   };
+}
+
+function validateSelectedLessonProgress(value: unknown): SelectedLessonProgress | null {
+  if (!value || typeof value !== "object") return null;
+  const lessonId = (value as Partial<SelectedLessonProgress>).lessonId;
+  return typeof lessonId === "string" ? { lessonId } : null;
 }
