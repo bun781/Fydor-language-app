@@ -1,47 +1,95 @@
-# Habitz
+# Fydor
 
-A focused language-learning app for building lesson JSON, studying imported lessons, and running a lightweight sentence review tab.
+Fydor is a local-first language learning app for turning lesson material into structured study. It centers on a simple loop:
 
-Fydor is free for the people: open access, no paywall, and no subscriptions.
+1. create or import a lesson
+2. validate the lesson data
+3. study the saved sentences in different modes
+4. review what you forgot
+5. share lessons through Fydor Exchange
 
-## Stack
+The repository name is `Habitz`, but the app itself is branded as Fydor.
 
-- Next.js App Router, React, TypeScript
-- PostgreSQL with Drizzle schema and SQL migration
-- Zod validation for lesson files
-- Vitest for core validation, drill, normalization, and SRS tests
+## What It Does
 
-## Core Flow
+- Lesson management at `/lessons/manage`
+- Lesson import and validation with structured JSON
+- Imported-content study at `/study/imported-content`
+- Fill-in-the-blank study at `/study/fill-blank`
+- Multiple-choice study at `/study/multiple-choice`
+- Sentence review at `/review`
+- Learning science reference page at `/learning-science`
+- Lesson sharing and pack import/export at `/fydor-exchange`
 
-1. Open the Lesson Builder at `/admin/imports`.
-2. Paste, upload, or generate lesson JSON, then validate the lesson.
-3. Preview sentences, focus items, tokens, warnings, and detected duplicates.
-4. Save the lesson.
-5. Save lessons, sentences, tokens, canonical learning items, and links.
-6. Browse the Lesson Library at `/study/imported-content` or open `/review` for sentence review.
-7. Mark review sentences as Remembered or Not Remembered.
-8. Update the next review date or sentence review state immediately.
+## Highlights
 
-## What Makes It Different
+- Sentence-centered study keeps vocabulary, grammar, and chunk hints attached to real usage.
+- Review uses a lightweight memory queue that prioritizes forgotten items sooner.
+- Lesson packs are portable `.fydorpack` files for sharing structured content.
+- The app runs locally with PGlite-backed storage and Drizzle migrations.
+- The desktop shell is powered by Tauri.
 
-- Built as an open-access learning tool.
-- Designed to stay simple, local-friendly, and focused on study rather than monetization.
-- Surfaces saved lessons and sentence review state in one workflow.
+## Tech Stack
 
-## Local Setup
+- Next.js App Router
+- React 19
+- TypeScript
+- Drizzle ORM
+- PGlite for local persistence
+- Zod for lesson validation
+- Vitest for unit tests
+- Tauri for desktop packaging
 
-1. Start a local PostgreSQL database named `habitz`.
-2. Install dependencies with `npm install`.
-3. Run migrations with `npm run db:migrate`.
-4. Start the app with `npm run dev`.
+## Getting Started
 
-By default the app uses `postgres://postgres:postgres@localhost:5432/habitz`. Set `DATABASE_URL` only if your local database uses a different connection string.
+1. Install dependencies:
 
-## Verification
+   ```bash
+   npm install
+   ```
+
+2. Start the app:
+
+   ```bash
+   npm run dev
+   ```
+
+3. Open the app in your browser at the local dev URL printed by Next.js.
+
+The database is created automatically on first run. By default, Fydor stores local data in the app data directory for your platform.
+
+## Common Scripts
 
 ```bash
-npm run typecheck
-npm run lint
-npm run test
+npm run dev
 npm run build
+npm run lint
+npm run typecheck
+npm run test
+npm run db:generate
+npm run db:migrate
+npm run tauri:dev
+npm run tauri:build
 ```
+
+## Notes On Data
+
+- Lesson data, review state, and imported content are stored locally.
+- Migrations live in `db/migrations`.
+- The app will automatically apply pending migrations when it starts.
+
+## Project Layout
+
+- `app/` - routes and page entry points
+- `components/` - UI and feature components
+- `db/` - schema and migrations
+- `lib/` - shared logic for import, study, review, speech, and desktop helpers
+- `tests/` - unit tests
+- `docs/` - implementation notes and product docs
+
+## Further Reading
+
+- [Fydor Tutorial](docs/fydor-tutorial.md)
+- [Review System Notes](docs/review-system.md)
+- [Lesson Import System](docs/lesson-import-system.md)
+- [Codex Context Map](docs/codex-context-map.md)
