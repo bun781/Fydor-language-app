@@ -3,8 +3,7 @@ import { drizzle } from "drizzle-orm/pglite";
 import * as schema from "@/db/schema";
 import path from "path";
 import fs from "fs";
-
-const DATA_DIR = process.env.PGLITE_DATA_DIR ?? path.join(process.cwd(), ".pglite-data");
+import { resolveMigrationDir, resolvePglitePaths } from "@/lib/server/pglitePath";
 
 // Singleton — reuse across hot reloads in dev
 const g = globalThis as typeof globalThis & {
@@ -15,12 +14,13 @@ const g = globalThis as typeof globalThis & {
 type AppDb = ReturnType<typeof drizzle<typeof schema>>;
 
 function readMigrations(): Array<{ tag: string; sql: string[] }> {
-  const journalPath = path.join(process.cwd(), "db/migrations/meta/_journal.json");
+  const migrationDir = resolveMigrationDir();
+  const journalPath = path.join(migrationDir, "meta", "_journal.json");
   const journal = JSON.parse(fs.readFileSync(journalPath, "utf-8")) as {
     entries: Array<{ tag: string }>;
   };
   return journal.entries.map((entry) => {
-    const filePath = path.join(process.cwd(), "db/migrations", `${entry.tag}.sql`);
+    const filePath = path.join(migrationDir, `${entry.tag}.sql`);
     const raw = fs.readFileSync(filePath, "utf-8");
     // Split on Drizzle's statement-breakpoint marker
     const statements = raw
@@ -63,7 +63,8 @@ async function runMigrations(client: PGlite): Promise<void> {
 function initDb(): AppDb {
   if (g._drizzle) return g._drizzle;
 
-  g._pglite = new PGlite(DATA_DIR);
+  const { dataDir } = resolvePglitePaths();
+  g._pglite = new PGlite(dataDir);
   g._drizzle = drizzle(g._pglite, { schema });
   g._pgliteReady = runMigrations(g._pglite);
 

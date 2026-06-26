@@ -8,12 +8,51 @@ coverage/
 .env
 .env*.local
 !.env.example
+*.log
+logs/
+log/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.DS_Store
+
+# Local generated/imported learning data
+/cleaned-*-course.json
+/*course*.json
+/*learning*.json
+
+# Runtime databases belong in the OS app data directory, not the repo.
+test-pglite/
+.pglite-data/
+pglite/
+runtime-db/
+runtime-data/
+*.sqlite
+*.sqlite3
+*.sqlite-shm
+*.sqlite-wal
+*.db
+*.db-shm
+*.db-wal
+PG_VERSION
+postmaster.pid
+postgresql.auto.conf
+pg_wal/
 
 # Tauri build artifacts
 src-tauri/target/
 src-tauri/next-standalone/*
 !src-tauri/next-standalone/.gitkeep
 dist/
+build/
+cache/
+.cache/
+
+# Packaged app artifacts
+dist-share/
+*.dmg
+*.pkg
 
 # Old PWA generated files (from workbox builds)
 public/workbox-*.js

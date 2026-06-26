@@ -12,7 +12,7 @@
     "windows": [
       {
         "title": "Fydor",
-        "url": "/",
+        "url": "/lessons/manage",
         "width": 1000,
         "height": 800,
         "resizable": true,

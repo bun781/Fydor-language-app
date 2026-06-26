@@ -14,9 +14,9 @@ fn main() {
         .setup(|app| {
             let app_data_dir = app
                 .path()
-                .app_data_dir()
-                .expect("failed to get app data dir");
-            let conn = db::open_database(&app_data_dir).expect("failed to initialize SQLite database");
+                .app_data_dir()?;
+            let _migrated_pglite_from = db::migrate_legacy_pglite_data(&app_data_dir)?;
+            let conn = db::open_database(&app_data_dir)?;
             app.manage(db::AppState {
                 conn: std::sync::Mutex::new(conn),
             });

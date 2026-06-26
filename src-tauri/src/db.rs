@@ -1,15 +1,103 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use rusqlite::Connection;
-use std::{path::Path, sync::Mutex};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    sync::Mutex,
+};
 
 pub struct AppState {
     pub conn: Mutex<Connection>,
 }
 
+const SQLITE_FILE_NAME: &str = "fydor.sqlite3";
+
+pub fn database_path(app_data_dir: &Path) -> PathBuf {
+    app_data_dir.join(SQLITE_FILE_NAME)
+}
+
+pub fn pglite_data_dir(app_data_dir: &Path) -> PathBuf {
+    app_data_dir.join("pglite")
+}
+
+pub fn prepare_app_data_dir(app_data_dir: &Path) -> Result<()> {
+    // Runtime databases live in OS app data so the source repo stays source-only.
+    fs::create_dir_all(app_data_dir)
+        .with_context(|| format!("failed to create app data directory {}", app_data_dir.display()))
+}
+
+pub fn prepare_pglite_data_dir(app_data_dir: &Path) -> Result<PathBuf> {
+    let pglite_dir = pglite_data_dir(app_data_dir);
+    fs::create_dir_all(&pglite_dir)
+        .with_context(|| format!("failed to create PGlite data directory {}", pglite_dir.display()))?;
+    Ok(pglite_dir)
+}
+
+pub fn migrate_legacy_pglite_data(app_data_dir: &Path) -> Result<Option<PathBuf>> {
+    let pglite_dir = prepare_pglite_data_dir(app_data_dir)?;
+    if !is_empty_dir(&pglite_dir)? {
+        return Ok(None);
+    }
+
+    let Some(source) = legacy_pglite_dirs().into_iter().find(|candidate| candidate.exists()) else {
+        return Ok(None);
+    };
+
+    copy_dir_contents(&source, &pglite_dir)
+        .with_context(|| format!("failed to migrate PGlite data from {}", source.display()))?;
+    Ok(Some(source))
+}
+
+fn is_empty_dir(dir: &Path) -> Result<bool> {
+    Ok(!dir.exists() || fs::read_dir(dir)?.next().is_none())
+}
+
+fn legacy_pglite_dirs() -> Vec<PathBuf> {
+    #[cfg(debug_assertions)]
+    {
+        let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .map(Path::to_path_buf)
+            .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")));
+
+        return vec![
+            repo_root.join("test-pglite"),
+            repo_root.join(".pglite-data"),
+            repo_root.join("src-tauri").join("next-standalone").join(".pglite-data"),
+        ];
+    }
+
+    #[cfg(not(debug_assertions))]
+    {
+        Vec::new()
+    }
+}
+
+fn copy_dir_contents(source: &Path, destination: &Path) -> Result<()> {
+    fs::create_dir_all(destination)?;
+    for entry in fs::read_dir(source)? {
+        let entry = entry?;
+        let source_path = entry.path();
+        let destination_path = destination.join(entry.file_name());
+
+        if entry.file_name() == "postmaster.pid" {
+            continue;
+        }
+
+        if source_path.is_dir() {
+            copy_dir_contents(&source_path, &destination_path)?;
+        } else if !destination_path.exists() {
+            fs::copy(&source_path, &destination_path)?;
+        }
+    }
+    Ok(())
+}
+
 pub fn open_database(app_data_dir: &Path) -> Result<Connection> {
-    std::fs::create_dir_all(app_data_dir)?;
-    let db_path = app_data_dir.join("fydor.sqlite3");
-    let conn = Connection::open(db_path)?;
+    prepare_app_data_dir(app_data_dir)?;
+    let db_path = database_path(app_data_dir);
+    let conn = Connection::open(&db_path)
+        .with_context(|| format!("failed to open SQLite database {}", db_path.display()))?;
     conn.pragma_update(None, "foreign_keys", "ON")?;
     migrate(&conn)?;
     Ok(conn)

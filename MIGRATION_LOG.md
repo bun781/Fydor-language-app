@@ -38,6 +38,7 @@ Commands are organized under `src-tauri/src/lessons.rs`, `src-tauri/src/review.r
 
 - Runtime data moved to SQLite on the Tauri side.
 - The database file is created in Tauri's app data directory as `fydor.sqlite3`.
+- Legacy PGlite data is copied into the app-data `pglite/` directory when that directory is empty.
 - Schema initialization uses a `schema_migrations` table with version `1`.
 - Lesson import validation and duplicate/link behavior were translated from the previous TypeScript route flow.
 
@@ -72,5 +73,5 @@ Dev mode still uses the configured Next dev server at `http://127.0.0.1:3001`, w
 ## Remaining Limitations
 
 - The old TypeScript PGlite/Drizzle modules remain for existing unit-test coverage and historical reference, but the desktop runtime no longer imports them.
-- There is no data migration from existing PGlite data into the new SQLite app-data database yet.
+- There is no row-level conversion from existing PGlite data into the active SQLite database yet.
 - `save_user_settings` stores settings, but no current UI flow calls it.

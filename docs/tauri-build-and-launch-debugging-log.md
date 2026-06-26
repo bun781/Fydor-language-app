@@ -149,8 +149,10 @@ In `src-tauri/src/main.rs`:
 In `lib/server/db.ts`:
 
 ```ts
-const DATA_DIR = process.env.PGLITE_DATA_DIR ?? path.join(process.cwd(), ".pglite-data");
+const { dataDir } = resolvePglitePaths();
 ```
+
+`resolvePglitePaths()` stores PGlite under the OS app data directory and only copies legacy repo-local data when the app-data folder is empty.
 
 ### 6. Finder Launch Could Fail to Find Node
 
