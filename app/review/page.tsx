@@ -95,7 +95,8 @@ function filterSentencesByLesson(
   sentences: ReviewSentence[],
   selectedLessonIds: string[]
 ) {
-  if (!selectedLessonIds.length) return sentences;
+  if (!sentences.some((sentence) => sentence.lessonId)) return sentences;
+  if (!selectedLessonIds.length) return [];
   const selected = new Set(selectedLessonIds);
   return sentences.filter((sentence) => sentence.lessonId && selected.has(sentence.lessonId));
 }

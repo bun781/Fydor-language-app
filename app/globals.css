@@ -76,29 +76,22 @@ button, input, textarea, select {
   font-size: 12px;
   font-weight: 400;
   gap: 9px;
-  left: 10px;
+  left: 12px;
   letter-spacing: 0.18em;
   position: fixed;
-  text-transform: uppercase;
-  top: 18px;
+  text-decoration: none;
+  top: 14px;
   white-space: nowrap;
   z-index: 80;
 }
 
 .app-brand-mark {
-  align-items: center;
-  background: var(--ink);
-  border-radius: 6px;
-  color: var(--surface);
-  display: inline-flex;
+  border-radius: 8px;
+  display: block;
   flex: 0 0 auto;
-  font-size: 18px;
-  font-weight: 700;
-  height: 34px;
-  justify-content: center;
-  letter-spacing: 0;
-  line-height: 1;
-  width: 34px;
+  height: 40px;
+  object-fit: contain;
+  width: 40px;
 }
 
 .app-brand-name {
@@ -3009,6 +3002,11 @@ textarea.input {
     height: 100vh;
     padding: 14px 7px;
     width: 56px;
+  }
+
+  .app-brand {
+    left: 8px;
+    top: 12px;
   }
 
   .sidebar:hover,

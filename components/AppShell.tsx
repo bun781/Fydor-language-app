@@ -12,9 +12,11 @@ import {
   RectangleEllipsis
 } from "lucide-react";
 import type { Route } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import fyLogo from "@/Fy.png";
 import { GuidedTour, replayGuidedTour } from "@/components/system/GuidedTour";
 
 const navSections: Array<{
@@ -53,7 +55,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className={`app-shell${sidebarPinned ? " sidebar-pinned" : ""}`}>
       <Link href="/" className="app-brand" aria-label="Fydor home">
-        <span className="app-brand-mark" aria-hidden="true">F</span>
+        <Image className="app-brand-mark" src={fyLogo} alt="" aria-hidden="true" priority />
         <span className="app-brand-name">Fydor</span>
       </Link>
       <aside className="sidebar" aria-label="App navigation">
