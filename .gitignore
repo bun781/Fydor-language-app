@@ -17,9 +17,6 @@ yarn-error.log*
 pnpm-debug.log*
 .DS_Store
 
-# Standalone website repository
-fydor-website/
-
 # Local generated/imported learning data
 /cleaned-*-course.json
 /*course*.json
