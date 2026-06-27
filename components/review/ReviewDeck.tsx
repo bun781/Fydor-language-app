@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { CalendarClock, CheckCircle2, Layers3, RotateCcw, Sparkles } from "lucide-react";
+import { CalendarClock, CheckCircle2, HelpCircle, Layers3, RotateCcw, Sparkles } from "lucide-react";
 import { readSessionProgress, writeSessionProgress } from "@/components/imported-content/sessionProgress";
+import { createTourScope, replayGuidedTour } from "@/components/system/GuidedTour";
 import type { StudyLesson, StudyLessonMeta } from "@/lib/imported-content/types";
 import { isSpaceKey, shouldIgnoreReviewHotkey, shouldRevealOnSpaceRelease } from "@/lib/review/keyboard";
 import { buildInterleavedReviewQueue, getReviewShortcutAction } from "@/lib/review/queue";
@@ -160,12 +161,21 @@ export function ReviewDeck({
                 totalSentenceCount={totalSentenceCount}
                 onChange={onSelectedLessonIdsChange}
               />
-              <ReviewMenuTabs active={menuView} onChange={setMenuView} />
+              <ReviewMenuTabs
+                active={menuView}
+                onChange={setMenuView}
+                onHelp={() => replayGuidedTour(createTourScope("/review", menuView))}
+              />
               <p className="muted">Select at least one lesson to build a review queue.</p>
             </div>
             <div className="review-start-panel-secondary">
               {menuView === "statistics" && onResetProgress ? (
-                <ReviewStatsBrowser lessons={fullLessons} lessonTitleById={lessonTitleById} sentences={sentences} onReset={handleReset} />
+                <ReviewStatsBrowser
+                  lessons={fullLessons}
+                  lessonTitleById={lessonTitleById}
+                  sentences={sentences}
+                  onReset={handleReset}
+                />
               ) : null}
             </div>
           </section>
@@ -195,18 +205,22 @@ export function ReviewDeck({
                 totalSentenceCount={totalSentenceCount}
                 onChange={onSelectedLessonIdsChange}
               />
-              <ReviewMenuTabs active={menuView} onChange={setMenuView} />
+              <ReviewMenuTabs
+                active={menuView}
+                onChange={setMenuView}
+                onHelp={() => replayGuidedTour(createTourScope("/review", menuView))}
+              />
               {menuView === "start" ? (
                 <div className="review-start-actions">
-                  <button className="button" type="button" onClick={() => startReview("mixed")}>
+                  <button className="button" type="button" data-tour="review-start-mixed" onClick={() => startReview("mixed")}>
                     Start Mixed Review
                   </button>
                   <div className="review-filter-row" aria-label="Review filters">
-                    <button className="button secondary" type="button" onClick={() => startReview("due")} disabled={queueDashboard.due === 0}>Due only</button>
-                    <button className="button secondary" type="button" onClick={() => startReview("new")} disabled={queueDashboard.new === 0}>New only</button>
+                    <button className="button secondary" type="button" data-tour="review-start-due" onClick={() => startReview("due")} disabled={queueDashboard.due === 0}>Due only</button>
+                    <button className="button secondary" type="button" data-tour="review-start-new" onClick={() => startReview("new")} disabled={queueDashboard.new === 0}>New only</button>
                     <button className="button secondary" type="button" onClick={() => startReview("all")}>All selected</button>
                     {onResetProgress && selectedLessonIds.length ? (
-                      <button className="button secondary" type="button" onClick={() => setConfirmResetLesson(true)}>
+                      <button className="button secondary" type="button" data-tour="review-reset-progress" onClick={() => setConfirmResetLesson(true)}>
                         <RotateCcw size={16} /> Reset Progress
                       </button>
                     ) : null}
@@ -266,7 +280,7 @@ export function ReviewDeck({
 
   return (
     <div className="review-shell">
-      <header className="review-header">
+      <header className="review-header" data-tour="review-queue-dashboard">
         <div>
           <h1>Review</h1>
           <p className="muted">Recall before reveal. Space reveals; grade only after the answer is visible.</p>
@@ -278,7 +292,7 @@ export function ReviewDeck({
           <span className="pill review-state-remembered">Remembered {summary.remembered}</span>
         </div>
       </header>
-      <button className="button secondary review-back-button" type="button" onClick={handleBackToMenu}>
+      <button className="button secondary review-back-button" type="button" data-tour="review-back-button" onClick={handleBackToMenu}>
         Back
       </button>
 
@@ -425,18 +439,23 @@ function ReviewSessionComplete({
 
 function ReviewMenuTabs({
   active,
-  onChange
+  onChange,
+  onHelp
 }: {
   active: "start" | "statistics";
   onChange: (view: "start" | "statistics") => void;
+  onHelp: () => void;
 }) {
   return (
-    <div className="mode-tabs review-menu-tabs" role="tablist" aria-label="Review menu">
-      <button type="button" className={active === "start" ? "active" : ""} onClick={() => onChange("start")}>
+    <div className="mode-tabs review-menu-tabs" role="tablist" aria-label="Review menu" data-tour="review-start-tabs">
+      <button type="button" className={active === "start" ? "active" : ""} data-tour="review-start-tab" onClick={() => onChange("start")}>
         Start
       </button>
-      <button type="button" className={active === "statistics" ? "active" : ""} onClick={() => onChange("statistics")}>
+      <button type="button" className={active === "statistics" ? "active" : ""} data-tour="review-statistics-tab" onClick={() => onChange("statistics")}>
         Statistics
+      </button>
+      <button type="button" className="icon-button" aria-label="Open review guide" onClick={onHelp}>
+        <HelpCircle size={17} />
       </button>
     </div>
   );
@@ -454,7 +473,7 @@ function StatBlock({ label, value, detail }: { label: string; value: number | st
 
 function ReviewStartHeader({ summary }: { summary: ReturnType<typeof useReviewDeck>["summary"] }) {
   return (
-    <header className="review-header">
+    <header className="review-header" data-tour="review-start-header">
       <div>
         <h1>Review</h1>
         <p className="muted">Build a mixed queue from due, new, and older mastered sentences.</p>
@@ -484,7 +503,7 @@ function ReviewQueueDashboard({ dashboard }: { dashboard: ReviewQueueDashboardDa
     : `Mixed will start ${dashboard.mixedCount} of ${dashboard.allCount} selected sentences.`;
 
   return (
-    <section className="review-queue-dashboard" aria-label="Review queue dashboard">
+    <section className="review-queue-dashboard" aria-label="Review queue dashboard" data-tour="review-queue-dashboard">
       <div className="review-queue-dashboard-top">
         <div>
           <h2>Queue dashboard</h2>

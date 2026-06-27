@@ -29,7 +29,7 @@ export function ReviewControls({
   const shuffleLockedLabel = "Random order locked on";
 
   return (
-    <div className="review-controls">
+    <div className="review-controls" data-tour="review-controls">
       <button
         type="button"
         className={`shuffle-toggle${shuffleEnabled ? " shuffle-toggle--on" : ""}`}

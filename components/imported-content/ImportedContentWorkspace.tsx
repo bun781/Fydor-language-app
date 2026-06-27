@@ -91,7 +91,7 @@ export function ImportedContentWorkspace({ mode = "lesson" }: Props) {
 
   return (
     <div className="stack">
-      <div className="topbar">
+      <div className="topbar" data-tour="study-mode-title">
         <div>
           <h1>{content.title}</h1>
           <p className="muted">{content.description}</p>
@@ -99,7 +99,7 @@ export function ImportedContentWorkspace({ mode = "lesson" }: Props) {
       </div>
 
       {mode === "lesson" ? (
-        <div className="lesson-selector-bar">
+        <div className="lesson-selector-bar" data-tour="study-selector-bar">
           {browser.languageGroups.length > 1 ? (
           <select
             className="input selector-compact"

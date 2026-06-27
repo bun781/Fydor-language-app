@@ -5,6 +5,7 @@ import {
   Brain,
   Boxes,
   ClipboardList,
+  HelpCircle,
   Layers3,
   Library,
   Menu,
@@ -107,7 +108,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="sidebar-note" aria-label="Project note">
           <span className="pill pill-accent">Free for the people</span>
           <p>Open access by design. No paywall, no subscriptions.</p>
-          <button type="button" className="button secondary sidebar-replay" onClick={replayGuidedTour}>
+          <button type="button" className="button secondary sidebar-replay" aria-label="Open page guide" onClick={() => replayGuidedTour()}>
+            <HelpCircle size={18} />
             Replay tutorial
           </button>
         </div>

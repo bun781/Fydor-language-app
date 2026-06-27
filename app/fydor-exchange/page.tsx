@@ -396,7 +396,7 @@ export default function FydorExchangePage() {
       ) : null}
 
       <div className="exchange-grid">
-        <section className="card stack exchange-section">
+        <section className="card stack exchange-section" data-tour="exchange-install">
           <div className="exchange-section-heading">
             <FileUp size={20} />
             <div>
@@ -466,7 +466,7 @@ export default function FydorExchangePage() {
           ) : null}
         </section>
 
-        <section className="card stack exchange-section">
+        <section className="card stack exchange-section" data-tour="exchange-share">
           <div className="exchange-section-heading">
             <Download size={20} />
             <div>
@@ -581,7 +581,7 @@ export default function FydorExchangePage() {
           ) : null}
         </section>
 
-        <section className="card stack exchange-section exchange-my-packs">
+        <section className="card stack exchange-section exchange-my-packs" data-tour="exchange-library">
           <div className="exchange-section-heading">
             <Archive size={20} />
             <div>

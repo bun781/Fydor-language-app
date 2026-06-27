@@ -93,7 +93,7 @@ export function ReviewStatsBrowser({ lessons, lessonTitleById, sentences, onRese
   }
 
   return (
-    <section className="review-stats-browser review-stats-dashboard">
+    <section className="review-stats-browser review-stats-dashboard" data-tour="review-stats-dashboard">
       <div className="review-queue-dashboard-top review-stats-dashboard-top">
         <div>
           <h2>Statistics dashboard</h2>
@@ -176,7 +176,7 @@ export function ReviewStatsBrowser({ lessons, lessonTitleById, sentences, onRese
         })}
       </div>
 
-      <div className="review-stat-list card">
+      <div className="review-stat-list card" data-tour="review-stats-list">
         <div className="review-stat-list-top">
           <div>
             <h2>{active.label}</h2>

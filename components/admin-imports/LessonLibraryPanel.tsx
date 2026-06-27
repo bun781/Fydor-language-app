@@ -34,14 +34,14 @@ export function LessonLibraryPanel({
           <h2>Lessons</h2>
           <p className="muted">Pick a lesson to export, delete, or open it in the editor for deeper changes.</p>
         </div>
-        <button className="button secondary" type="button" onClick={onNewLesson}>
+        <button className="button secondary" type="button" data-tour="lesson-library-new" onClick={onNewLesson}>
           <Plus size={18} />
           New lesson
         </button>
       </div>
 
       <div className="lesson-library-grid">
-        <section className="card stack lesson-library-list">
+        <section className="card stack lesson-library-list" data-tour="lesson-library-list">
           <div className="row">
             <h3>Saved lessons</h3>
             <span className="pill">{lessons.length}</span>
@@ -88,7 +88,7 @@ export function LessonLibraryPanel({
               {selectedLesson.level ? <p className="muted">Level: {selectedLesson.level}</p> : null}
               {selectedLesson.tags.length ? <p className="muted">Tags: {selectedLesson.tags.join(", ")}</p> : null}
 
-              <div className="lesson-library-actions">
+              <div className="lesson-library-actions" data-tour="lesson-library-actions">
                 <button className="button" type="button" onClick={() => onEditLesson(selectedLesson.id)}>
                   <BookOpen size={18} />
                   Open in editor

@@ -6,12 +6,12 @@ import { AppShell } from "@/components/AppShell";
 export default function LearningSciencePage() {
   return (
     <AppShell>
-      <div className="topbar">
+      <div className="topbar" data-tour="learning-science-page">
         <div>
           <h1>Learning Science</h1>
           <p className="muted">The study principles behind Fydor review.</p>
         </div>
-        <Link className="button" href="/review">Start Review</Link>
+        <Link className="button" href="/review" data-tour="learning-science-start">Start Review</Link>
       </div>
 
       <section className="learning-science learning-science-page">

@@ -4,6 +4,7 @@ import {
   BookOpen,
   Check,
   FileJson,
+  HelpCircle,
   Highlighter,
   Library,
   Plus,
@@ -19,6 +20,7 @@ import { LanguageField } from "@/components/admin-imports/LanguageField";
 import { ImportHelpPanel } from "@/components/language/ImportHelpPanel";
 import { ImportPreview } from "@/components/language/ImportPreview";
 import { Tooltip } from "@/components/ui/Tooltip";
+import { createTourScope, replayGuidedTour } from "@/components/system/GuidedTour";
 import { readSessionProgress, writeSessionProgress } from "@/components/imported-content/sessionProgress";
 import {
   deleteLesson as deleteLessonApi,
@@ -564,11 +566,21 @@ function slugifyLessonTitle(title: string) {
                 <FileJson size={17} />
                 JSON
               </button>
-              <button className={mode === "lessons" ? "active" : ""} type="button" onClick={() => setMode("lessons")}>
+              <button className={mode === "lessons" ? "active" : ""} type="button" data-tour="lesson-library-tab" onClick={() => setMode("lessons")}>
                 <Library size={17} />
                 Lessons
               </button>
             </div>
+            <Tooltip content="Open the guide for this tab.">
+              <button
+                className="icon-button"
+                type="button"
+                aria-label="Open tab guide"
+                onClick={() => replayGuidedTour(createTourScope("/lessons/manage", mode))}
+              >
+                <HelpCircle size={17} />
+              </button>
+            </Tooltip>
           </div>
         </div>
 
