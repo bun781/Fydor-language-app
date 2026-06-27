@@ -45,6 +45,7 @@ export function ReviewStatsBrowser({ lessons, lessonTitleById, sentences, onRese
   const [confirm, setConfirm] = useState<{ title: string; description: string; scope: ReviewResetScope } | null>(null);
   const stats = useMemo(() => buildReviewStats(sentences, lessons, lessonTitleById), [lessonTitleById, lessons, sentences]);
   const active = stats[activeKey];
+  const overviewTotals = useMemo(() => summarizeOverviewTotals(stats), [stats]);
   const overviewCharts = useMemo(() => [
     {
       label: "Sentences",
@@ -83,13 +84,48 @@ export function ReviewStatsBrowser({ lessons, lessonTitleById, sentences, onRese
   }
 
   return (
-    <section className="review-stats-browser">
-      <div className="review-queue-dashboard-top">
+    <section className="review-stats-browser review-stats-dashboard">
+      <div className="review-queue-dashboard-top review-stats-dashboard-top">
         <div>
           <h2>Statistics dashboard</h2>
           <p className="muted">{active.detail}</p>
         </div>
-        <span className="pill">{filtered.length} items</span>
+        <div className="review-stats-summary-chips">
+          <span className="pill">{filtered.length} items</span>
+          <span className="pill pill-accent">{overviewTotals.remembered} remembered</span>
+          <span className="pill">{overviewTotals.needsReview} need review</span>
+        </div>
+      </div>
+
+      <div className="review-stats-hero card">
+        <StatPieCard
+          label="Overall review balance"
+          remembered={overviewTotals.remembered}
+          needsReview={overviewTotals.needsReview}
+          variant="hero"
+          detail="Use the dashboard to keep momentum moving toward more remembered cards and fewer overdue items."
+        />
+        <div className="review-stats-hero-copy">
+          <span className="page-state-eyebrow">Keep learning</span>
+          <h3>{overviewTotals.remembered} remembered, {overviewTotals.needsReview} still need review</h3>
+          <p className="muted">
+            The pie charts below break the deck into smaller groups so you can see where the next win is.
+          </p>
+          <div className="review-stats-hero-metrics">
+            <div>
+              <strong>{stats["remembered-sentences"].items.length}</strong>
+              <span>sentences remembered</span>
+            </div>
+            <div>
+              <strong>{stats["needs-sentences"].items.length}</strong>
+              <span>sentences due</span>
+            </div>
+            <div>
+              <strong>{overviewCharts.length}</strong>
+              <span>categories</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="review-stats-overview">
@@ -210,20 +246,74 @@ export function ReviewStatsBrowser({ lessons, lessonTitleById, sentences, onRese
 function StatPieCard({
   label,
   remembered,
-  needsReview
+  needsReview,
+  detail,
+  variant = "default"
 }: {
   label: string;
   remembered: number;
   needsReview: number;
+  detail?: string;
+  variant?: "default" | "hero";
 }) {
   const total = remembered + needsReview;
   const rememberedShare = total > 0 ? remembered / total : 0;
   const needsShare = total > 0 ? needsReview / total : 0;
-  const radius = 24;
-  const size = 72;
+  const radius = variant === "hero" ? 30 : 24;
+  const size = variant === "hero" ? 92 : 72;
   const circumference = 2 * Math.PI * radius;
   const rememberedLength = circumference * rememberedShare;
   const needsLength = circumference * needsShare;
+  const rememberedPercent = total > 0 ? Math.round(rememberedShare * 100) : 0;
+
+  if (variant === "hero") {
+    return (
+      <article className="review-stat-pie review-stat-pie-hero">
+        <div className="review-stat-pie-chart" aria-hidden="true">
+          <svg viewBox={`0 0 ${size} ${size}`} role="presentation">
+            <circle
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              className="review-stat-pie-track"
+              transform={`rotate(-90 ${size / 2} ${size / 2})`}
+            />
+            {total > 0 ? (
+              <>
+                <circle
+                  cx={size / 2}
+                  cy={size / 2}
+                  r={radius}
+                  className="review-stat-pie-remembered"
+                  strokeDasharray={`${rememberedLength} ${circumference - rememberedLength}`}
+                  transform={`rotate(-90 ${size / 2} ${size / 2})`}
+                />
+                <circle
+                  cx={size / 2}
+                  cy={size / 2}
+                  r={radius}
+                  className="review-stat-pie-needs"
+                  strokeDasharray={`${needsLength} ${circumference - needsLength}`}
+                  strokeDashoffset={-rememberedLength}
+                  transform={`rotate(-90 ${size / 2} ${size / 2})`}
+                />
+              </>
+            ) : null}
+          </svg>
+          <strong>{total}</strong>
+        </div>
+        <div className="review-stat-pie-copy">
+          <span>{label}</span>
+          <strong>{remembered} remembered · {needsReview} need review</strong>
+          {detail ? <small>{detail}</small> : null}
+          <div className="review-stat-pie-meta">
+            <span className="pill pill-accent">{rememberedPercent}% remembered</span>
+            <span className="pill">{total} total items</span>
+          </div>
+        </div>
+      </article>
+    );
+  }
 
   return (
     <article className="review-stat-pie card">
@@ -362,6 +452,18 @@ function compareStatItems(a: StatItem, b: StatItem, sortKey: SortKey, direction:
   const left = sortKey === "lesson" ? a.lessonTitle : sortKey === "status" ? a.status : a.text;
   const right = sortKey === "lesson" ? b.lessonTitle : sortKey === "status" ? b.status : b.text;
   return left.localeCompare(right) * multiplier || a.text.localeCompare(b.text);
+}
+
+function summarizeOverviewTotals(stats: Record<StatKey, { items: StatItem[] }>) {
+  return Object.keys(stats).reduce((totals, key) => {
+    const stat = stats[key as StatKey];
+    if (key.startsWith("remembered-")) {
+      totals.remembered += stat.items.length;
+    } else if (key.startsWith("needs-")) {
+      totals.needsReview += stat.items.length;
+    }
+    return totals;
+  }, { remembered: 0, needsReview: 0 });
 }
 
 function getResetScope(item: StatItem): ReviewResetScope {
