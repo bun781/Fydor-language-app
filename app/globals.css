@@ -2474,7 +2474,22 @@ textarea.input {
   gap: 8px;
 }
 
+.lesson-library-actions .lesson-delete-button,
 .lesson-delete-button {
+  background: #b91c1c;
+  border-color: #991b1b;
+  color: #ffffff;
+}
+
+.lesson-library-actions .lesson-delete-button:hover,
+.lesson-delete-button:hover {
+  background: #991b1b;
+  border-color: #7f1d1d;
+  color: #ffffff;
+  opacity: 1;
+}
+
+.lesson-delete-dialog .button.danger {
   background: #b91c1c;
   border-color: #991b1b;
   color: #ffffff;

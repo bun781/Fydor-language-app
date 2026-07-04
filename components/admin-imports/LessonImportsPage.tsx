@@ -513,11 +513,11 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
     if (!pendingDeleteLessonId) return;
     const lessonId = pendingDeleteLessonId;
     const lesson = lessonOptions.find((item) => item.id === lessonId);
+    const previousLessons = lessonOptions;
 
     try {
       setDeletingLessonId(lessonId);
       setErrors([]);
-      await deleteLessonApi(lessonId);
       setLessonOptions((items) => items.filter((item) => item.id !== lessonId));
       setPendingDeleteLessonId(null);
       if (editorLessonId === lessonId) {
@@ -526,9 +526,14 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
       if (selectedLibraryLessonId === lessonId) {
         setSelectedLibraryLessonId(null);
       }
+      await deleteLessonApi(lessonId);
       setStatus(`${lesson?.title ?? "Lesson"} deleted.`);
       await refreshLessons();
     } catch (error) {
+      setLessonOptions(previousLessons);
+      if (selectedLibraryLessonId === lessonId) {
+        setSelectedLibraryLessonId(lessonId);
+      }
       setErrors([error instanceof Error ? error.message : "Unable to delete lesson."]);
     } finally {
       setDeletingLessonId(null);
@@ -1008,7 +1013,7 @@ function slugifyLessonTitle(title: string) {
       {pendingDeleteLessonId ? (
         <div className="confirm-backdrop" role="presentation">
           <section className="confirm-dialog lesson-delete-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-lesson-title">
-            <h2 id="delete-lesson-title">Delete Lesson?</h2>
+            <h2 id="delete-lesson-title">Delete lesson?</h2>
             <p>Do you want to delete this lesson?</p>
             <div className="row">
               <button
