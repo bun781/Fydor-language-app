@@ -14,15 +14,33 @@ export async function getLesson(lessonId: string): Promise<StudyLesson | null> {
   return invoke("get_lesson", { lessonId });
 }
 
+// In-memory cache for full lesson bodies. Lesson content only changes through the
+// mutation commands below, which clear it — review grading never alters lesson content.
+const lessonCache = new Map<string, StudyLesson>();
+
+export async function getLessonCached(lessonId: string): Promise<StudyLesson | null> {
+  const cached = lessonCache.get(lessonId);
+  if (cached) return cached;
+  const lesson = await getLesson(lessonId);
+  if (lesson) lessonCache.set(lessonId, lesson);
+  return lesson;
+}
+
+function invalidateLessonCache() {
+  lessonCache.clear();
+}
+
 export async function exportLesson(lessonId: string): Promise<LessonImportInput> {
   return invoke("export_lesson", { lessonId });
 }
 
 export async function updateLesson(lessonId: string, source: string): Promise<LessonImportSummary> {
+  invalidateLessonCache();
   return invoke("update_lesson", { lessonId, source });
 }
 
 export async function deleteLesson(lessonId: string): Promise<void> {
+  invalidateLessonCache();
   return invoke("delete_lesson", { lessonId });
 }
 
@@ -31,6 +49,7 @@ export async function previewLessonImport(source: string, lessonId?: string): Pr
 }
 
 export async function importLesson(source: string, lessonId?: string): Promise<LessonImportSummary> {
+  invalidateLessonCache();
   return invoke("import_lesson", { source, ...(lessonId ? { lessonId } : {}) });
 }
 

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AudioButton } from "@/components/ui/AudioButton";
-import { getLesson } from "@/lib/desktopApi";
+import { getLessonCached } from "@/lib/desktopApi";
 import type { QuizQuestion, StudyLesson, StudyLessonMeta } from "@/lib/imported-content/types";
 import { buildQuizDeck } from "@/lib/imported-content/study-utils";
 import { clearSessionProgress, readSessionProgress, writeSessionProgress } from "./sessionProgress";
@@ -103,7 +103,7 @@ export function MultipleChoiceMode({ lesson, lessons = [] }: Props) {
       setLoadingLessons(true);
       setLoadError(null);
       try {
-        const loaded = await Promise.all(ids.map((id) => lesson?.id === id ? lesson : getLesson(id)));
+        const loaded = await Promise.all(ids.map((id) => lesson?.id === id ? lesson : getLessonCached(id)));
         if (!cancelled) setLoadedLessons(loaded.filter((item): item is StudyLesson => Boolean(item)));
       } catch (err) {
         if (!cancelled) setLoadError(err instanceof Error ? err.message : "Unable to load selected lessons.");

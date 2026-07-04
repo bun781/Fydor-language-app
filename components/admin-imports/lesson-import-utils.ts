@@ -170,6 +170,7 @@ export interface LessonManagerProgress {
   targetLessonId: string;
   editorLessonId: string | null;
   selectedLibraryLessonId: string | null;
+  baselineSource: string;
 }
 
 export function validateLessonManagerProgress(value: unknown): LessonManagerProgress | null {
@@ -195,7 +196,10 @@ export function validateLessonManagerProgress(value: unknown): LessonManagerProg
     appendSource: item.appendSource,
     targetLessonId: item.targetLessonId,
     editorLessonId: item.editorLessonId,
-    selectedLibraryLessonId: item.selectedLibraryLessonId
+    selectedLibraryLessonId: item.selectedLibraryLessonId,
+    // Older saved progress predates baselineSource; treating the restored draft as
+    // unsaved (baseline = pristine lesson) errs on the side of asking before discarding.
+    baselineSource: typeof item.baselineSource === "string" ? item.baselineSource : stringifyLesson(initialLesson)
   };
 }
 

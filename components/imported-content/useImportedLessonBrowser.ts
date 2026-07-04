@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { getLesson } from "@/lib/desktopApi";
+import { getLessonCached } from "@/lib/desktopApi";
 import { groupLessonsByLanguage } from "@/lib/language/importResources";
 import type { StudyLesson, StudyLessonMeta } from "@/lib/imported-content/types";
 import type { ChangeEvent } from "react";
@@ -71,7 +71,7 @@ export function useImportedLessonBrowser(initialLesson: StudyLesson | null, allL
     setLoadingLesson(true);
     setError(null);
 
-    getLesson(selectedLessonId)
+    getLessonCached(selectedLessonId)
       .then((next) => {
         if (cancelled) return;
         if (next) {

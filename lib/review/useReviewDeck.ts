@@ -74,8 +74,6 @@ export function useReviewDeck(initialSentences: ReviewSentence[]) {
   const currentSentence = currentId ? state.sentences.find((sentence) => sentence.id === currentId) ?? null : null;
   const summary = summarizeReviewSentences(state.sentences);
 
-  const toggleShuffle = useCallback(() => {}, []);
-
   const startReview = useCallback((filter: ReviewQueueFilter = "mixed") => {
     setState((prev) => {
       const startedAt = new Date();
@@ -217,9 +215,7 @@ export function useReviewDeck(initialSentences: ReviewSentence[]) {
     startFocusedReview,
     returnToMenu,
     completedSession: state.completedSession,
-    shuffleEnabled: true,
-    reviewCurrent,
-    toggleShuffle
+    reviewCurrent
   };
 }
 

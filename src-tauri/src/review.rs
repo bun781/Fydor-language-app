@@ -43,7 +43,7 @@ pub fn update_review_item(
     let grade = normalize_grade(&decision)
         .ok_or_else(|| "Missing sentenceId or valid review decision.".to_string())?;
 
-    let conn = state.conn.lock().map_err(|err| err.to_string())?;
+    let mut conn = state.conn.lock().map_err(|err| err.to_string())?;
     ensure_review_items(&conn).map_err(|err| err.to_string())?;
     let current = get_sentence(&conn, &sentence_id)
         .map_err(|err| err.to_string())?
@@ -69,7 +69,8 @@ pub fn update_review_item(
     let stability = update_stability(current.stability, &grade);
     let recall_mode = next_recall_mode(&current.recall_mode, &grade);
 
-    conn.execute(
+    let tx = conn.transaction().map_err(|err| err.to_string())?;
+    tx.execute(
         r#"
         INSERT INTO review_items
         (id, sentence_id, lesson_id, import_id, due_at, last_reviewed_at, repetitions, lapses, difficulty, stability, recall_mode, created_at, updated_at)
@@ -101,11 +102,12 @@ pub fn update_review_item(
     )
     .map_err(|err| err.to_string())?;
 
-    conn.execute(
+    tx.execute(
         "UPDATE sentences SET review_state = ?1, review_streak = ?2, reviewed_at = ?3, updated_at = ?3 WHERE id = ?4",
         params![review_state, review_streak, reviewed_at, &sentence_id],
     )
     .map_err(|err| err.to_string())?;
+    tx.commit().map_err(|err| err.to_string())?;
 
     get_sentence(&conn, &sentence_id)
         .map_err(|err| err.to_string())?

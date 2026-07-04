@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AudioButton } from "@/components/ui/AudioButton";
-import { getLesson } from "@/lib/desktopApi";
+import { getLessonCached } from "@/lib/desktopApi";
 import type { StudyLesson, StudyLessonMeta, StudySentence } from "@/lib/imported-content/types";
 import { buildClozeCandidates, type ClozeCandidate } from "@/lib/imported-content/study-utils";
 import { answersMatch, normalizePracticeAnswer } from "@/lib/imported-content/text-spans";
@@ -115,7 +115,7 @@ export function FillBlankMode({ lesson, lessons = [] }: Props) {
       setLoadingLessons(true);
       setLoadError(null);
       try {
-        const loaded = await Promise.all(ids.map((id) => lesson?.id === id ? lesson : getLesson(id)));
+        const loaded = await Promise.all(ids.map((id) => lesson?.id === id ? lesson : getLessonCached(id)));
         if (!cancelled) setLoadedLessons(loaded.filter((item): item is StudyLesson => Boolean(item)));
       } catch (err) {
         if (!cancelled) setLoadError(err instanceof Error ? err.message : "Unable to load selected lessons.");

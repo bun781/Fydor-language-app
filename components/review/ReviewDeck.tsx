@@ -62,9 +62,7 @@ export function ReviewDeck({
     startReview,
     startFocusedReview,
     returnToMenu,
-    completedSession,
-    shuffleEnabled,
-    toggleShuffle
+    completedSession
   } = useReviewDeck(sentences);
   const [revealed, setRevealed] = useState(false);
   const [menuView, setMenuView] = useState<"start" | "statistics">("start");
@@ -333,14 +331,11 @@ export function ReviewDeck({
 
       <ReviewControls
         disabled={saving}
-        shuffleEnabled={shuffleEnabled}
-        shuffleDisabled
         visible={revealed}
         onForgot={() => reviewCurrent("forgot")}
         onHard={() => reviewCurrent("hard")}
         onRemembered={() => reviewCurrent("remembered")}
         onEasy={() => reviewCurrent("easy")}
-        onToggleShuffle={toggleShuffle}
       />
     </div>
   );

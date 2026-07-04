@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { ReviewDeck } from "@/components/review/ReviewDeck";
 import { PageState } from "@/components/system/PageState";
-import { getLesson, getLessons, getReviewQueue, resetReviewProgress } from "@/lib/desktopApi";
+import { getLessonCached, getLessons, getReviewQueue, resetReviewProgress } from "@/lib/desktopApi";
 import { readSessionProgress, writeSessionProgress } from "@/components/imported-content/sessionProgress";
 import type { StudyLesson, StudyLessonMeta } from "@/lib/imported-content/types";
 import type { ReviewResetScope, ReviewSentence } from "@/lib/review/types";
@@ -46,7 +46,7 @@ export default function ReviewPage() {
         setSelectedLessonIds(restoredLessonIds.length ? restoredLessonIds : availableLessonIds);
 
         // Full lesson bodies are only needed by the stats browser; load them without blocking first paint.
-        void Promise.all(lessonList.map((item) => getLesson(item.id)))
+        void Promise.all(lessonList.map((item) => getLessonCached(item.id)))
           .then((loadedLessons) => {
             if (!cancelled) setFullLessons(loadedLessons.filter((item): item is StudyLesson => Boolean(item)));
           })

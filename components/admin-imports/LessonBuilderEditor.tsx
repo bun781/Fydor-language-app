@@ -126,7 +126,7 @@ export function LessonBuilderEditor({
               {lesson.sentences.map((sentence, index) => (
                 <button
                   className={index === activeSentenceIndex ? "active" : ""}
-                  key={`${index}-${sentence.text}`}
+                  key={index}
                   type="button"
                   onClick={() => onSelectSentence(index)}
                 >

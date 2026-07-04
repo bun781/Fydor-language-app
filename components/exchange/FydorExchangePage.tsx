@@ -301,6 +301,10 @@ export function FydorExchangePage() {
 
       setInstallSummary(summary);
       setStatus("Pack install complete.");
+      // Reset the install form so a later visit doesn't look like a pending install.
+      setPackSource("");
+      setPackPreview(null);
+      setSelectedInstallLessons(new Set());
     } catch (error) {
       setErrors([error instanceof Error ? error.message : "Unable to install this pack."]);
     } finally {

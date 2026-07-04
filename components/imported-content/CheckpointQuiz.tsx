@@ -97,7 +97,11 @@ export function CheckpointQuiz({ sentences, allSentences, onComplete }: Props) {
 
       {submitted ? (
         <button type="button" className="button" onClick={onComplete}>Continue →</button>
-      ) : null}
+      ) : (
+        <button type="button" className="button secondary quiz-skip-button" onClick={onComplete}>
+          Skip quiz →
+        </button>
+      )}
     </div>
   );
 }

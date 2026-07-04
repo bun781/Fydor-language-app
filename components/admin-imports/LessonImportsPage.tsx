@@ -90,6 +90,11 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
   const [selectedLibraryLessonId, setSelectedLibraryLessonId] = useState<string | null>(savedProgress?.selectedLibraryLessonId ?? null);
   const [pendingDeleteLessonId, setPendingDeleteLessonId] = useState<string | null>(null);
   const [deletingLessonId, setDeletingLessonId] = useState<string | null>(null);
+  const [baselineSource, setBaselineSource] = useState(() => savedProgress?.baselineSource ?? stringifyLesson(initialEditorLesson));
+  const [pendingReplaceAction, setPendingReplaceAction] = useState<(() => void) | null>(null);
+
+  const draftSource = mode === "json" ? source : stringifyLesson(lesson);
+  const draftDirty = draftSource.trim() !== baselineSource.trim();
 
   const activeSentence = lesson.sentences[activeSentenceIndex] ?? createEmptySentence();
   const appendingToExistingLesson = editorLessonId === null && targetLessonId !== "new";
@@ -131,6 +136,17 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
   }, []);
 
   useEffect(() => {
+    if (!pendingReplaceAction) return;
+    function onKeyDown(event: globalThis.KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setPendingReplaceAction(null);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [pendingReplaceAction]);
+
+  useEffect(() => {
     if (!pendingDeleteLessonId) return;
     function onKeyDown(event: globalThis.KeyboardEvent) {
       if (event.key !== "Escape" || deletingLessonId) return;
@@ -159,9 +175,10 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
       appendSource,
       targetLessonId,
       editorLessonId,
-      selectedLibraryLessonId
+      selectedLibraryLessonId,
+      baselineSource
     } satisfies LessonManagerProgress);
-  }, [activeSentenceIndex, appendSource, draft, editorLessonId, lesson, mode, selectedLibraryLessonId, source, targetLessonId]);
+  }, [activeSentenceIndex, appendSource, baselineSource, draft, editorLessonId, lesson, mode, selectedLibraryLessonId, source, targetLessonId]);
 
   function syncLesson(nextLesson: LessonImportInput) {
     setLesson(nextLesson);
@@ -196,11 +213,23 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
     setAppendSource("");
 
     try {
-      setLesson(JSON.parse(text) as LessonImportInput);
+      const parsed = JSON.parse(text) as LessonImportInput;
+      setLesson(parsed);
+      setBaselineSource(stringifyLesson(parsed));
       setMode("builder");
     } catch {
+      setBaselineSource(text);
       setMode(fallbackMode);
     }
+  }
+
+  // Ask before replacing the editor content when it has edits that were never saved.
+  function confirmDraftReplace(action: () => void) {
+    if (!draftDirty) {
+      action();
+      return;
+    }
+    setPendingReplaceAction(() => action);
   }
 
   function updateLessonField<K extends keyof LessonImportInput>(field: K, value: LessonImportInput[K]) {
@@ -374,6 +403,7 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
         }
         setSummary(result);
         setStatus(shouldAppendSentenceJson ? "Sentences appended." : editorLessonId ? "Lesson updated." : lessonId ? "Sentences appended." : "Lesson saved.");
+        if (!shouldAppendSentenceJson) setBaselineSource(jsonSource);
         await refreshLessons();
       } catch (error) {
         setErrors([error instanceof Error ? error.message : "Unable to import lesson."]);
@@ -448,11 +478,11 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
   async function readFile(file: File | undefined) {
     if (!file) return;
     const text = await file.text();
-    loadLessonSource(text, "json");
+    confirmDraftReplace(() => loadLessonSource(text, "json"));
   }
 
   function loadSample() {
-    loadLessonSource(sampleLesson, "builder");
+    confirmDraftReplace(() => loadLessonSource(sampleLesson, "builder"));
   }
 
   async function openLessonInEditor(lessonId: string) {
@@ -537,7 +567,16 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
           <label className="button secondary">
             <FileJson size={18} />
             Upload
-            <input className="hidden-input" type="file" accept="application/json,.json" onChange={(event) => readFile(event.target.files?.[0])} />
+            <input
+              className="hidden-input"
+              type="file"
+              accept="application/json,.json"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                void readFile(file);
+              }}
+            />
           </label>
         </div>
       </div>
@@ -753,8 +792,8 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
           loading={lessonsLoading}
           selectedLessonId={selectedLibraryLessonId}
           onSelectLesson={setSelectedLibraryLessonId}
-          onNewLesson={startNewLesson}
-          onEditLesson={openLessonInEditor}
+          onNewLesson={() => confirmDraftReplace(startNewLesson)}
+          onEditLesson={(lessonId) => confirmDraftReplace(() => void openLessonInEditor(lessonId))}
           onExportLesson={exportLessonToFile}
           onDeleteLesson={requestDeleteLesson}
         />
@@ -821,6 +860,37 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
             onApprove={saveLesson}
             onCancel={() => setPreview(null)}
           />
+        </div>
+      ) : null}
+
+      {pendingReplaceAction ? (
+        <div
+          className="confirm-backdrop"
+          role="presentation"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) setPendingReplaceAction(null);
+          }}
+        >
+          <section className="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="replace-draft-title">
+            <h2 id="replace-draft-title">Discard unsaved changes?</h2>
+            <p className="muted">The editor has changes that were never saved. Loading new content will discard them.</p>
+            <div className="row">
+              <button className="button secondary" type="button" autoFocus onClick={() => setPendingReplaceAction(null)}>
+                Keep editing
+              </button>
+              <button
+                className="button danger"
+                type="button"
+                onClick={() => {
+                  const action = pendingReplaceAction;
+                  setPendingReplaceAction(null);
+                  action();
+                }}
+              >
+                Discard and continue
+              </button>
+            </div>
+          </section>
         </div>
       ) : null}
 
