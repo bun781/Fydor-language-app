@@ -26,17 +26,15 @@ The repository name is `Habitz`, but the app itself is branded as Fydor.
 - Sentence-centered study keeps vocabulary, grammar, and chunk hints attached to real usage.
 - Review uses a lightweight memory queue that prioritizes forgotten items sooner.
 - Lesson packs are portable `.fydorpack` files for sharing structured content.
-- The app runs locally with PGlite-backed storage and Drizzle migrations.
-- The desktop shell is powered by Tauri.
+- The desktop shell is powered by Tauri; data is stored locally in SQLite via Rust commands.
 
 ## Tech Stack
 
 - Next.js App Router
 - React 19
 - TypeScript
-- Drizzle ORM
-- PGlite for local persistence
-- Zod for lesson validation
+- Zod for pack validation
+- Rust + SQLite (Tauri) for local persistence
 - Vitest for unit tests
 - Tauri for desktop packaging
 
@@ -66,23 +64,20 @@ npm run build
 npm run lint
 npm run typecheck
 npm run test
-npm run db:generate
-npm run db:migrate
 npm run tauri:dev
 npm run tauri:build
 ```
 
 ## Notes On Data
 
-- Lesson data, review state, and imported content are stored locally.
-- Migrations live in `db/migrations`.
-- The app will automatically apply pending migrations when it starts.
+- Lesson data, review state, and imported content are stored locally in SQLite (see `src-tauri/src/db.rs`).
+- The app applies any pending schema migrations when it starts.
 
 ## Project Layout
 
 - `app/` - routes and page entry points
 - `components/` - UI and feature components
-- `db/` - schema and migrations
+- `src-tauri/` - Rust desktop backend (SQLite schema, Tauri commands)
 - `lib/` - shared logic for import, study, review, speech, and desktop helpers
 - `tests/` - unit tests
 - `docs/` - implementation notes and product docs
@@ -92,4 +87,3 @@ npm run tauri:build
 - [Fydor Tutorial](docs/fydor-tutorial.md)
 - [Review System Notes](docs/review-system.md)
 - [Lesson Import System](docs/lesson-import-system.md)
-- [Codex Context Map](docs/codex-context-map.md)

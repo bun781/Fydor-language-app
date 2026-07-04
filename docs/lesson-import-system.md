@@ -65,7 +65,7 @@ The app derives all canonical keys. Import files never provide database IDs.
 - Grammar key: `language + normalized pattern`
 - Chunk key: `language + normalized surface`
 
-Normalization lives in `lib/language/normalize.ts`.
+Normalization lives in `src-tauri/src/normalize.rs`.
 
 ## Database Model
 
@@ -82,16 +82,15 @@ Import-specific additions:
 - `sentence_grammar_links`
 - `sentence_chunk_links`
 
-Schema lives in `db/schema.ts`.
-Migration lives in `db/migrations/0001_schema_upgrades.sql`.
+The SQLite schema lives in `src-tauri/src/db.rs`.
 
 ## Import Flow
 
-The server-side flow is:
+The import flow (Rust, `src-tauri/src/lessons/mod.rs`) is:
 
-1. Parse JSON in `lib/language/importSchema.ts`.
+1. Parse and validate the lesson JSON.
 2. Validate required fields and surface checks.
-3. Build a preview in `lib/language/importLesson.ts`.
+3. Build a preview.
 4. Compare against existing lessons, sentences, and learning items.
 5. Block imports if there is a canonical item type conflict.
 6. Write everything in a single transaction.
@@ -111,7 +110,7 @@ Important behavior:
 
 ### Imported Content Demo
 
-`lib/language/importedContent.ts` reads the latest lesson from:
+The `get_lesson` Tauri command (`src-tauri/src/lessons/mod.rs`) reads lesson content from:
 
 - `lessons`
 - `lesson_sentences`
@@ -157,28 +156,14 @@ Preview shows:
 
 ## Tests
 
-Core tests live in `tests/unit/language-import.test.ts` and cover:
-
-- valid import
-- malformed JSON
-- duplicate sentence text
-- surface mismatches
-- vocabulary deduplication
-- grammar deduplication
-- chunk deduplication
-- duplicate links
-- rollback on failure
-
 Prompt templates and guide content are stored in `lib/language/importResources.ts`.
 
 ## Extension Points
 
 If you need to extend the importer, these are the main files:
 
-- validation: `lib/language/importSchema.ts`
-- normalization and keys: `lib/language/normalize.ts`
-- persistence and preview: `lib/language/importLesson.ts`
-- content readback: `lib/language/importedContent.ts`
+- validation, normalization, persistence, preview, and readback: `src-tauri/src/lessons/mod.rs` and `src-tauri/src/normalize.rs`
+- frontend bridge: `lib/desktopApi.ts`
 - admin UI: `app/admin/imports/page.tsx`
 - lesson library: `app/study/imported-content/page.tsx`
 - guide and prompt content: `lib/language/importResources.ts`

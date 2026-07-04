@@ -2,8 +2,8 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { Tooltip } from "@/components/ui/Tooltip";
-import { createSpeechPlaybackController } from "@/lib/speech/speechPlayback";
-import { createSpeechService, type SpeechProvider } from "@/lib/speech/speechService";
+import { createSpeechPlaybackController } from "@/lib/speech";
+import { createSpeechService, type SpeechProvider } from "@/lib/speech";
 
 class FakeSpeechProvider implements SpeechProvider {
   supported = true;

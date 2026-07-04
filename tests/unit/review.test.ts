@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
-  applyReviewDecision,
   buildReviewQueue,
   buildReviewQueueWithCurrent,
   getReviewShortcutAction,
   summarizeReviewSentences
-} from "@/lib/review/algorithm";
+} from "@/lib/review/queue";
+import { applyReviewDecision } from "@/lib/review/scheduler";
 import { isSpaceKey, shouldIgnoreReviewHotkey, shouldRevealOnSpaceRelease } from "@/lib/review/keyboard";
 import { buildReviewSessionSummary, classifyReviewSource } from "@/lib/review/sessionSummary";
 import type { ReviewSentenceRow } from "@/lib/review/types";

@@ -1,3 +1,7 @@
+"use client";
+
+import { useCallback, useEffect, useMemo } from "react";
+
 export interface SpeechOptions {
   lang?: string;
   pitch?: number;
@@ -66,4 +70,67 @@ export function createSpeechService(language: string, provider?: SpeechProvider)
 export function createSpeechProvider() {
   if (typeof window === "undefined") return new SilentSpeechProvider();
   return new BrowserSpeechProvider();
+}
+
+export interface SpeechPlaybackActions {
+  speak: () => void;
+  speakSlow: () => void;
+}
+
+export function createSpeechPlaybackController(actions: SpeechPlaybackActions, delayMs = 180) {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+
+  function clearTimer() {
+    if (timer === null) return;
+    clearTimeout(timer);
+    timer = null;
+  }
+
+  return {
+    click() {
+      if (timer !== null) return;
+      timer = setTimeout(() => {
+        timer = null;
+        actions.speak();
+      }, delayMs);
+    },
+    doubleClick() {
+      clearTimer();
+      actions.speakSlow();
+    },
+    cancel() {
+      clearTimer();
+    }
+  };
+}
+
+export function useSpeechService(language: string): SpeechService {
+  return useMemo(() => createSpeechService(language), [language]);
+}
+
+export function useSpeechPlayback(text: string, language: string) {
+  const speech = useSpeechService(language);
+
+  const speak = useCallback((rate = 1) => {
+    speech.speak(text, { rate });
+  }, [speech, text]);
+
+  const playback = useMemo(
+    () => createSpeechPlaybackController({
+      speak: () => speak(1),
+      speakSlow: () => speak(0.8)
+    }),
+    [speak]
+  );
+
+  useEffect(() => () => playback.cancel(), [playback]);
+
+  return {
+    supported: speech.supported,
+    cancel: speech.cancel.bind(speech),
+    speak: () => speak(1),
+    speakSlow: () => speak(0.8),
+    onClick: playback.click,
+    onDoubleClick: playback.doubleClick
+  };
 }

@@ -3,11 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { updateReviewItem } from "@/lib/desktopApi";
 import { clearSessionProgress, readSessionProgress, writeSessionProgress } from "@/components/imported-content/sessionProgress";
-import {
-  applyReviewDecision,
-  summarizeReviewSentences
-} from "./algorithm";
-import { buildInterleavedReviewQueue, type ReviewQueueFilter } from "./queue";
+import { applyReviewDecision } from "./scheduler";
+import { buildInterleavedReviewQueue, summarizeReviewSentences, type ReviewQueueFilter } from "./queue";
 import {
   buildReviewSessionSummary,
   classifyReviewSource,

@@ -2,7 +2,7 @@
 
 import { Volume2 } from "lucide-react";
 import { Tooltip } from "./Tooltip";
-import { useSpeechPlayback } from "@/lib/speech/useSpeechPlayback";
+import { useSpeechPlayback } from "@/lib/speech";
 
 interface AudioButtonProps {
   sentence: string;

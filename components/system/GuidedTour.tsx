@@ -561,9 +561,7 @@ function resolveScope(scope: string) {
 }
 
 const scopeAliases: Record<string, string> = {
-  "/": "/lessons/manage",
-  "/lessons/import": "/lessons/manage",
-  "/lessons/import/preview": "/lessons/manage"
+  "/": "/lessons/manage"
 };
 
 const defaultScopes: Record<string, string> = {

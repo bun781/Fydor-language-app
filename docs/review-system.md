@@ -22,7 +22,7 @@ The review system adds three sentence-level fields:
 
 ## Algorithm
 
-The review algorithm lives in `lib/review/algorithm.ts` so it can be replaced later without changing the UI.
+Queue ordering lives in `lib/review/queue.ts` and grading/scheduling in `lib/review/scheduler.ts`, so either can be replaced without changing the UI.
 
 - Forgotten sentences are placed before unknown sentences.
 - Unknown sentences are placed before remembered sentences.
@@ -36,8 +36,8 @@ This is intentionally simple session logic, not a final spaced-repetition engine
 - `app/review/page.tsx` loads the data and renders the shell.
 - `components/review/` owns the card and action buttons.
 - `lib/review/useReviewDeck.ts` coordinates queue state, keyboard shortcuts, and persistence.
-- `lib/review/reviewData.ts` handles database reads and writes.
-- `lib/review/algorithm.ts` is the replaceable scheduling strategy.
+- Database reads and writes go through `lib/desktopApi.ts` to the Rust commands in `src-tauri/src/review.rs`.
+- `lib/review/queue.ts` and `lib/review/scheduler.ts` are the replaceable scheduling strategy.
 
 ## Notes
 

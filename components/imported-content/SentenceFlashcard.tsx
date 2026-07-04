@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import type { ItemFamiliarity, RevealState, SelectedItem, StudySentence } from "@/lib/imported-content/types";
 import type { ReviewDecision } from "@/lib/review/types";
 import { getHint } from "@/lib/imported-content/study-utils";
-import { useSpeechService } from "@/lib/speech/useSpeechService";
+import { useSpeechService } from "@/lib/speech";
 import { InteractiveToken } from "./InteractiveToken";
 import { ProgressiveRevealControls } from "./ProgressiveRevealControls";
 import { RelatedSentences } from "./RelatedSentences";
