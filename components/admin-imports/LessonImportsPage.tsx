@@ -99,6 +99,8 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
   const [targetLessonId, setTargetLessonId] = useState(savedProgress?.targetLessonId ?? "new");
   const [editorLessonId, setEditorLessonId] = useState<string | null>(savedProgress?.editorLessonId ?? null);
   const [selectedLibraryLessonId, setSelectedLibraryLessonId] = useState<string | null>(savedProgress?.selectedLibraryLessonId ?? null);
+  const [pendingDeleteLessonId, setPendingDeleteLessonId] = useState<string | null>(null);
+  const [deletingLessonId, setDeletingLessonId] = useState<string | null>(null);
 
   const activeSentence = lesson.sentences[activeSentenceIndex] ?? createEmptySentence();
   const appendingToExistingLesson = editorLessonId === null && targetLessonId !== "new";
@@ -503,22 +505,33 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
     }
   }
 
-  async function deleteLesson(lessonId: string) {
+  function requestDeleteLesson(lessonId: string) {
+    setPendingDeleteLessonId(lessonId);
+  }
+
+  async function confirmDeleteLesson() {
+    if (!pendingDeleteLessonId) return;
+    const lessonId = pendingDeleteLessonId;
     const lesson = lessonOptions.find((item) => item.id === lessonId);
-    if (!window.confirm(`Delete ${lesson?.title ?? "this lesson"}? This cannot be undone.`)) return;
 
     try {
+      setDeletingLessonId(lessonId);
+      setErrors([]);
       await deleteLessonApi(lessonId);
-      await refreshLessons();
+      setLessonOptions((items) => items.filter((item) => item.id !== lessonId));
+      setPendingDeleteLessonId(null);
       if (editorLessonId === lessonId) {
         startNewLesson();
       }
       if (selectedLibraryLessonId === lessonId) {
         setSelectedLibraryLessonId(null);
       }
-      setStatus("Lesson deleted.");
+      setStatus(`${lesson?.title ?? "Lesson"} deleted.`);
+      await refreshLessons();
     } catch (error) {
       setErrors([error instanceof Error ? error.message : "Unable to delete lesson."]);
+    } finally {
+      setDeletingLessonId(null);
     }
   }
 
@@ -765,7 +778,7 @@ function slugifyLessonTitle(title: string) {
           onNewLesson={startNewLesson}
           onEditLesson={openLessonInEditor}
           onExportLesson={exportLessonToFile}
-          onDeleteLesson={deleteLesson}
+          onDeleteLesson={requestDeleteLesson}
         />
       ) : mode === "builder" ? (
         <div className="lesson-builder">
@@ -989,6 +1002,34 @@ function slugifyLessonTitle(title: string) {
             onApprove={saveLesson}
             onCancel={() => setPreview(null)}
           />
+        </div>
+      ) : null}
+
+      {pendingDeleteLessonId ? (
+        <div className="confirm-backdrop" role="presentation">
+          <section className="confirm-dialog lesson-delete-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-lesson-title">
+            <h2 id="delete-lesson-title">Delete Lesson?</h2>
+            <p>Do you want to delete this lesson?</p>
+            <div className="row">
+              <button
+                className="button secondary"
+                type="button"
+                disabled={deletingLessonId !== null}
+                onClick={() => setPendingDeleteLessonId(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="button danger"
+                type="button"
+                disabled={deletingLessonId !== null}
+                onClick={confirmDeleteLesson}
+              >
+                <Trash2 size={18} />
+                {deletingLessonId ? "Deleting..." : "Delete lesson"}
+              </button>
+            </div>
+          </section>
         </div>
       ) : null}
     </AppShell>

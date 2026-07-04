@@ -73,8 +73,8 @@ pub fn update_lesson(lesson_id: String, source: String, state: State<db::AppStat
 
 #[tauri::command]
 pub fn delete_lesson(lesson_id: String, state: State<db::AppState>) -> Result<(), String> {
-    let conn = state.conn.lock().map_err(|err| err.to_string())?;
-    delete_lesson_inner(&conn, &lesson_id).map_err(|err| err.to_string())
+    let mut conn = state.conn.lock().map_err(|err| err.to_string())?;
+    delete_lesson_inner(&mut conn, &lesson_id).map_err(|err| err.to_string())
 }
 
 #[tauri::command]
@@ -882,12 +882,72 @@ fn replace_lesson(conn: &mut Connection, lesson_id: &str, plan: ImportPlan) -> R
     })
 }
 
-fn delete_lesson_inner(conn: &Connection, lesson_id: &str) -> Result<()> {
-    let deleted = conn.execute("DELETE FROM lessons WHERE id = ?1", [lesson_id])?;
+fn delete_lesson_inner(conn: &mut Connection, lesson_id: &str) -> Result<()> {
+    let tx = conn.transaction()?;
+    let exists = tx
+        .query_row("SELECT id FROM lessons WHERE id = ?1", [lesson_id], |_| Ok(()))
+        .optional()?
+        .is_some();
+    if !exists {
+        return Err(anyhow::anyhow!("Selected lesson was not found."));
+    }
+
+    let lesson_sentence_ids = {
+        let mut stmt = tx.prepare("SELECT sentence_id FROM lesson_sentences WHERE lesson_id = ?1")?;
+        let rows = stmt.query_map([lesson_id], |row| row.get::<_, String>(0))?;
+        rows.collect::<rusqlite::Result<Vec<_>>>()?
+    };
+    let now = db::now();
+
+    for sentence_id in lesson_sentence_ids {
+        tx.execute(
+            "DELETE FROM lesson_sentences WHERE lesson_id = ?1 AND sentence_id = ?2",
+            params![lesson_id, sentence_id],
+        )?;
+
+        let replacement_lesson_id = tx
+            .query_row(
+                "SELECT lesson_id FROM lesson_sentences WHERE sentence_id = ?1 ORDER BY position ASC LIMIT 1",
+                [&sentence_id],
+                |row| row.get::<_, String>(0),
+            )
+            .optional()?;
+
+        if let Some(replacement_lesson_id) = replacement_lesson_id {
+            tx.execute(
+                "UPDATE sentences SET lesson_id = ?1, updated_at = ?2 WHERE id = ?3 AND lesson_id = ?4",
+                params![replacement_lesson_id, now, sentence_id, lesson_id],
+            )?;
+            tx.execute(
+                r#"
+                UPDATE review_items
+                SET lesson_id = ?1,
+                    import_id = CASE WHEN import_id = ?2 THEN ?1 ELSE import_id END,
+                    updated_at = ?3
+                WHERE sentence_id = ?4 AND (lesson_id = ?2 OR import_id = ?2)
+                "#,
+                params![replacement_lesson_id, lesson_id, now, sentence_id],
+            )?;
+        } else {
+            tx.execute("DELETE FROM review_items WHERE sentence_id = ?1", [&sentence_id])?;
+            tx.execute("DELETE FROM sentence_vocabulary_links WHERE sentence_id = ?1", [&sentence_id])?;
+            tx.execute("DELETE FROM sentence_grammar_links WHERE sentence_id = ?1", [&sentence_id])?;
+            tx.execute("DELETE FROM sentence_chunk_links WHERE sentence_id = ?1", [&sentence_id])?;
+            tx.execute("DELETE FROM sentences WHERE id = ?1", [&sentence_id])?;
+        }
+    }
+
+    tx.execute(
+        "DELETE FROM review_items WHERE lesson_id = ?1 OR import_id = ?1",
+        [lesson_id],
+    )?;
+
+    let deleted = tx.execute("DELETE FROM lessons WHERE id = ?1", [lesson_id])?;
     if deleted == 0 {
         return Err(anyhow::anyhow!("Selected lesson was not found."));
     }
 
+    tx.commit()?;
     Ok(())
 }
 
@@ -1153,5 +1213,215 @@ fn empty_summary_with_error(error: &str) -> LessonImportSummary {
         chunks_reused: 0,
         links_created: 0,
         errors: vec![error.to_string()],
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_conn() -> Connection {
+        let conn = Connection::open_in_memory().expect("open in-memory database");
+        conn.pragma_update(None, "foreign_keys", "ON").expect("enable foreign keys");
+        conn.execute_batch(
+            r#"
+            CREATE TABLE lessons (
+              id TEXT PRIMARY KEY,
+              target_language TEXT NOT NULL,
+              base_language TEXT NOT NULL,
+              description TEXT,
+              source TEXT,
+              level TEXT,
+              title TEXT NOT NULL,
+              source_hash TEXT NOT NULL UNIQUE,
+              tags TEXT NOT NULL DEFAULT '[]',
+              imported_at TEXT NOT NULL,
+              created_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL
+            );
+
+            CREATE TABLE learning_items (
+              id TEXT PRIMARY KEY,
+              language TEXT NOT NULL,
+              type TEXT NOT NULL CHECK (type IN ('word', 'grammar', 'chunk')),
+              canonical_key TEXT NOT NULL,
+              display_text TEXT NOT NULL,
+              meaning TEXT,
+              explanation TEXT,
+              common_mistakes TEXT NOT NULL DEFAULT '[]',
+              created_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL,
+              UNIQUE(type, canonical_key)
+            );
+
+            CREATE TABLE sentences (
+              id TEXT PRIMARY KEY,
+              lesson_id TEXT NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+              language TEXT NOT NULL,
+              text TEXT NOT NULL,
+              normalized_text TEXT NOT NULL,
+              translation TEXT NOT NULL,
+              review_state TEXT NOT NULL DEFAULT 'unknown',
+              review_streak INTEGER NOT NULL DEFAULT 0,
+              reviewed_at TEXT,
+              focus_canonical_key TEXT,
+              focus_display_text TEXT,
+              focus_meaning TEXT,
+              focus_explanation TEXT,
+              created_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL,
+              UNIQUE(language, normalized_text)
+            );
+
+            CREATE TABLE lesson_sentences (
+              id TEXT PRIMARY KEY,
+              lesson_id TEXT NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+              sentence_id TEXT NOT NULL REFERENCES sentences(id) ON DELETE CASCADE,
+              position INTEGER NOT NULL,
+              created_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL,
+              UNIQUE(lesson_id, sentence_id),
+              UNIQUE(lesson_id, position)
+            );
+
+            CREATE TABLE sentence_vocabulary_links (
+              id TEXT PRIMARY KEY,
+              sentence_id TEXT NOT NULL REFERENCES sentences(id) ON DELETE CASCADE,
+              vocabulary_item_id TEXT NOT NULL REFERENCES learning_items(id) ON DELETE CASCADE,
+              surface_text TEXT NOT NULL,
+              created_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL,
+              UNIQUE(sentence_id, vocabulary_item_id, surface_text)
+            );
+
+            CREATE TABLE sentence_grammar_links (
+              id TEXT PRIMARY KEY,
+              sentence_id TEXT NOT NULL REFERENCES sentences(id) ON DELETE CASCADE,
+              grammar_item_id TEXT NOT NULL REFERENCES learning_items(id) ON DELETE CASCADE,
+              surface_text TEXT NOT NULL,
+              created_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL,
+              UNIQUE(sentence_id, grammar_item_id, surface_text)
+            );
+
+            CREATE TABLE sentence_chunk_links (
+              id TEXT PRIMARY KEY,
+              sentence_id TEXT NOT NULL REFERENCES sentences(id) ON DELETE CASCADE,
+              chunk_item_id TEXT NOT NULL REFERENCES learning_items(id) ON DELETE CASCADE,
+              surface_text TEXT NOT NULL,
+              created_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL,
+              UNIQUE(sentence_id, chunk_item_id, surface_text)
+            );
+
+            CREATE TABLE review_items (
+              id TEXT PRIMARY KEY,
+              sentence_id TEXT NOT NULL REFERENCES sentences(id) ON DELETE CASCADE,
+              lesson_id TEXT NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+              import_id TEXT NOT NULL,
+              due_at TEXT NOT NULL,
+              last_reviewed_at TEXT,
+              repetitions INTEGER NOT NULL DEFAULT 0,
+              lapses INTEGER NOT NULL DEFAULT 0,
+              difficulty REAL NOT NULL DEFAULT 0.3,
+              stability REAL NOT NULL DEFAULT 0,
+              recall_mode TEXT NOT NULL DEFAULT 'full_support',
+              created_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL,
+              UNIQUE(sentence_id)
+            );
+            "#,
+        )
+        .expect("create test schema");
+        conn
+    }
+
+    fn lesson(title: &str, text: &str) -> LessonImportInput {
+        LessonImportInput {
+            language: "ko".to_string(),
+            base_language: "en".to_string(),
+            title: title.to_string(),
+            description: None,
+            source: None,
+            level: None,
+            tags: None,
+            sentences: vec![LessonSentenceInput {
+                text: text.to_string(),
+                translation: Some(format!("{text} translation")),
+                words: Some(vec![LessonWordInput {
+                    surface: text.to_string(),
+                    lemma: None,
+                    meaning: Some("meaning".to_string()),
+                    role: None,
+                    explanation: None,
+                }]),
+                grammar: None,
+                chunks: None,
+            }],
+        }
+    }
+
+    fn import_test_lesson(conn: &mut Connection, lesson: LessonImportInput, lesson_id: Option<&str>) -> LessonImportSummary {
+        let raw_value = serde_json::to_value(&lesson).expect("serialize lesson");
+        let plan = build_import_plan(conn, lesson, raw_value, lesson_id).expect("build import plan");
+        import_plan(conn, plan).expect("import lesson")
+    }
+
+    fn scalar_count(conn: &Connection, sql: &str, value: &str) -> i64 {
+        conn.query_row(sql, [value], |row| row.get(0)).expect("count rows")
+    }
+
+    #[test]
+    fn delete_lesson_removes_owned_sentences_and_links() {
+        let mut conn = test_conn();
+        let summary = import_test_lesson(&mut conn, lesson("Lesson A", "안녕하세요"), None);
+        let lesson_id = get_lessons_inner(&conn).expect("load lessons")[0].id.clone();
+        assert_eq!(summary.sentences_imported, 1);
+
+        delete_lesson_inner(&mut conn, &lesson_id).expect("delete lesson");
+
+        assert_eq!(scalar_count(&conn, "SELECT COUNT(*) FROM lessons WHERE id = ?1", &lesson_id), 0);
+        assert_eq!(scalar_count(&conn, "SELECT COUNT(*) FROM lesson_sentences WHERE lesson_id = ?1", &lesson_id), 0);
+        assert_eq!(scalar_count(&conn, "SELECT COUNT(*) FROM review_items WHERE lesson_id = ?1 OR import_id = ?1", &lesson_id), 0);
+        assert_eq!(scalar_count(&conn, "SELECT COUNT(*) FROM sentence_vocabulary_links WHERE surface_text = ?1", "안녕하세요"), 0);
+    }
+
+    #[test]
+    fn delete_lesson_keeps_shared_sentence_under_remaining_lesson() {
+        let mut conn = test_conn();
+        import_test_lesson(&mut conn, lesson("Lesson A", "공부해요"), None);
+        let lesson_a_id = get_lessons_inner(&conn).expect("load lessons")[0].id.clone();
+        import_test_lesson(&mut conn, lesson("Lesson B", "공부해요"), None);
+
+        let lesson_b_id = get_lessons_inner(&conn)
+            .expect("load lessons")
+            .into_iter()
+            .find(|item| item.title == "Lesson B")
+            .expect("lesson remains")
+            .id;
+        let sentence_id: String = conn
+            .query_row(
+                "SELECT sentence_id FROM lesson_sentences WHERE lesson_id = ?1",
+                [&lesson_a_id],
+                |row| row.get(0),
+            )
+            .expect("load shared sentence");
+        let now = db::now();
+        conn.execute(
+            r#"
+            INSERT INTO review_items
+            (id, sentence_id, lesson_id, import_id, due_at, created_at, updated_at)
+            VALUES (?1, ?2, ?3, ?3, ?4, ?4, ?4)
+            "#,
+            params![db::id(), sentence_id, lesson_a_id, now],
+        )
+        .expect("insert review item");
+
+        delete_lesson_inner(&mut conn, &lesson_a_id).expect("delete original lesson");
+
+        assert_eq!(scalar_count(&conn, "SELECT COUNT(*) FROM lessons WHERE id = ?1", &lesson_a_id), 0);
+        assert_eq!(scalar_count(&conn, "SELECT COUNT(*) FROM sentences WHERE lesson_id = ?1", &lesson_b_id), 1);
+        assert_eq!(scalar_count(&conn, "SELECT COUNT(*) FROM lesson_sentences WHERE lesson_id = ?1", &lesson_b_id), 1);
+        assert_eq!(scalar_count(&conn, "SELECT COUNT(*) FROM review_items WHERE lesson_id = ?1", &lesson_b_id), 1);
     }
 }

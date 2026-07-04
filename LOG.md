@@ -1,5 +1,12 @@
 # Lesson Builder System Log
 
+## 0.1.2 - Korean Course Grammar Expansion
+
+- Expanded the Korean starter pack into a 400-sentence, 20-lesson staged course.
+- Rewrote sentence grammar notes to explain concrete particles, conjugation patterns, irregulars, honorifics, and nominalization more explicitly.
+- Added or strengthened coverage for comparison, quoted speech, possession, direction, recipients, and register.
+- Tagged the lessons by progression stage so the course reads more like a real beginner-to-intermediate sequence.
+
 ## 0.1.1 - Builder Metadata Header Refresh
 
 - Reduced visual clutter in the Lesson Builder header by moving sentence count beside the editable title.

@@ -97,7 +97,7 @@ export function LessonLibraryPanel({
                   <Download size={18} />
                   Export JSON
                 </button>
-                <button className="button secondary lesson-delete-button" type="button" onClick={() => onDeleteLesson(selectedLesson.id)}>
+                <button className="button danger lesson-delete-button" type="button" onClick={() => onDeleteLesson(selectedLesson.id)}>
                   <Trash2 size={18} />
                   Delete
                 </button>
