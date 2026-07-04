@@ -9,10 +9,23 @@ coverage/
 test-results/
 playwright-report/
 
-# Local generated/imported learning data
+# Generated dependency / build metadata
+package-lock.json
+src-tauri/gen/
+
+# Local/generated/imported learning data
+samples/*.json
+samples/*.fydorpack
 /cleaned-*-course.json
 /*course*.json
 /*learning*.json
+
+# App icons/assets
+public/icons/
+src-tauri/icons/
+*.png
+*.icns
+*.ico
 
 # Runtime database files
 test-pglite/
