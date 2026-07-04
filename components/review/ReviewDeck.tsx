@@ -131,6 +131,17 @@ export function ReviewDeck({
     };
   }, [currentSentence?.id, revealed, returnToMenu, reviewCurrent, started]);
 
+  useEffect(() => {
+    if (!confirmResetLesson) return;
+    function handleDialogKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setConfirmResetLesson(false);
+    }
+    window.addEventListener("keydown", handleDialogKeyDown);
+    return () => window.removeEventListener("keydown", handleDialogKeyDown);
+  }, [confirmResetLesson]);
+
   function handleBackToMenu() {
     setRevealed(false);
     setMenuView("start");
@@ -245,12 +256,18 @@ export function ReviewDeck({
             </section>
           )}
           {confirmResetLesson ? (
-            <div className="confirm-backdrop" role="presentation">
+            <div
+              className="confirm-backdrop"
+              role="presentation"
+              onClick={(event) => {
+                if (event.target === event.currentTarget) setConfirmResetLesson(false);
+              }}
+            >
               <section className="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="reset-lesson-title">
                 <h2 id="reset-lesson-title">Reset Lesson Progress?</h2>
                 <p className="muted">This will clear remembered and needs-review status for {selectedLessonTitle}.</p>
                 <div className="review-complete-actions">
-                  <button type="button" className="button secondary" onClick={() => setConfirmResetLesson(false)}>Cancel</button>
+                  <button type="button" className="button secondary" autoFocus onClick={() => setConfirmResetLesson(false)}>Cancel</button>
                   <button
                     type="button"
                     className="button"
@@ -304,7 +321,7 @@ export function ReviewDeck({
         Back
       </button>
 
-      {error ? <p className="review-error">{error}</p> : null}
+      {error ? <p className="review-error" role="alert">{error}</p> : null}
 
       <ReviewSentenceCard
         sentence={currentSentence}

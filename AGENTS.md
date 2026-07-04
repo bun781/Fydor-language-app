@@ -16,7 +16,8 @@ Fydor is a local-first language-learning desktop app: Next.js (static export) fr
 ├── components/             React UI by feature
 │   ├── review/             ReviewDeck, ReviewControls, ReviewSentenceCard, ReviewStatsBrowser
 │   ├── imported-content/   Study mode UI (flashcards, quiz modes, annotated sentences)
-│   ├── admin-imports/      Lesson Builder UI (LessonImportsPage is the big one)
+│   ├── admin-imports/      Lesson Builder UI (LessonImportsPage + LessonBuilderEditor)
+│   ├── exchange/           Fydor Exchange UI (pack install/share/library)
 │   ├── language/           Import help panel + preview
 │   ├── system/             GuidedTour, PageState
 │   ├── ui/                 AudioButton, Tooltip
@@ -31,7 +32,7 @@ Fydor is a local-first language-learning desktop app: Next.js (static export) fr
 ├── src-tauri/              Rust backend — source of truth for ALL persistence
 │   └── src/
 │       ├── main.rs         Command registration
-│       ├── lessons/mod.rs  Lesson CRUD, import validation/preview/persist, export
+│       ├── lessons/        mod.rs (commands+tests), read.rs (queries/export), import.rs (import pipeline)
 │       ├── review.rs       Review queue + SRS update commands
 │       ├── db.rs           SQLite schema, setup, migrations
 │       ├── models.rs       Rust structs mirroring the TS types in lib/*/types.ts
@@ -61,7 +62,7 @@ UI component → hook (e.g. `lib/review/useReviewDeck.ts`) → `lib/desktopApi.t
 | Recall mode progression | `lib/review/recallModes.ts` |
 | Review deck state | `lib/review/useReviewDeck.ts` |
 | Review UI | `components/review/ReviewDeck.tsx` |
-| Lesson import (validate/preview/persist) | `src-tauri/src/lessons/mod.rs` |
+| Lesson import (validate/preview/persist) | `src-tauri/src/lessons/import.rs` |
 | Import guide + prompt templates | `lib/language/importResources.ts` |
 | Lesson Builder UI | `components/admin-imports/LessonImportsPage.tsx` |
 | Study modes | `components/imported-content/` + `lib/imported-content/` |
@@ -85,7 +86,7 @@ UI component → hook (e.g. `lib/review/useReviewDeck.ts`) → `lib/desktopApi.t
 - `src-tauri/src/normalize.rs` — canonical-key changes break deduplication against existing data
 - `lib/review/scheduler.ts`, `lib/review/queue.ts`, `lib/review/recallModes.ts` — SRS behavior
 - `lib/fydor-pack.ts` — pack format is a shared contract with files users have already exported
-- Redirect stub routes (`/`, `/lessons/import`, `/lessons/import/preview`) — keep; they preserve old URLs
+- The `/` route is a redirect stub to `/lessons/manage` — keep
 
 ## Rules Against Common Agent Mistakes
 

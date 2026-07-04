@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AudioButton } from "@/components/ui/AudioButton";
 import { getLesson } from "@/lib/desktopApi";
@@ -130,8 +131,9 @@ export function MultipleChoiceMode({ lesson, lessons = [] }: Props) {
     : null;
 
   useEffect(() => {
-    if (questionCount > maxQuestions) setQuestionCount(maxQuestions);
-  }, [maxQuestions, questionCount]);
+    // Only clamp once the pool has loaded; an empty pool would floor the saved count to 1.
+    if (pool.length > 0 && questionCount > pool.length) setQuestionCount(pool.length);
+  }, [pool.length, questionCount]);
 
   useEffect(() => {
     writeSessionProgress(PROGRESS_KEY, {
@@ -152,13 +154,36 @@ export function MultipleChoiceMode({ lesson, lessons = [] }: Props) {
   useEffect(() => {
     if (status === "setup") return;
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key !== "Escape" || isEditableShortcutTarget(event.target)) return;
-      event.preventDefault();
-      resetToMenu();
+      if (isEditableShortcutTarget(event.target)) return;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        resetToMenu();
+        return;
+      }
+      if (status !== "active" || !question) return;
+      if (/^[1-9]$/.test(event.key) && !currentSubmitted && question.options) {
+        const option = question.options[Number(event.key) - 1];
+        if (option === undefined) return;
+        event.preventDefault();
+        if (testMode === "continuous") submitContinuous(option);
+        else updateAnswer(option);
+        return;
+      }
+      if (event.key === "Enter" && !(event.target instanceof HTMLButtonElement)) {
+        if (testMode === "continuous" && currentSubmitted) {
+          event.preventDefault();
+          nextQuestion();
+        } else if (testMode === "full") {
+          event.preventDefault();
+          if (index + 1 >= deck.length) finishFull();
+          else moveFull(1);
+        }
+      }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [status]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, question, currentSubmitted, testMode, index, deck.length]);
 
   if (!availableLessons.length) {
     return (
@@ -282,7 +307,7 @@ export function MultipleChoiceMode({ lesson, lessons = [] }: Props) {
               <button type="button" className="button secondary" onClick={() => setShowResults((value) => !value)}>
                 {showResults ? "Hide past test results" : "Statistics"}
               </button>
-              <a className="button secondary" href="/study/imported-content">Back</a>
+              <Link className="button secondary" href="/study/imported-content">Back</Link>
             </div>
           </div>
 
@@ -327,7 +352,7 @@ export function MultipleChoiceMode({ lesson, lessons = [] }: Props) {
             </div>
           </div>
 
-          {loadError ? <p className="review-error">{loadError}</p> : null}
+          {loadError ? <p className="review-error" role="alert">{loadError}</p> : null}
           {!selectedLessonIds.size ? <p className="muted">Select at least one lesson.</p> : null}
           {selectedLessonIds.size && !pool.length && !loadingLessons ? (
             <p className="muted">The selected lessons do not have enough annotated material yet for a multiple-choice test.</p>
@@ -430,6 +455,10 @@ export function MultipleChoiceMode({ lesson, lessons = [] }: Props) {
               )}
             </div>
           ) : null}
+
+          <p className="review-hotkey-hint" aria-label="Keyboard shortcut hint">
+            <kbd>1</kbd>-<kbd>{Math.min(9, question.options?.length ?? 4)}</kbd> answer · <kbd>Enter</kbd> next · <kbd>Esc</kbd> exit
+          </p>
         </section>
       ) : null}
     </section>

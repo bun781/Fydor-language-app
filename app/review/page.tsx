@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { ReviewDeck } from "@/components/review/ReviewDeck";
@@ -32,9 +33,7 @@ export default function ReviewPage() {
     let cancelled = false;
 
     Promise.all([getReviewQueue(), getLessons()])
-      .then(async ([queue, lessonList]) => {
-        if (cancelled) return;
-        const loadedLessons = await Promise.all(lessonList.map((item) => getLesson(item.id)));
+      .then(([queue, lessonList]) => {
         if (cancelled) return;
         const availableLessonIds = getAvailableLessonIds(queue, lessonList);
         const savedSelection = readSessionProgress(REVIEW_SELECTION_KEY, validateReviewSelectionProgress);
@@ -44,8 +43,16 @@ export default function ReviewPage() {
 
         setSentences(queue);
         setLessons(lessonList);
-        setFullLessons(loadedLessons.filter((item): item is StudyLesson => Boolean(item)));
         setSelectedLessonIds(restoredLessonIds.length ? restoredLessonIds : availableLessonIds);
+
+        // Full lesson bodies are only needed by the stats browser; load them without blocking first paint.
+        void Promise.all(lessonList.map((item) => getLesson(item.id)))
+          .then((loadedLessons) => {
+            if (!cancelled) setFullLessons(loadedLessons.filter((item): item is StudyLesson => Boolean(item)));
+          })
+          .catch(() => {
+            // Stats browsing degrades gracefully without full lessons; the queue itself already loaded.
+          });
       })
       .catch((err) => {
         if (!cancelled) setError(err instanceof Error ? err.message : "Unable to load review sentences.");
@@ -96,7 +103,7 @@ export default function ReviewPage() {
           eyebrow="No data yet"
           title="No sentences to review"
           description="Import a lesson first. Once a lesson saves sentences into the database, they will appear here for review."
-          actions={<a className="button" href="/lessons/manage">Open lesson manager</a>}
+          actions={<Link className="button" href="/lessons/manage">Open lesson manager</Link>}
         />
       )}
     </AppShell>

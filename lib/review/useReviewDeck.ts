@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { updateReviewItem } from "@/lib/desktopApi";
 import { clearSessionProgress, readSessionProgress, writeSessionProgress } from "@/components/imported-content/sessionProgress";
 import { applyReviewDecision } from "./scheduler";
@@ -69,6 +69,7 @@ export function useReviewDeck(initialSentences: ReviewSentence[]) {
     writeReviewDeckState(state);
   }, [state]);
 
+  const reviewInFlightRef = useRef(false);
   const currentId = state.order[state.position] ?? null;
   const currentSentence = currentId ? state.sentences.find((sentence) => sentence.id === currentId) ?? null : null;
   const summary = summarizeReviewSentences(state.sentences);
@@ -141,7 +142,10 @@ export function useReviewDeck(initialSentences: ReviewSentence[]) {
   }, []);
 
   const reviewCurrent = useCallback(async (decision: ReviewDecision) => {
+    // Synchronous guard: rapid repeat keypresses can fire before React re-renders with saving=true.
+    if (reviewInFlightRef.current) return;
     if (!currentSentence || state.saving || !state.activeSession) return;
+    reviewInFlightRef.current = true;
 
     const reviewedAt = new Date();
     const updatedSentence = applyReviewDecision(currentSentence, decision, reviewedAt);
@@ -194,6 +198,7 @@ export function useReviewDeck(initialSentences: ReviewSentence[]) {
         error: error instanceof Error ? error.message : "Unable to save review decision."
       }));
     } finally {
+      reviewInFlightRef.current = false;
       setState((prev) => ({ ...prev, saving: false }));
     }
   }, [currentSentence, state.activeSession, state.order.length, state.position, state.saving, state.sentences]);

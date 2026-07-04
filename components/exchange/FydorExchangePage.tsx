@@ -381,7 +381,7 @@ export function FydorExchangePage() {
       </div>
 
       {errors.length ? (
-        <section className="card error-card exchange-status-card">
+        <section className="card error-card exchange-status-card" role="alert">
           <PackageOpen size={18} />
           <div>
             {errors.map((error) => <p key={error}>{error}</p>)}

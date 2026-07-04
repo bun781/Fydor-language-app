@@ -5,9 +5,7 @@ import {
   Check,
   FileJson,
   HelpCircle,
-  Highlighter,
   Library,
-  Plus,
   Save,
   Sparkles,
   Trash2,
@@ -15,6 +13,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import { AppShell } from "@/components/AppShell";
+import { LessonBuilderEditor, type ActiveAnnotation } from "@/components/admin-imports/LessonBuilderEditor";
 import { LessonLibraryPanel } from "@/components/admin-imports/LessonLibraryPanel";
 import { LanguageField } from "@/components/admin-imports/LanguageField";
 import { ImportHelpPanel } from "@/components/language/ImportHelpPanel";
@@ -42,19 +41,21 @@ import type {
 } from "@/lib/language/types";
 import {
   LESSON_IMPORT_DRAFT_KEY,
+  clampSentenceIndex,
   createDraft,
   createEmptySentence,
-  getCharAnnotationClassName,
+  extractAppendSentences,
   getCharIndex,
   initialLesson,
   pruneEmpty,
   sampleLesson,
+  slugifyLessonTitle,
   splitTags,
-  stringifyLesson
+  stringifyLesson,
+  validateLessonManagerProgress
 } from "./lesson-import-utils";
-import type { AnnotationDraft, SelectedSpan } from "./lesson-import-utils";
+import type { AnnotationDraft, LessonManagerProgress, SelectedSpan, WorkspaceMode } from "./lesson-import-utils";
 
-type WorkspaceMode = "builder" | "json" | "lessons";
 type AnnotationKind = AnnotationDraft["kind"];
 
 interface LessonImportsPageProps {
@@ -62,18 +63,6 @@ interface LessonImportsPageProps {
 }
 
 const LESSON_MANAGER_PROGRESS_KEY = "lesson-manager.workspace";
-
-interface LessonManagerProgress {
-  mode: WorkspaceMode;
-  lesson: LessonImportInput;
-  activeSentenceIndex: number;
-  draft: AnnotationDraft;
-  source: string;
-  appendSource: string;
-  targetLessonId: string;
-  editorLessonId: string | null;
-  selectedLibraryLessonId: string | null;
-}
 
 // Chunk: editor state and data loading
 export default function LessonImportsPage({ initialMode = "builder" }: LessonImportsPageProps) {
@@ -105,7 +94,7 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
   const activeSentence = lesson.sentences[activeSentenceIndex] ?? createEmptySentence();
   const appendingToExistingLesson = editorLessonId === null && targetLessonId !== "new";
   const editingExistingLesson = editorLessonId !== null;
-  const activeAnnotations = useMemo(
+  const activeAnnotations = useMemo<ActiveAnnotation[]>(
     () => [
       ...(activeSentence.words ?? []).map((item, index) => ({ kind: "word" as const, index, label: item.surface, detail: item.meaning })),
       ...(activeSentence.grammar ?? []).map((item, index) => ({ kind: "grammar" as const, index, label: item.surface ?? item.pattern, detail: item.meaning })),
@@ -140,6 +129,17 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!pendingDeleteLessonId) return;
+    function onKeyDown(event: globalThis.KeyboardEvent) {
+      if (event.key !== "Escape" || deletingLessonId) return;
+      event.preventDefault();
+      setPendingDeleteLessonId(null);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [deletingLessonId, pendingDeleteLessonId]);
 
   useEffect(() => {
     const importedSource = window.localStorage.getItem(LESSON_IMPORT_DRAFT_KEY);
@@ -367,6 +367,11 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
             ? await updateLessonApi(editorLessonId, jsonSource)
             : await importLessonApi(jsonSource, lessonId);
         setPreview(null);
+        if (result.errors.length) {
+          setSummary(null);
+          setErrors(result.errors);
+          return;
+        }
         setSummary(result);
         setStatus(shouldAppendSentenceJson ? "Sentences appended." : editorLessonId ? "Lesson updated." : lessonId ? "Sentences appended." : "Lesson saved.");
         await refreshLessons();
@@ -438,30 +443,6 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
     };
 
     return JSON.stringify(appendLesson);
-  }
-
-  function extractAppendSentences(value: unknown): LessonSentenceInput[] {
-    if (Array.isArray(value)) {
-      return value as LessonSentenceInput[];
-    }
-
-    if (isRecord(value) && Array.isArray(value.sentences)) {
-      return value.sentences as LessonSentenceInput[];
-    }
-
-    if (isRecord(value) && isRecord(value.sentence)) {
-      return [value.sentence as unknown as LessonSentenceInput];
-    }
-
-    if (isRecord(value) && typeof value.text === "string") {
-      return [value as unknown as LessonSentenceInput];
-    }
-
-    return [];
-  }
-
-  function isRecord(value: unknown): value is Record<string, unknown> {
-    return typeof value === "object" && value !== null && !Array.isArray(value);
   }
 
   async function readFile(file: File | undefined) {
@@ -538,14 +519,6 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
     } finally {
       setDeletingLessonId(null);
     }
-  }
-
-function slugifyLessonTitle(title: string) {
-    return title
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "") || "lesson";
   }
 
   // Chunk: rendered editor layout
@@ -786,192 +759,26 @@ function slugifyLessonTitle(title: string) {
           onDeleteLesson={requestDeleteLesson}
         />
       ) : mode === "builder" ? (
-        <div className="lesson-builder">
-          <section className="builder-layout">
-            <div className="stack">
-              <section className="card stack">
-                <div className="row">
-                  <div>
-                    <h2>Sentence {activeSentenceIndex + 1}</h2>
-                    {selection && <p className="muted">Selected: <strong>{selection.surface}</strong></p>}
-                  </div>
-                  <Tooltip content="Remove this sentence.">
-                    <button
-                      className="icon-button"
-                      type="button"
-                      aria-label="Remove sentence"
-                      disabled={lesson.sentences.length === 1}
-                      onClick={() => removeSentence(activeSentenceIndex)}
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </Tooltip>
-                  <Tooltip content="Add a sentence after this one.">
-                    <button
-                      className="icon-button"
-                      type="button"
-                      aria-label="Add sentence after this one"
-                      onClick={() => addSentence(activeSentenceIndex)}
-                    >
-                      <Plus size={18} />
-                    </button>
-                  </Tooltip>
-                </div>
-                <div className="selectable-sentence" onMouseUp={captureSelection} onKeyUp={captureSelection}>
-                  {activeSentence.text ? (
-                    Array.from(activeSentence.text).map((char, index) => {
-                      const annotationClassName = getCharAnnotationClassName(activeSentence, char, index);
-                      return (
-                        <span
-                          data-char-index={index}
-                          key={`${char}-${index}`}
-                          className={annotationClassName}
-                        >
-                          {char}
-                        </span>
-                      );
-                    })
-                  ) : (
-                    <span className="sentence-placeholder">Type a sentence below…</span>
-                  )}
-                </div>
-                <label className="field">
-                  <span>Text</span>
-                  <textarea className="input sentence-input" value={activeSentence.text} onChange={(event) => updateSentence("text", event.target.value)} />
-                </label>
-                <label className="field">
-                  <span>Translation</span>
-                  <input className="input" value={activeSentence.translation ?? ""} onChange={(event) => updateSentence("translation", event.target.value)} />
-                </label>
-              </section>
-
-              <section className="card stack">
-                <div className="row">
-                  <h2>Sentences</h2>
-                  <button
-                    className="button secondary"
-                    type="button"
-                    title="Add a new sentence after the active one"
-                    onClick={() => addSentence()}
-                  >
-                    <Plus size={18} />
-                    Add sentence
-                  </button>
-                </div>
-                <div className="sentence-tabs">
-                  {lesson.sentences.map((sentence, index) => (
-                    <button
-                      className={index === activeSentenceIndex ? "active" : ""}
-                      key={`${index}-${sentence.text}`}
-                      type="button"
-                      onClick={() => {
-                        setActiveSentenceIndex(index);
-                        setSelection(null);
-                        setDraft(createDraft());
-                      }}
-                    >
-                      <span>{index + 1}</span>
-                      {sentence.text || "Untitled sentence"}
-                    </button>
-                  ))}
-                </div>
-              </section>
-            </div>
-
-            <aside className="stack">
-              <section className="card stack">
-                <div className="row">
-                  <h2>Annotate</h2>
-                  <Highlighter size={18} />
-                </div>
-                <div className="annotation-types">
-                  {(["word", "grammar", "chunk"] as AnnotationKind[]).map((kind) => (
-                    <button
-                      className={`kind-${kind}${draft.kind === kind ? " active" : ""}`}
-                      key={kind}
-                      type="button"
-                      onClick={() => setDraft((current) => ({
-                        ...current,
-                        kind,
-                        pattern: kind === "grammar" && !current.pattern ? current.surface : current.pattern
-                      }))}
-                    >
-                      {kind}
-                    </button>
-                  ))}
-                </div>
-                <label className="field">
-                  <span>Surface</span>
-                  <input className="input" value={draft.surface} onChange={(event) => setDraft({ ...draft, surface: event.target.value })} />
-                </label>
-                {draft.kind === "word" ? (
-                  <>
-                    <label className="field">
-                      <span>Lemma</span>
-                      <input className="input" value={draft.lemma} onChange={(event) => setDraft({ ...draft, lemma: event.target.value })} />
-                    </label>
-                    <label className="field">
-                      <span>Role</span>
-                      <input className="input" value={draft.role} onChange={(event) => setDraft({ ...draft, role: event.target.value })} />
-                    </label>
-                  </>
-                ) : null}
-                {draft.kind === "grammar" ? (
-                  <label className="field">
-                    <span>Pattern</span>
-                    <input className="input" value={draft.pattern} onChange={(event) => setDraft({ ...draft, pattern: event.target.value })} />
-                  </label>
-                ) : null}
-                {draft.kind === "chunk" ? (
-                  <>
-                    <label className="field">
-                      <span>Type</span>
-                      <input className="input" value={draft.chunkType} onChange={(event) => setDraft({ ...draft, chunkType: event.target.value })} />
-                    </label>
-                    <label className="field">
-                      <span>Tags</span>
-                      <input className="input" value={draft.tags} onChange={(event) => setDraft({ ...draft, tags: event.target.value })} />
-                    </label>
-                  </>
-                ) : null}
-                <label className="field">
-                  <span>Meaning</span>
-                  <input className="input" value={draft.meaning} onChange={(event) => setDraft({ ...draft, meaning: event.target.value })} />
-                </label>
-                <label className="field">
-                  <span>Explanation</span>
-                  <textarea className="input small-textarea" value={draft.explanation} onChange={(event) => setDraft({ ...draft, explanation: event.target.value })} />
-                </label>
-                <button className={`button kind-${draft.kind}`} type="button" onClick={addAnnotation}>
-                  <Check size={18} />
-                  Add annotation
-                </button>
-              </section>
-
-              <section className="card stack">
-                <h2>Current Notes</h2>
-                {activeAnnotations.length ? (
-                  <div className="annotation-list">
-                    {activeAnnotations.map((annotation) => (
-                      <div className="annotation-row" key={`${annotation.kind}-${annotation.index}-${annotation.label}`}>
-                        <div>
-                          <span className={`pill pill-${annotation.kind}`}>{annotation.kind}</span>
-                          <strong>{annotation.label}</strong>
-                          {annotation.detail ? <p className="muted">{annotation.detail}</p> : null}
-                        </div>
-                        <Tooltip content="Remove this annotation.">
-                          <button className="icon-button" type="button" aria-label="Remove annotation" onClick={() => removeAnnotation(annotation.kind, annotation.index)}>
-                            <Trash2 size={17} />
-                          </button>
-                        </Tooltip>
-                      </div>
-                    ))}
-                  </div>
-                ) : <p className="muted">No annotations yet.</p>}
-              </section>
-            </aside>
-          </section>
-        </div>
+        <LessonBuilderEditor
+          lesson={lesson}
+          activeSentence={activeSentence}
+          activeSentenceIndex={activeSentenceIndex}
+          selection={selection}
+          draft={draft}
+          activeAnnotations={activeAnnotations}
+          setDraft={setDraft}
+          onUpdateSentence={updateSentence}
+          onAddSentence={addSentence}
+          onRemoveSentence={removeSentence}
+          onCaptureSelection={captureSelection}
+          onSelectSentence={(index) => {
+            setActiveSentenceIndex(index);
+            setSelection(null);
+            setDraft(createDraft());
+          }}
+          onAddAnnotation={addAnnotation}
+          onRemoveAnnotation={removeAnnotation}
+        />
       ) : (
         <section className="card stack">
           <textarea className="input code-input" value={source} onChange={(event) => {
@@ -983,7 +790,7 @@ function slugifyLessonTitle(title: string) {
       )}
 
       {errors.length ? (
-        <section className="card stack error-card">
+        <section className="card stack error-card" role="alert">
           <h2>Validation Errors</h2>
           {errors.map((error) => <p key={error}>{error}</p>)}
         </section>
@@ -994,7 +801,14 @@ function slugifyLessonTitle(title: string) {
       {summary ? (
         <section className="card stack">
           <h2>Save Summary</h2>
-          <pre className="summary-json">{JSON.stringify(summary, null, 2)}</pre>
+          <div className="session-stats">
+            <span className="pill">Sentences added {summary.sentencesImported}</span>
+            {summary.sentencesSkipped > 0 ? <span className="pill">Duplicates skipped {summary.sentencesSkipped}</span> : null}
+            <span className="pill">Words {summary.vocabularyCreated} new / {summary.vocabularyReused} reused</span>
+            <span className="pill">Grammar {summary.grammarCreated} new / {summary.grammarReused} reused</span>
+            <span className="pill">Chunks {summary.chunksCreated} new / {summary.chunksReused} reused</span>
+            <span className="pill">Links {summary.linksCreated}</span>
+          </div>
         </section>
       ) : null}
 
@@ -1011,14 +825,21 @@ function slugifyLessonTitle(title: string) {
       ) : null}
 
       {pendingDeleteLessonId ? (
-        <div className="confirm-backdrop" role="presentation">
+        <div
+          className="confirm-backdrop"
+          role="presentation"
+          onClick={(event) => {
+            if (event.target === event.currentTarget && !deletingLessonId) setPendingDeleteLessonId(null);
+          }}
+        >
           <section className="confirm-dialog lesson-delete-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-lesson-title">
             <h2 id="delete-lesson-title">Delete lesson?</h2>
-            <p>Do you want to delete this lesson?</p>
+            <p>Delete {lessonOptions.find((item) => item.id === pendingDeleteLessonId)?.title ?? "this lesson"}? This cannot be undone.</p>
             <div className="row">
               <button
                 className="button secondary"
                 type="button"
+                autoFocus
                 disabled={deletingLessonId !== null}
                 onClick={() => setPendingDeleteLessonId(null)}
               >
@@ -1041,65 +862,3 @@ function slugifyLessonTitle(title: string) {
   );
 }
 
-function validateLessonManagerProgress(value: unknown): LessonManagerProgress | null {
-  if (!value || typeof value !== "object") return null;
-  const item = value as Partial<LessonManagerProgress>;
-
-  if (!isWorkspaceMode(item.mode)) return null;
-  if (!isLessonImportInput(item.lesson)) return null;
-  if (typeof item.activeSentenceIndex !== "number" || !Number.isInteger(item.activeSentenceIndex)) return null;
-  if (!isAnnotationDraft(item.draft)) return null;
-  if (typeof item.source !== "string") return null;
-  if (typeof item.appendSource !== "string") return null;
-  if (typeof item.targetLessonId !== "string") return null;
-  if (item.editorLessonId !== null && typeof item.editorLessonId !== "string") return null;
-  if (item.selectedLibraryLessonId !== null && typeof item.selectedLibraryLessonId !== "string") return null;
-
-  return {
-    mode: item.mode,
-    lesson: item.lesson,
-    activeSentenceIndex: clampSentenceIndex(item.activeSentenceIndex, item.lesson),
-    draft: item.draft,
-    source: item.source,
-    appendSource: item.appendSource,
-    targetLessonId: item.targetLessonId,
-    editorLessonId: item.editorLessonId,
-    selectedLibraryLessonId: item.selectedLibraryLessonId
-  };
-}
-
-function clampSentenceIndex(index: number, lesson: LessonImportInput) {
-  return Math.min(Math.max(0, index), Math.max(0, lesson.sentences.length - 1));
-}
-
-function isWorkspaceMode(value: unknown): value is WorkspaceMode {
-  return value === "builder" || value === "json" || value === "lessons";
-}
-
-function isLessonImportInput(value: unknown): value is LessonImportInput {
-  if (!value || typeof value !== "object") return false;
-  const lesson = value as Partial<LessonImportInput>;
-  return (
-    typeof lesson.language === "string" &&
-    typeof lesson.baseLanguage === "string" &&
-    typeof lesson.title === "string" &&
-    Array.isArray(lesson.sentences)
-  );
-}
-
-function isAnnotationDraft(value: unknown): value is AnnotationDraft {
-  if (!value || typeof value !== "object") return false;
-  const draft = value as Partial<AnnotationDraft>;
-  return (
-    (draft.kind === "word" || draft.kind === "grammar" || draft.kind === "chunk") &&
-    typeof draft.surface === "string" &&
-    typeof draft.lemma === "string" &&
-    typeof draft.pattern === "string" &&
-    typeof draft.meaning === "string" &&
-    typeof draft.explanation === "string" &&
-    typeof draft.role === "string" &&
-    typeof draft.chunkType === "string" &&
-    typeof draft.level === "string" &&
-    typeof draft.tags === "string"
-  );
-}
