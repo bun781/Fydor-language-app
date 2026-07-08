@@ -634,6 +634,111 @@ button, input, textarea, select {
   gap: 6px;
 }
 
+.reading-view-tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.reading-analyzer {
+  display: grid;
+  gap: 16px;
+}
+
+.reading-analyzer-toolbar {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.reading-lesson-list {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+.reading-lesson-item {
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--ink);
+  cursor: pointer;
+  display: flex;
+  gap: 12px;
+  padding: 14px 16px;
+  text-align: left;
+}
+
+.reading-lesson-item:hover {
+  border-color: var(--accent);
+}
+
+.reading-lesson-item-body {
+  display: grid;
+  gap: 3px;
+}
+
+.reading-reader {
+  display: grid;
+  gap: 16px;
+}
+
+.reading-reader-toolbar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.reading-reader-title {
+  display: grid;
+  gap: 2px;
+  text-align: center;
+}
+
+.reading-sentence-list {
+  display: grid;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.reading-sentence {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 3px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+}
+
+.reading-sentence-active {
+  border-color: var(--accent);
+  border-left-color: var(--accent);
+}
+
+.reading-sentence-main {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.reading-translation {
+  border-top: 1px dashed var(--line);
+  margin: 0;
+  padding-top: 8px;
+}
+
+.reading-shortcuts {
+  text-align: center;
+}
+
 /* ── Review ─────────────────────────────────────────────── */
 
 .review-shell {
