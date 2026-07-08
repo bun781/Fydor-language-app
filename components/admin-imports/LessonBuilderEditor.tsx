@@ -57,7 +57,11 @@ export function LessonBuilderEditor({
             <div className="row">
               <div>
                 <h2>Sentence {activeSentenceIndex + 1}</h2>
-                {selection && <p className="muted">Selected: <strong>{selection.surface}</strong></p>}
+                <p className="muted">
+                  {selection
+                    ? <>Selected: <strong>{selection.surface}</strong></>
+                    : "Highlight part of the sentence below to annotate it as a word, grammar pattern, or chunk."}
+                </p>
               </div>
               <Tooltip content="Remove this sentence.">
                 <button

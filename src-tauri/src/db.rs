@@ -103,7 +103,7 @@ pub fn open_database(app_data_dir: &Path) -> Result<Connection> {
     Ok(conn)
 }
 
-fn migrate(conn: &Connection) -> Result<()> {
+pub(crate) fn migrate(conn: &Connection) -> Result<()> {
     conn.execute_batch(
         r#"
         CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -269,6 +269,68 @@ fn migrate(conn: &Connection) -> Result<()> {
             FROM sentences;
 
             INSERT INTO schema_migrations(version, applied_at) VALUES (2, datetime('now'));
+            "#,
+        )?;
+    }
+
+    if current < 3 {
+        conn.execute_batch(
+            r#"
+            ALTER TABLE review_items
+            ADD COLUMN scheduler_engine TEXT NOT NULL DEFAULT 'fixed-interval'
+            CHECK (scheduler_engine IN ('fixed-interval', 'fsrs'));
+
+            INSERT INTO schema_migrations(version, applied_at) VALUES (3, datetime('now'));
+            "#,
+        )?;
+    }
+
+    if current < 4 {
+        // Item-level review state gets its own table instead of overloading the
+        // sentence-shaped review_items (UNIQUE(sentence_id)). Rows are created lazily on
+        // first grade; items without a row are treated as new/unreviewed. Existing
+        // review_items rows are untouched, so fixed-interval sentence scheduling is preserved.
+        conn.execute_batch(
+            r#"
+            CREATE TABLE item_review_states (
+              id TEXT PRIMARY KEY,
+              learning_item_id TEXT NOT NULL REFERENCES learning_items(id) ON DELETE CASCADE,
+              due_at TEXT NOT NULL,
+              last_reviewed_at TEXT,
+              repetitions INTEGER NOT NULL DEFAULT 0,
+              lapses INTEGER NOT NULL DEFAULT 0,
+              difficulty REAL NOT NULL DEFAULT 0.3,
+              stability REAL NOT NULL DEFAULT 0,
+              scheduler_engine TEXT NOT NULL DEFAULT 'fixed-interval' CHECK (scheduler_engine IN ('fixed-interval', 'fsrs')),
+              created_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL,
+              UNIQUE(learning_item_id)
+            );
+            CREATE INDEX item_review_states_due_idx ON item_review_states(due_at);
+
+            INSERT INTO schema_migrations(version, applied_at) VALUES (4, datetime('now'));
+            "#,
+        )?;
+    }
+
+    if current < 5 {
+        // Append-only review log. One row per grade action (sentence or item), used for
+        // daily new-card caps, streaks, and heatmaps. was_new marks the first-ever grade
+        // of a card. Never updated or deleted by review flows; resets leave it intact so
+        // history survives progress resets.
+        conn.execute_batch(
+            r#"
+            CREATE TABLE review_events (
+              id TEXT PRIMARY KEY,
+              target_kind TEXT NOT NULL CHECK (target_kind IN ('sentence', 'item')),
+              target_id TEXT NOT NULL,
+              grade TEXT NOT NULL CHECK (grade IN ('forgot', 'hard', 'remembered', 'easy')),
+              was_new INTEGER NOT NULL DEFAULT 0,
+              reviewed_at TEXT NOT NULL
+            );
+            CREATE INDEX review_events_reviewed_idx ON review_events(reviewed_at);
+
+            INSERT INTO schema_migrations(version, applied_at) VALUES (5, datetime('now'));
             "#,
         )?;
     }

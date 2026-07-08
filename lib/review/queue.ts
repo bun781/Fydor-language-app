@@ -1,8 +1,76 @@
-// Source of truth for review queue ordering. The interleaving ratios (30% fresh, 12% mastered) are intentional — do not adjust without product review.
-import type { ReviewSentence, ReviewSentenceRow, SentenceReviewState } from "./types";
+// Source of truth for review queue ordering. The interleaving ratios (30% fresh, 12% mastered) are intentional; do not adjust without product review.
+import type { ReviewItemTarget, ReviewSentence, ReviewSentenceRow, SentenceReviewState } from "./types";
 import { hydrateReviewSentence } from "./scheduler";
 
 export type ReviewQueueFilter = "mixed" | "due" | "new" | "all";
+
+export type ReviewTargetKind = "sentence" | "item";
+
+export function makeReviewTargetKey(kind: ReviewTargetKind, id: string): string {
+  return `${kind}:${id}`;
+}
+
+export function parseReviewTargetKey(key: string): { kind: ReviewTargetKind; id: string } | null {
+  const separatorIndex = key.indexOf(":");
+  if (separatorIndex < 0) return null;
+  const kind = key.slice(0, separatorIndex);
+  const id = key.slice(separatorIndex + 1);
+  if (!id) return null;
+  if (kind !== "sentence" && kind !== "item") return null;
+  return { kind, id };
+}
+
+/**
+ * Builds a mixed queue of sentence and item targets. Sentence entries keep their raw
+ * sentence ids, so sentence-only input is byte-identical to buildInterleavedReviewQueue —
+ * including persisted session progress and grade dispatch. Item targets are namespaced as
+ * "item:<learningItemId>" (parse with parseReviewTargetKey; a key that does not parse is a
+ * sentence id) and ride the same due/fresh/mastered interleaving through their best
+ * sentence example.
+ */
+export interface ReviewQueueOptions {
+  filter?: ReviewQueueFilter;
+  seed?: number;
+  shuffled?: boolean;
+  now?: Date;
+  // Daily new-card cap: at most this many never-graded cards enter "mixed" and "new"
+  // queues. Undefined means uncapped; "all" is a full browse and ignores it.
+  newLimit?: number;
+}
+
+export function buildTargetedReviewQueue(
+  sentences: ReviewSentence[],
+  items: ReviewItemTarget[],
+  options: ReviewQueueOptions = {}
+): string[] {
+  return buildInterleavedReviewQueue([...sentences, ...items.map(itemTargetToQueueEntry)], options);
+}
+
+/** Converts a persisted item target into the sentence-shaped entry the deck renders and schedules. */
+export function itemTargetToQueueEntry(item: ReviewItemTarget): ReviewSentence {
+  return {
+    id: makeReviewTargetKey("item", item.id),
+    language: item.language,
+    text: item.exampleText,
+    translation: item.exampleTranslation,
+    reviewState: item.repetitions === 0 ? "unknown" : "remembered",
+    reviewStreak: item.repetitions,
+    reviewedAt: item.lastReviewedAt,
+    dueAt: item.dueAt,
+    lastReviewedAt: item.lastReviewedAt,
+    repetitions: item.repetitions,
+    lapses: item.lapses,
+    difficulty: item.difficulty,
+    stability: item.stability,
+    schedulerEngine: item.schedulerEngine,
+    // Items are cross-lesson; an empty lessonId opts them out of same-lesson-run avoidance.
+    lessonId: "",
+    focusText: item.exampleSurfaceText,
+    focusMeaning: item.meaning,
+    focusExplanation: item.explanation,
+    itemType: item.itemType
+  };
+}
 
 const statePriority: Record<SentenceReviewState, number> = {
   forgotten: 0,
@@ -12,29 +80,37 @@ const statePriority: Record<SentenceReviewState, number> = {
 
 export function buildInterleavedReviewQueue(
   sentences: ReviewSentence[],
-  options: { filter?: ReviewQueueFilter; seed?: number; shuffled?: boolean; now?: Date } = {}
+  options: ReviewQueueOptions = {}
 ): string[] {
+  const uniqueSentences = uniqueById(sentences);
   const filter = options.filter ?? "mixed";
   const now = options.now ?? new Date();
   const rng = createSeededRng(options.seed ?? Date.now());
   const shuffled = options.shuffled ?? true;
 
-  const due = sentences.filter((sentence) => isDue(sentence, now) && (sentence.repetitions ?? 0) > 0);
-  const fresh = sentences.filter((sentence) => (sentence.repetitions ?? 0) === 0);
-  const mastered = sentences.filter((sentence) => !isDue(sentence, now) && (sentence.repetitions ?? 0) > 0);
+  const due = uniqueSentences.filter((sentence) => isDue(sentence, now) && (sentence.repetitions ?? 0) > 0);
+  const fresh = uniqueSentences.filter((sentence) => (sentence.repetitions ?? 0) === 0);
+  const mastered = uniqueSentences.filter((sentence) => !isDue(sentence, now) && (sentence.repetitions ?? 0) > 0);
 
   if (filter === "due") return orderedIds(due, rng, shuffled);
-  if (filter === "new") return orderedIds(fresh, rng, shuffled);
-  if (filter === "all") return orderedIds(sentences, rng, shuffled);
+  if (filter === "new") {
+    const orderedFresh = ordered(fresh, rng, shuffled);
+    const limited = options.newLimit === undefined ? orderedFresh : take(orderedFresh, options.newLimit);
+    return limited.map((sentence) => sentence.id);
+  }
+  if (filter === "all") return orderedIds(uniqueSentences, rng, shuffled);
 
   const duePicked = ordered(due, rng, shuffled);
-  const freshTarget = duePicked.length ? Math.max(1, Math.ceil(duePicked.length * 0.3)) : fresh.length;
+  const uncappedFreshTarget = duePicked.length ? Math.max(1, Math.ceil(duePicked.length * 0.3)) : fresh.length;
+  const freshTarget = options.newLimit === undefined
+    ? uncappedFreshTarget
+    : Math.min(uncappedFreshTarget, Math.max(0, options.newLimit));
   const freshPicked = take(ordered(fresh, rng, shuffled), freshTarget);
   const masteredTarget = Math.max(1, Math.ceil((duePicked.length + freshPicked.length) * 0.12));
   const masteredPicked = take(ordered(mastered, rng, shuffled), masteredTarget);
   const picked = weightedMerge(duePicked, freshPicked, masteredPicked);
 
-  const fallback = picked.length ? picked : sentences;
+  const fallback = picked.length ? picked : uniqueSentences;
   return avoidSameLessonRuns(ordered(fallback, rng, true)).map((sentence) => sentence.id);
 }
 
@@ -80,7 +156,7 @@ function buildLegacyReviewQueue(sentences: ReviewSentenceRow[], seed = Date.now(
   const rng = createSeededRng(seed);
   const buckets = new Map<number, ReviewSentenceRow[]>();
 
-  for (const sentence of sentences) {
+  for (const sentence of uniqueById(sentences)) {
     const score = scoreReviewSentence(sentence);
     const bucket = buckets.get(score) ?? [];
     bucket.push(sentence);
@@ -91,6 +167,19 @@ function buildLegacyReviewQueue(sentences: ReviewSentenceRow[], seed = Date.now(
     .sort(([a], [b]) => a - b)
     .flatMap(([, bucket]) => shuffled ? shuffle(bucket, rng) : bucket)
     .map((sentence) => sentence.id);
+}
+
+function uniqueById<T extends { id: string }>(sentences: T[]): T[] {
+  const seen = new Set<string>();
+  const unique: T[] = [];
+
+  for (const sentence of sentences) {
+    if (seen.has(sentence.id)) continue;
+    seen.add(sentence.id);
+    unique.push(sentence);
+  }
+
+  return unique;
 }
 
 function scoreReviewSentence(sentence: ReviewSentenceRow): number {

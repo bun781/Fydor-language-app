@@ -1,8 +1,7 @@
 import sharp from "sharp";
-import { writeFileSync, mkdirSync } from "fs";
+import { writeFileSync } from "fs";
 
-// Habitz app icon: purple gradient with "H" letter
-const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
+// Fydor app icon: purple gradient with "H" letter
 
 const svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
@@ -15,18 +14,9 @@ const svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" w
   <text x="256" y="360" font-family="Georgia, serif" font-size="320" font-weight="bold" fill="white" text-anchor="middle">H</text>
 </svg>`;
 
-mkdirSync("public/icons", { recursive: true });
 writeFileSync("public/icon.svg", svgIcon);
 
 const svgBuffer = Buffer.from(svgIcon);
-
-for (const size of sizes) {
-  await sharp(svgBuffer)
-    .resize(size, size)
-    .png()
-    .toFile(`public/icons/icon-${size}x${size}.png`);
-  console.log(`Generated ${size}x${size}`);
-}
 
 // Apple touch icon (180x180)
 await sharp(svgBuffer).resize(180, 180).png().toFile("public/apple-touch-icon.png");

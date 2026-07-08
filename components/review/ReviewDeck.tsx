@@ -1,25 +1,30 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CalendarClock, CheckCircle2, HelpCircle, Layers3, RotateCcw, Sparkles } from "lucide-react";
-import { readSessionProgress, writeSessionProgress } from "@/components/imported-content/sessionProgress";
+import { getReviewProgress } from "@/lib/desktopApi";
+import { readSessionProgress, writeSessionProgress } from "@/lib/storage";
+import { z } from "zod";
 import { createTourScope, replayGuidedTour } from "@/components/system/GuidedTour";
+import { PieChart } from "@/components/ui/PieChart";
 import type { StudyLesson, StudyLessonMeta } from "@/lib/imported-content/types";
 import { isSpaceKey, shouldIgnoreReviewHotkey, shouldRevealOnSpaceRelease } from "@/lib/review/keyboard";
-import { buildInterleavedReviewQueue, getReviewShortcutAction } from "@/lib/review/queue";
+import { localDayKey, remainingNewCards } from "@/lib/review/progress";
+import { buildInterleavedReviewQueue, getReviewShortcutAction, itemTargetToQueueEntry } from "@/lib/review/queue";
 import type { ReviewSourceBucket } from "@/lib/review/sessionSummary";
-import type { ReviewResetScope, ReviewSentence } from "@/lib/review/types";
+import type { ReviewItemTarget, ReviewProgressSnapshot, ReviewResetScope, ReviewSentence } from "@/lib/review/types";
 import { useReviewDeck } from "@/lib/review/useReviewDeck";
 import { ReviewControls } from "./ReviewControls";
+import { ReviewProgressPanel } from "./ReviewProgressPanel";
 import { ReviewSentenceCard } from "./ReviewSentenceCard";
 import { ReviewStatsBrowser } from "./ReviewStatsBrowser";
 
 const REVIEW_REVEAL_PROGRESS_KEY = "review.reveal";
 
-interface ReviewRevealProgress {
-  sentenceId: string | null;
-  revealed: boolean;
-}
+const reviewRevealSchema = z.object({
+  sentenceId: z.string().nullable(),
+  revealed: z.boolean()
+});
 
 interface ReviewLessonOption {
   id: string;
@@ -33,12 +38,16 @@ interface ReviewDeckProps {
   sentenceCountByLesson?: Map<string, number>;
   selectedLessonIds?: string[];
   sentences: ReviewSentence[];
+  items?: ReviewItemTarget[];
   onSelectedLessonIdsChange?: (lessonIds: string[]) => void;
   onResetProgress?: (scope: ReviewResetScope) => Promise<void> | void;
 }
 
+const NO_ITEMS: ReviewItemTarget[] = [];
+
 export function ReviewDeck({
   sentences,
+  items = NO_ITEMS,
   allSentenceCount,
   fullLessons = [],
   lessons = [],
@@ -50,6 +59,15 @@ export function ReviewDeck({
   const totalSentenceCount = allSentenceCount ?? sentences.length;
   const lessonSentenceCounts = sentenceCountByLesson ?? getSentenceCountByLesson(sentences);
   const lessonOptions = getReviewLessonOptions(lessons, lessonSentenceCounts);
+  // Stable identity matters: useReviewDeck resets deck state when its input array changes.
+  const reviewTargets = useMemo(
+    () => [...sentences, ...items.map(itemTargetToQueueEntry)],
+    [sentences, items]
+  );
+  // Progress is additive: the deck works without it, but while it is loaded the daily
+  // new-card cap bounds how many first-time cards a session can introduce.
+  const [progress, setProgress] = useState<ReviewProgressSnapshot | null>(null);
+  const remainingNew = progress ? remainingNewCards(progress.dailyActivity, localDayKey()) : undefined;
   const {
     currentSentence,
     position,
@@ -63,17 +81,34 @@ export function ReviewDeck({
     startFocusedReview,
     returnToMenu,
     completedSession
-  } = useReviewDeck(sentences);
+  } = useReviewDeck(reviewTargets, { newLimit: remainingNew });
   const [revealed, setRevealed] = useState(false);
   const [menuView, setMenuView] = useState<"start" | "statistics">("start");
   const [confirmResetLesson, setConfirmResetLesson] = useState(false);
   const spacePressSentenceIdRef = useRef<string | null>(null);
-  const availableBreakdown = summarizeAvailableSentences(sentences);
-  const queueDashboard = buildQueueDashboard(sentences);
+  const availableBreakdown = summarizeAvailableSentences(reviewTargets, remainingNew);
+  const queueDashboard = buildQueueDashboard(reviewTargets, remainingNew);
   const lessonTitleById = new Map(lessonOptions.map((lesson) => [lesson.id, lesson.title]));
 
+  // Refresh the progress snapshot whenever the menu is (re)shown, so a finished
+  // session is reflected in the streak, heatmap, and remaining new-card budget.
   useEffect(() => {
-    const saved = readSessionProgress(REVIEW_REVEAL_PROGRESS_KEY, validateReviewRevealProgress);
+    if (started) return;
+    let cancelled = false;
+    getReviewProgress()
+      .then((snapshot) => {
+        if (!cancelled) setProgress(snapshot);
+      })
+      .catch(() => {
+        // Progress is additive; the deck must keep working without it.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [started]);
+
+  useEffect(() => {
+    const saved = readSessionProgress(REVIEW_REVEAL_PROGRESS_KEY, reviewRevealSchema);
     setRevealed(Boolean(saved?.revealed && saved.sentenceId === (currentSentence?.id ?? null)));
     spacePressSentenceIdRef.current = null;
   }, [currentSentence?.id]);
@@ -82,7 +117,7 @@ export function ReviewDeck({
     writeSessionProgress(REVIEW_REVEAL_PROGRESS_KEY, {
       sentenceId: currentSentence?.id ?? null,
       revealed
-    } satisfies ReviewRevealProgress);
+    } satisfies z.infer<typeof reviewRevealSchema>);
   }, [currentSentence?.id, revealed]);
 
   useEffect(() => {
@@ -175,6 +210,21 @@ export function ReviewDeck({
             </>
           ) : (
             <section className="review-start-panel review-start-panel-controls">
+              <div className="review-start-actions">
+                <button className="button" type="button" data-tour="review-start-mixed" onClick={() => startReview("mixed")}>
+                  Start Mixed Review
+                </button>
+                <div className="review-filter-row" aria-label="Review filters">
+                  <button className="button secondary" type="button" data-tour="review-start-due" onClick={() => startReview("due")} disabled={queueDashboard.due === 0}>Due only</button>
+                  <button className="button secondary" type="button" data-tour="review-start-new" onClick={() => startReview("new")} disabled={queueDashboard.new === 0}>New only</button>
+                  <button className="button secondary" type="button" onClick={() => startReview("all")}>All selected</button>
+                  {onResetProgress && selectedLessonIds.length ? (
+                    <button className="button secondary" type="button" data-tour="review-reset-progress" onClick={() => setConfirmResetLesson(true)}>
+                      <RotateCcw size={16} /> Reset Progress
+                    </button>
+                  ) : null}
+                </div>
+              </div>
               <ReviewLessonSelect
                 lessons={lessonOptions}
                 selectedLessonIds={selectedLessonIds}
@@ -236,21 +286,7 @@ export function ReviewDeck({
               />
               <ReviewQuickStats summary={summary} dashboard={queueDashboard} />
               <ReviewQueueDashboard dashboard={queueDashboard} />
-              <div className="review-start-actions">
-                <button className="button" type="button" data-tour="review-start-mixed" onClick={() => startReview("mixed")}>
-                  Start Mixed Review
-                </button>
-                <div className="review-filter-row" aria-label="Review filters">
-                  <button className="button secondary" type="button" data-tour="review-start-due" onClick={() => startReview("due")} disabled={queueDashboard.due === 0}>Due only</button>
-                  <button className="button secondary" type="button" data-tour="review-start-new" onClick={() => startReview("new")} disabled={queueDashboard.new === 0}>New only</button>
-                  <button className="button secondary" type="button" onClick={() => startReview("all")}>All selected</button>
-                  {onResetProgress && selectedLessonIds.length ? (
-                    <button className="button secondary" type="button" data-tour="review-reset-progress" onClick={() => setConfirmResetLesson(true)}>
-                      <RotateCcw size={16} /> Reset Progress
-                    </button>
-                  ) : null}
-                </div>
-              </div>
+              {progress ? <ReviewProgressPanel progress={progress} /> : null}
             </section>
           )}
           {confirmResetLesson ? (
@@ -310,7 +346,7 @@ export function ReviewDeck({
         </div>
         <div className="review-summary">
           <span className="pill">Total {summary.total}</span>
-          <span className="pill">Unknown {summary.unknown}</span>
+          <span className="pill">New {summary.unknown}</span>
           <span className="pill review-state-forgotten">Forgotten {summary.forgotten}</span>
           <span className="pill review-state-remembered">Remembered {summary.remembered}</span>
         </div>
@@ -339,14 +375,6 @@ export function ReviewDeck({
       />
     </div>
   );
-}
-
-function validateReviewRevealProgress(value: unknown): ReviewRevealProgress | null {
-  if (!value || typeof value !== "object") return null;
-  const item = value as Partial<ReviewRevealProgress>;
-  if (item.sentenceId !== null && typeof item.sentenceId !== "string") return null;
-  if (typeof item.revealed !== "boolean") return null;
-  return { sentenceId: item.sentenceId ?? null, revealed: item.revealed };
 }
 
 function ReviewSessionComplete({
@@ -531,50 +559,22 @@ function QuickPieChart({
   tone?: "balanced" | "attention";
 }) {
   const total = primary + secondary;
-  const radius = 23;
-  const size = 72;
-  const circumference = 2 * Math.PI * radius;
   const primaryShare = total > 0 ? primary / total : 0;
-  const secondaryShare = total > 0 ? secondary / total : 0;
-  const primaryLength = circumference * primaryShare;
-  const secondaryLength = circumference * secondaryShare;
   const percent = total > 0 ? Math.round(primaryShare * 100) : 0;
 
   return (
     <article className={`review-quick-pie review-quick-pie-${tone}`}>
-      <div className="review-quick-pie-chart" aria-hidden="true">
-        <svg viewBox={`0 0 ${size} ${size}`} role="presentation">
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            className="review-quick-pie-track"
-            transform={`rotate(-90 ${size / 2} ${size / 2})`}
-          />
-          {total > 0 ? (
-            <>
-              <circle
-                cx={size / 2}
-                cy={size / 2}
-                r={radius}
-                className="review-quick-pie-primary"
-                strokeDasharray={`${primaryLength} ${circumference - primaryLength}`}
-                transform={`rotate(-90 ${size / 2} ${size / 2})`}
-              />
-              <circle
-                cx={size / 2}
-                cy={size / 2}
-                r={radius}
-                className="review-quick-pie-secondary"
-                strokeDasharray={`${secondaryLength} ${circumference - secondaryLength}`}
-                strokeDashoffset={-primaryLength}
-                transform={`rotate(-90 ${size / 2} ${size / 2})`}
-              />
-            </>
-          ) : null}
-        </svg>
-        <strong>{percent}%</strong>
-      </div>
+      <PieChart
+        center={<strong>{percent}%</strong>}
+        className="review-quick-pie-chart"
+        radius={23}
+        segments={[
+          { value: primary, className: "review-quick-pie-primary" },
+          { value: secondary, className: "review-quick-pie-secondary" }
+        ]}
+        size={72}
+        trackClassName="review-quick-pie-track"
+      />
       <div className="review-quick-pie-copy">
         <span>{label}</span>
         <strong>{primary} {primaryLabel}</strong>
@@ -603,7 +603,7 @@ function ReviewStartHeader({ summary }: { summary: ReturnType<typeof useReviewDe
       </div>
       <div className="review-summary">
         <span className="pill">Total {summary.total}</span>
-        <span className="pill">Unknown {summary.unknown}</span>
+        <span className="pill">New {summary.unknown}</span>
         <span className="pill review-state-forgotten">Forgotten {summary.forgotten}</span>
         <span className="pill review-state-remembered">Remembered {summary.remembered}</span>
       </div>
@@ -613,7 +613,10 @@ function ReviewStartHeader({ summary }: { summary: ReturnType<typeof useReviewDe
 
 interface ReviewQueueDashboardData {
   due: number;
+  // Never-graded cards that can still start today (bounded by the daily new-card cap).
   new: number;
+  // All never-graded cards, ignoring the daily cap.
+  newTotal: number;
   mastered: number;
   mixedCount: number;
   allCount: number;
@@ -636,7 +639,14 @@ function ReviewQueueDashboard({ dashboard }: { dashboard: ReviewQueueDashboardDa
       </div>
       <div className="review-queue-stats">
         <QueueStat icon={<CalendarClock size={18} />} label="Due now" value={dashboard.due} detail="Reviewed cards ready again." />
-        <QueueStat icon={<Sparkles size={18} />} label="New" value={dashboard.new} detail="Cards with no repetitions yet." />
+        <QueueStat
+          icon={<Sparkles size={18} />}
+          label="New"
+          value={dashboard.new}
+          detail={dashboard.newTotal > dashboard.new
+            ? `${dashboard.newTotal} waiting; daily cap allows ${dashboard.new} more today.`
+            : "Cards with no repetitions yet."}
+        />
         <QueueStat icon={<CheckCircle2 size={18} />} label="Not due" value={dashboard.mastered} detail="Reviewed cards waiting for later." />
         <QueueStat icon={<Layers3 size={18} />} label="Mixed size" value={dashboard.mixedCount} detail="What Start Mixed Review opens." />
       </div>
@@ -749,24 +759,28 @@ function getSentenceCountByLesson(sentences: ReviewSentence[]) {
   return counts;
 }
 
-function summarizeAvailableSentences(sentences: ReviewSentence[]) {
+function summarizeAvailableSentences(sentences: ReviewSentence[], remainingNew?: number) {
   const now = new Date();
-  return sentences.reduce<Record<ReviewSourceBucket, number>>((totals, sentence) => {
-    if ((sentence.repetitions ?? 0) === 0) totals.new += 1;
-    else if (new Date(sentence.dueAt ?? 0).getTime() <= now.getTime()) totals.due += 1;
-    else totals.mastered += 1;
-    return totals;
+  const totals = sentences.reduce<Record<ReviewSourceBucket, number>>((acc, sentence) => {
+    if ((sentence.repetitions ?? 0) === 0) acc.new += 1;
+    else if (new Date(sentence.dueAt ?? 0).getTime() <= now.getTime()) acc.due += 1;
+    else acc.mastered += 1;
+    return acc;
   }, { due: 0, new: 0, mastered: 0 });
+  if (remainingNew !== undefined) totals.new = Math.min(totals.new, remainingNew);
+  return totals;
 }
 
-function buildQueueDashboard(sentences: ReviewSentence[]): ReviewQueueDashboardData {
+function buildQueueDashboard(sentences: ReviewSentence[], remainingNew?: number): ReviewQueueDashboardData {
   const now = new Date();
-  const available = summarizeAvailableSentences(sentences);
+  const available = summarizeAvailableSentences(sentences, remainingNew);
+  const newTotal = sentences.filter((sentence) => (sentence.repetitions ?? 0) === 0).length;
   const mixedCount = buildInterleavedReviewQueue(sentences, {
     filter: "mixed",
     seed: 0,
     shuffled: false,
-    now
+    now,
+    newLimit: remainingNew
   }).length;
   const nextDueAt = sentences
     .filter((sentence) => (sentence.repetitions ?? 0) > 0)
@@ -776,6 +790,7 @@ function buildQueueDashboard(sentences: ReviewSentence[]): ReviewQueueDashboardD
 
   return {
     ...available,
+    newTotal,
     mixedCount,
     allCount: sentences.length,
     nextDueLabel: available.due > 0

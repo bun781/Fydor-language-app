@@ -11,7 +11,8 @@ import type { ReviewDecision } from "@/lib/review/types";
 import { useLessonReview } from "@/lib/review/useLessonReview";
 import { CheckpointQuiz } from "./CheckpointQuiz";
 import { SentenceFlashcard } from "./SentenceFlashcard";
-import { readSessionProgress, writeSessionProgress } from "./sessionProgress";
+import { readSessionProgress, writeSessionProgress } from "@/lib/storage";
+import { z } from "zod";
 
 interface Props {
   lesson: StudyLesson | null;
@@ -27,16 +28,25 @@ const DEFAULT_REVEAL: RevealState = {
 
 type CardGrade = "easy" | "correct" | "hard" | "failed";
 
-interface FlashcardProgress {
-  cardIndex: number;
-  cardOrder: string[];
-  randomOrderEnabled: boolean;
-  quizPendingAt: number | null;
-  reveal: RevealState;
-  sessionFamiliarity: Array<[string, ItemFamiliarity]>;
-  cardGrades: Array<[string, CardGrade]>;
-  reviewStates: Array<[string, ReviewDecision]>;
-}
+const entrySchema = <T extends z.ZodTypeAny>(value: T) => z.array(z.tuple([z.string(), value]));
+
+const flashcardProgressSchema = z.object({
+  cardIndex: z.number().int(),
+  cardOrder: z.array(z.string()),
+  randomOrderEnabled: z.boolean(),
+  quizPendingAt: z.number().int().nullable(),
+  reveal: z.object({
+    translation: z.boolean(),
+    wordMeanings: z.boolean(),
+    grammar: z.boolean(),
+    hint: z.boolean()
+  }),
+  sessionFamiliarity: entrySchema(z.enum(["known", "learning"])),
+  cardGrades: entrySchema(z.enum(["easy", "correct", "hard", "failed"])),
+  reviewStates: entrySchema(z.enum(["forgot", "hard", "remembered", "easy", "forgotten"]))
+});
+
+type FlashcardProgress = z.infer<typeof flashcardProgressSchema>;
 
 export function ImportedContentStudy({ lesson: initialLesson, loadingLesson = false }: Props) {
   const [lesson, setLesson] = useState(initialLesson);
@@ -209,6 +219,12 @@ export function ImportedContentStudy({ lesson: initialLesson, loadingLesson = fa
     function onKey(e: KeyboardEvent) {
       if (isEditableShortcutTarget(e.target)) return;
       if (review.active && (e.key === "ArrowLeft" || e.key === "ArrowRight")) return;
+      // Grade shortcuts (1-4) mirror the Review screen's ordering: Again, Hard, Good, Easy.
+      if (!review.active && quizPendingAt === null && /^[1-4]$/.test(e.key)) {
+        const grade = (["failed", "hard", "correct", "easy"] as const)[Number(e.key) - 1];
+        handleGrade(grade);
+        return;
+      }
       switch (e.key) {
         case "ArrowLeft": handlePrev(); break;
         case "ArrowRight": handleNext(); break;
@@ -220,7 +236,7 @@ export function ImportedContentStudy({ lesson: initialLesson, loadingLesson = fa
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [handlePrev, handleNext, handleRevealTranslation, handleToggleHint, handleToggleWordMeanings, handleToggleGrammar, review.active]);
+  }, [handlePrev, handleNext, handleRevealTranslation, handleToggleHint, handleToggleWordMeanings, handleToggleGrammar, handleGrade, quizPendingAt, review.active]);
 
   useEffect(() => {
     if (review.active) setReveal(DEFAULT_REVEAL);
@@ -389,7 +405,7 @@ function shuffleIds(values: string[]): string[] {
 }
 
 function restoreFlashcardProgress(lesson: StudyLesson): FlashcardProgress | null {
-  const saved = readSessionProgress(getFlashcardProgressKey(lesson.id), validateFlashcardProgress);
+  const saved = readSessionProgress(getFlashcardProgressKey(lesson.id), flashcardProgressSchema);
   if (!saved) return null;
 
   const sentenceIds = new Set(lesson.sentences.map((sentence) => sentence.id));
@@ -415,65 +431,6 @@ function restoreFlashcardProgress(lesson: StudyLesson): FlashcardProgress | null
 
 function getFlashcardProgressKey(lessonId: string) {
   return `flashcards.${lessonId}`;
-}
-
-function validateFlashcardProgress(value: unknown): FlashcardProgress | null {
-  if (!value || typeof value !== "object") return null;
-  const item = value as Partial<FlashcardProgress>;
-  const cardIndex = item.cardIndex;
-  const quizPendingAt = item.quizPendingAt;
-
-  if (typeof cardIndex !== "number" || !Number.isInteger(cardIndex)) return null;
-  if (!Array.isArray(item.cardOrder) || !item.cardOrder.every((id) => typeof id === "string")) return null;
-  if (typeof item.randomOrderEnabled !== "boolean") return null;
-  if (quizPendingAt !== null && (typeof quizPendingAt !== "number" || !Number.isInteger(quizPendingAt))) return null;
-  if (!isRevealState(item.reveal)) return null;
-  if (!isEntryArray(item.sessionFamiliarity, isItemFamiliarity)) return null;
-  if (!isEntryArray(item.cardGrades, isCardGrade)) return null;
-  if (!isEntryArray(item.reviewStates, isReviewDecision)) return null;
-
-  return {
-    cardIndex,
-    cardOrder: item.cardOrder,
-    randomOrderEnabled: item.randomOrderEnabled,
-    quizPendingAt,
-    reveal: item.reveal,
-    sessionFamiliarity: item.sessionFamiliarity,
-    cardGrades: item.cardGrades,
-    reviewStates: item.reviewStates
-  };
-}
-
-function isRevealState(value: unknown): value is RevealState {
-  if (!value || typeof value !== "object") return false;
-  const item = value as Partial<RevealState>;
-  return (
-    typeof item.translation === "boolean" &&
-    typeof item.wordMeanings === "boolean" &&
-    typeof item.grammar === "boolean" &&
-    typeof item.hint === "boolean"
-  );
-}
-
-function isEntryArray<T extends string>(value: unknown, validateValue: (item: unknown) => item is T): value is Array<[string, T]> {
-  return Array.isArray(value) && value.every((entry) =>
-    Array.isArray(entry) &&
-    entry.length === 2 &&
-    typeof entry[0] === "string" &&
-    validateValue(entry[1])
-  );
-}
-
-function isItemFamiliarity(value: unknown): value is ItemFamiliarity {
-  return value === "known" || value === "learning";
-}
-
-function isCardGrade(value: unknown): value is CardGrade {
-  return value === "easy" || value === "correct" || value === "hard" || value === "failed";
-}
-
-function isReviewDecision(value: unknown): value is ReviewDecision {
-  return value === "remembered" || value === "forgotten";
 }
 
 function isEditableShortcutTarget(target: EventTarget | null): boolean {

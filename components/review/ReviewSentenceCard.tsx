@@ -1,8 +1,15 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { AudioButton } from "@/components/ui/AudioButton";
 import { getFillBlankPrompt, getRecallModeLabel } from "@/lib/review/recallModes";
 import type { ReviewSentence } from "@/lib/review/types";
+
+const itemTypeLabels: Record<NonNullable<ReviewSentence["itemType"]>, string> = {
+  word: "Word focus",
+  grammar: "Grammar focus",
+  chunk: "Chunk focus"
+};
 
 interface ReviewSentenceCardProps {
   sentence: ReviewSentence;
@@ -24,13 +31,14 @@ export function ReviewSentenceCard({ sentence, index, total, revealed, onReveal 
   return (
     <section className="review-card">
       <div className="review-card-meta">
-        <span className="pill">Sentence {index + 1} of {total}</span>
+        <span className="pill">Card {index + 1} of {total}</span>
         <span className={`pill review-state-${sentence.reviewState}`}>{sentence.reviewState}</span>
+        {sentence.itemType ? <span className="pill pill-accent">{itemTypeLabels[sentence.itemType]}</span> : null}
         <span className="pill">{getRecallModeLabel(recallMode)}</span>
       </div>
       {showTargetBeforeReveal || revealed ? (
         <div className="review-sentence-row">
-          <p className="review-sentence">{revealed ? sentence.text : prompt}</p>
+          <p className="review-sentence">{renderTargetText(sentence, revealed ? sentence.text : prompt)}</p>
           <AudioButton sentence={sentence.text} language={sentence.language} compact />
         </div>
       ) : (
@@ -81,6 +89,23 @@ export function ReviewSentenceCard({ sentence, index, total, revealed, onReveal 
 function getPrompt(sentence: ReviewSentence, fillBlankPrompt?: string): string {
   if ((sentence.recallMode ?? "full_support") === "fill_blank" && fillBlankPrompt) return fillBlankPrompt;
   return sentence.text;
+}
+
+// Item targets are reviewed through an example sentence; highlight the item's surface
+// form so the learner knows which part of the sentence is being tested. Sentence
+// targets render as plain text, exactly as before.
+function renderTargetText(sentence: ReviewSentence, text: string): ReactNode {
+  const surface = sentence.itemType ? sentence.focusText : null;
+  if (!surface) return text;
+  const index = text.indexOf(surface);
+  if (index < 0) return text;
+  return (
+    <>
+      {text.slice(0, index)}
+      <mark className="review-item-focus">{surface}</mark>
+      {text.slice(index + surface.length)}
+    </>
+  );
 }
 
 function hasFocus(sentence: ReviewSentence): boolean {

@@ -22,6 +22,30 @@
   box-sizing: border-box;
 }
 
+/* Keyboard users need a visible focus indicator on every interactive element,
+   not only inputs. */
+button:focus-visible,
+a:focus-visible,
+select:focus-visible,
+summary:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -503,6 +527,113 @@ button, input, textarea, select {
 .pill-chunk { border-color: var(--chunk); color: var(--chunk); }
 .pill-accent { border-color: var(--accent); color: var(--accent); }
 
+/* ── Reading ────────────────────────────────────────────── */
+
+.reading-workspace {
+  display: grid;
+  gap: 20px;
+}
+
+.reading-layout {
+  align-items: start;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(280px, 0.9fr) minmax(320px, 1.1fr);
+}
+
+.reading-input-panel,
+.reading-analysis-panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+}
+
+.reading-label {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.reading-input-panel textarea {
+  background: #fffdfa;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--ink);
+  min-height: 320px;
+  padding: 14px;
+  resize: vertical;
+}
+
+.reading-metrics {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.reading-metric {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  display: grid;
+  gap: 5px;
+  min-height: 78px;
+  padding: 12px;
+}
+
+.reading-difficulty {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  display: flex;
+  gap: 8px;
+  padding: 12px 0;
+}
+
+.reading-token-view {
+  background: #fffdfa;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  line-height: 2.2;
+  min-height: 220px;
+  padding: 16px;
+}
+
+.reading-token {
+  border-bottom: 2px solid transparent;
+  white-space: pre-wrap;
+}
+
+.reading-token-known {
+  background: rgba(22, 101, 52, 0.1);
+  border-bottom-color: rgba(22, 101, 52, 0.5);
+}
+
+.reading-token-learning {
+  background: rgba(181, 154, 106, 0.16);
+  border-bottom-color: rgba(181, 154, 106, 0.65);
+}
+
+.reading-token-space {
+  background: transparent;
+  border-bottom-color: transparent;
+}
+
+.reading-unknowns {
+  display: grid;
+  gap: 8px;
+}
+
+.reading-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 /* ── Review ─────────────────────────────────────────────── */
 
 .review-shell {
@@ -635,6 +766,94 @@ button, input, textarea, select {
   color: var(--muted);
   font-size: 12px;
   line-height: 1.35;
+}
+
+.review-progress-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.review-progress-stats {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(118px, 1fr));
+}
+
+.review-progress-stats .review-queue-stat {
+  min-height: 108px;
+}
+
+.review-heatmap {
+  background: var(--surface-muted);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  display: grid;
+  gap: 3px;
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(7, 12px);
+  padding: 12px;
+}
+
+.review-heatmap-cell {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  min-width: 12px;
+}
+
+.review-heatmap-1 { background: color-mix(in srgb, var(--accent) 25%, var(--surface)); }
+.review-heatmap-2 { background: color-mix(in srgb, var(--accent) 50%, var(--surface)); }
+.review-heatmap-3 { background: color-mix(in srgb, var(--accent) 75%, var(--surface)); }
+.review-heatmap-4 { background: var(--accent); }
+
+.review-mastery-bars {
+  display: grid;
+  gap: 10px;
+}
+
+.review-mastery-bar {
+  display: grid;
+  gap: 6px;
+}
+
+.review-mastery-bar-top {
+  align-items: baseline;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.review-mastery-bar-top span {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.review-mastery-track {
+  background: var(--surface-muted);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  height: 10px;
+  overflow: hidden;
+  position: relative;
+}
+
+.review-mastery-graded,
+.review-mastery-fill {
+  border-radius: 999px;
+  display: block;
+  height: 100%;
+  left: 0;
+  position: absolute;
+  top: 0;
+}
+
+.review-mastery-graded {
+  background: color-mix(in srgb, var(--accent) 30%, var(--surface));
+}
+
+.review-mastery-fill {
+  background: var(--accent);
 }
 
 .review-menu-tabs {
@@ -1269,6 +1488,14 @@ button, input, textarea, select {
   font-size: clamp(28px, 4vw, 52px);
   line-height: 1.15;
   letter-spacing: 0;
+}
+
+.review-item-focus {
+  background: rgba(181, 154, 106, 0.22);
+  border-bottom: 2px solid var(--accent);
+  border-radius: 3px;
+  color: inherit;
+  padding: 0 2px;
 }
 
 .review-reverse-prompt {
@@ -3748,7 +3975,8 @@ textarea.input {
     grid-template-columns: 1fr;
   }
 
-  .review-queue-stats {
+  .review-queue-stats,
+  .review-progress-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -3778,6 +4006,11 @@ textarea.input {
 
   .review-stats-overview,
   .review-stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .reading-layout,
+  .reading-metrics {
     grid-template-columns: 1fr;
   }
 

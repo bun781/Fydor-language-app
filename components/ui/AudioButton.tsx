@@ -21,13 +21,13 @@ export function AudioButton({
   const className = compact ? "button secondary icon-only" : "button secondary";
 
   return (
-    <Tooltip content="Play. Double-click for slow speech.">
+    <Tooltip content={audio.supported ? "Play. Double-click for slow speech." : "Speech is not supported on this device."}>
       <button
         type="button"
         className={className}
         onClick={audio.onClick}
         onDoubleClick={audio.onDoubleClick}
-        aria-label={label}
+        aria-label={audio.supported ? label : "Speech is not supported on this device"}
         disabled={!audio.supported}
       >
         <Volume2 size={18} />

@@ -20,7 +20,7 @@ import { ImportHelpPanel } from "@/components/language/ImportHelpPanel";
 import { ImportPreview } from "@/components/language/ImportPreview";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { createTourScope, replayGuidedTour } from "@/components/system/GuidedTour";
-import { readSessionProgress, writeSessionProgress } from "@/components/imported-content/sessionProgress";
+import { clearLocal, readLocal, readSessionProgress, writeSessionProgress } from "@/lib/storage";
 import {
   deleteLesson as deleteLessonApi,
   exportLesson as exportLessonApi,
@@ -52,9 +52,10 @@ import {
   slugifyLessonTitle,
   splitTags,
   stringifyLesson,
-  validateLessonManagerProgress
+  lessonManagerProgressSchema
 } from "./lesson-import-utils";
 import type { AnnotationDraft, LessonManagerProgress, SelectedSpan, WorkspaceMode } from "./lesson-import-utils";
+import { z } from "zod";
 
 type AnnotationKind = AnnotationDraft["kind"];
 
@@ -66,7 +67,7 @@ const LESSON_MANAGER_PROGRESS_KEY = "lesson-manager.workspace";
 
 // Chunk: editor state and data loading
 export default function LessonImportsPage({ initialMode = "builder" }: LessonImportsPageProps) {
-  const [savedProgress] = useState(() => readSessionProgress(LESSON_MANAGER_PROGRESS_KEY, validateLessonManagerProgress));
+  const [savedProgress] = useState(() => readSessionProgress(LESSON_MANAGER_PROGRESS_KEY, lessonManagerProgressSchema));
   const initialEditorLesson = savedProgress?.lesson ?? initialLesson;
   const [mode, setMode] = useState<WorkspaceMode>(savedProgress?.mode ?? initialMode);
   const [lesson, setLesson] = useState<LessonImportInput>(initialEditorLesson);
@@ -158,10 +159,10 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
   }, [deletingLessonId, pendingDeleteLessonId]);
 
   useEffect(() => {
-    const importedSource = window.localStorage.getItem(LESSON_IMPORT_DRAFT_KEY);
+    const importedSource = readLocal(LESSON_IMPORT_DRAFT_KEY, z.string());
     if (!importedSource) return;
 
-    window.localStorage.removeItem(LESSON_IMPORT_DRAFT_KEY);
+    clearLocal(LESSON_IMPORT_DRAFT_KEY);
     loadLessonSource(importedSource, "builder");
   }, []);
 
@@ -430,13 +431,15 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
       return;
     }
 
+    let parsed: LessonImportInput;
     try {
-      const parsed = JSON.parse(source) as LessonImportInput;
-      setLesson(parsed);
-      await callback(source, lessonId);
-    } catch {
-      setErrors(["Invalid JSON."]);
+      parsed = JSON.parse(source) as LessonImportInput;
+    } catch (error) {
+      setErrors([`Invalid JSON: ${error instanceof Error ? error.message : "the text could not be parsed."}`]);
+      return;
     }
+    setLesson(parsed);
+    await callback(source, lessonId);
   }
 
   function buildAppendJsonSource(jsonSource: string, lessonId: string): string {
@@ -585,18 +588,18 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
         <div className="lesson-builder-topbar">
           <div className="lesson-builder-topbar-left">
             <div className="mode-tabs" role="tablist" aria-label="Lesson editor mode">
-              <button className={mode === "builder" ? "active" : ""} type="button" data-tour="lesson-editor-mode" onClick={() => setMode("builder")}>
+              <button className={mode === "builder" ? "active" : ""} type="button" role="tab" aria-selected={mode === "builder"} data-tour="lesson-editor-mode" onClick={() => setMode("builder")}>
                 <BookOpen size={17} />
                 Builder
               </button>
-              <button className={mode === "json" ? "active" : ""} type="button" onClick={() => {
+              <button className={mode === "json" ? "active" : ""} type="button" role="tab" aria-selected={mode === "json"} onClick={() => {
                 setSource(stringifyLesson(lesson));
                 setMode("json");
               }} data-tour="lesson-json-mode">
                 <FileJson size={17} />
                 JSON
               </button>
-              <button className={mode === "lessons" ? "active" : ""} type="button" data-tour="lesson-library-tab" onClick={() => setMode("lessons")}>
+              <button className={mode === "lessons" ? "active" : ""} type="button" role="tab" aria-selected={mode === "lessons"} data-tour="lesson-library-tab" onClick={() => setMode("lessons")}>
                 <Library size={17} />
                 Lessons
               </button>
@@ -660,7 +663,7 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
                   inputClassName="input compact-meta-input"
                   onChange={(value) => updateLessonField("language", value)}
                 />
-                <span className="meta-separator" aria-hidden="true">-&gt;</span>
+                <span className="meta-separator" aria-hidden="true">→</span>
                 <LanguageField
                   label="Base"
                   value={lesson.baseLanguage}
@@ -701,9 +704,9 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
               <div className="lesson-meta-footer">
                 <div className="tag-editor" aria-label="Lesson tags">
                   {(lesson.tags ?? []).map((tag) => (
-                    <button className="tag-chip" key={tag} type="button" title={`Remove ${tag}`} onClick={() => removeLessonTag(tag)}>
+                    <button className="tag-chip" key={tag} type="button" title={`Remove ${tag}`} aria-label={`Remove tag ${tag}`} onClick={() => removeLessonTag(tag)}>
                       {tag}
-                      <span aria-hidden="true">x</span>
+                      <span aria-hidden="true">×</span>
                     </button>
                   ))}
                   <input
@@ -931,4 +934,3 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
     </AppShell>
   );
 }
-

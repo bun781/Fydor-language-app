@@ -78,18 +78,19 @@ export function hydrateReviewSentence(row: ReviewSentenceRow): ReviewSentence {
     difficulty: row.difficulty ?? 0.3,
     stability: row.stability ?? Math.max(0, row.reviewStreak),
     recallMode: row.recallMode ?? "full_support",
+    schedulerEngine: row.schedulerEngine ?? "fixed-interval",
     focusText: row.focusText ?? null,
     focusMeaning: row.focusMeaning ?? null,
     focusExplanation: row.focusExplanation ?? null
   };
 }
 
-function updateDifficulty(current: number, grade: ReviewGrade): number {
+export function updateDifficulty(current: number, grade: ReviewGrade): number {
   const delta = grade === "forgot" ? 0.18 : grade === "hard" ? 0.08 : grade === "remembered" ? -0.04 : -0.08;
   return clamp(round(current + delta), 0, 1);
 }
 
-function updateStability(current: number, grade: ReviewGrade): number {
+export function updateStability(current: number, grade: ReviewGrade): number {
   if (grade === "forgot") return Math.max(0.5, round(current * 0.45));
   if (grade === "hard") return Math.max(1, round(current + 0.5));
   if (grade === "remembered") return Math.max(3, round(current + 2));

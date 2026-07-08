@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { ArrowDownAZ, ArrowUpAZ, RotateCcw, Search } from "lucide-react";
+import { PieChart } from "@/components/ui/PieChart";
 import type { StudyLesson } from "@/lib/imported-content/types";
 import type { ReviewResetScope, ReviewSentence } from "@/lib/review/types";
 
@@ -274,50 +275,25 @@ function StatPieCard({
 }) {
   const total = remembered + needsReview;
   const rememberedShare = total > 0 ? remembered / total : 0;
-  const needsShare = total > 0 ? needsReview / total : 0;
-  const radius = variant === "hero" ? 30 : 24;
-  const size = variant === "hero" ? 92 : 72;
-  const circumference = 2 * Math.PI * radius;
-  const rememberedLength = circumference * rememberedShare;
-  const needsLength = circumference * needsShare;
   const rememberedPercent = total > 0 ? Math.round(rememberedShare * 100) : 0;
+  const chart = (
+    <PieChart
+      center={<strong>{total}</strong>}
+      className="review-stat-pie-chart"
+      radius={variant === "hero" ? 30 : 24}
+      segments={[
+        { value: remembered, className: "review-stat-pie-remembered" },
+        { value: needsReview, className: "review-stat-pie-needs" }
+      ]}
+      size={variant === "hero" ? 92 : 72}
+      trackClassName="review-stat-pie-track"
+    />
+  );
 
   if (variant === "hero") {
     return (
       <article className="review-stat-pie review-stat-pie-hero">
-        <div className="review-stat-pie-chart" aria-hidden="true">
-          <svg viewBox={`0 0 ${size} ${size}`} role="presentation">
-            <circle
-              cx={size / 2}
-              cy={size / 2}
-              r={radius}
-              className="review-stat-pie-track"
-              transform={`rotate(-90 ${size / 2} ${size / 2})`}
-            />
-            {total > 0 ? (
-              <>
-                <circle
-                  cx={size / 2}
-                  cy={size / 2}
-                  r={radius}
-                  className="review-stat-pie-remembered"
-                  strokeDasharray={`${rememberedLength} ${circumference - rememberedLength}`}
-                  transform={`rotate(-90 ${size / 2} ${size / 2})`}
-                />
-                <circle
-                  cx={size / 2}
-                  cy={size / 2}
-                  r={radius}
-                  className="review-stat-pie-needs"
-                  strokeDasharray={`${needsLength} ${circumference - needsLength}`}
-                  strokeDashoffset={-rememberedLength}
-                  transform={`rotate(-90 ${size / 2} ${size / 2})`}
-                />
-              </>
-            ) : null}
-          </svg>
-          <strong>{total}</strong>
-        </div>
+        {chart}
         <div className="review-stat-pie-copy">
           <span>{label}</span>
           <strong>{remembered} remembered · {needsReview} need review</strong>
@@ -333,39 +309,7 @@ function StatPieCard({
 
   return (
     <article className="review-stat-pie card">
-      <div className="review-stat-pie-chart" aria-hidden="true">
-        <svg viewBox={`0 0 ${size} ${size}`} role="presentation">
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            className="review-stat-pie-track"
-            transform={`rotate(-90 ${size / 2} ${size / 2})`}
-          />
-          {total > 0 ? (
-            <>
-              <circle
-                cx={size / 2}
-                cy={size / 2}
-                r={radius}
-                className="review-stat-pie-remembered"
-                strokeDasharray={`${rememberedLength} ${circumference - rememberedLength}`}
-                transform={`rotate(-90 ${size / 2} ${size / 2})`}
-              />
-              <circle
-                cx={size / 2}
-                cy={size / 2}
-                r={radius}
-                className="review-stat-pie-needs"
-                strokeDasharray={`${needsLength} ${circumference - needsLength}`}
-                strokeDashoffset={-rememberedLength}
-                transform={`rotate(-90 ${size / 2} ${size / 2})`}
-              />
-            </>
-          ) : null}
-        </svg>
-        <strong>{total}</strong>
-      </div>
+      {chart}
       <div className="review-stat-pie-copy">
         <span>{label}</span>
         <strong>{rememberedPercent}% remembered</strong>

@@ -40,8 +40,12 @@ postmaster.pid
 postgresql.auto.conf
 pg_wal/
 
+# Separate website repo checked out locally (github.com/bun781/fydor-landing-site)
+fydor-website/
+
 # Tauri build artifacts
 src-tauri/target/
+src-tauri/gen/
 src-tauri/next-standalone/*
 !src-tauri/next-standalone/.gitkeep
 dist/

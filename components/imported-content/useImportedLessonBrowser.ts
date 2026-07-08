@@ -5,18 +5,17 @@ import { getLessonCached } from "@/lib/desktopApi";
 import { groupLessonsByLanguage } from "@/lib/language/importResources";
 import type { StudyLesson, StudyLessonMeta } from "@/lib/imported-content/types";
 import type { ChangeEvent } from "react";
-import { readSessionProgress, writeSessionProgress } from "./sessionProgress";
+import { readSessionProgress, writeSessionProgress } from "@/lib/storage";
+import { z } from "zod";
 
 const SELECTED_LESSON_KEY = "selected-lesson";
 
-interface SelectedLessonProgress {
-  lessonId: string;
-}
+const selectedLessonSchema = z.object({ lessonId: z.string() });
 
 export function useImportedLessonBrowser(initialLesson: StudyLesson | null, allLessons: StudyLessonMeta[]) {
   const languageGroups = useMemo(() => groupLessonsByLanguage(allLessons), [allLessons]);
   const queryLessonId = getQueryLessonId();
-  const [savedSelection] = useState(() => readSessionProgress(SELECTED_LESSON_KEY, validateSelectedLessonProgress));
+  const [savedSelection] = useState(() => readSessionProgress(SELECTED_LESSON_KEY, selectedLessonSchema));
   const preferredLessonId = queryLessonId ?? savedSelection?.lessonId ?? null;
   const savedLesson = preferredLessonId
     ? allLessons.find((item) => item.id === preferredLessonId) ?? null
@@ -123,12 +122,6 @@ export function useImportedLessonBrowser(initialLesson: StudyLesson | null, allL
     selectedLanguage,
     switchLesson
   };
-}
-
-function validateSelectedLessonProgress(value: unknown): SelectedLessonProgress | null {
-  if (!value || typeof value !== "object") return null;
-  const lessonId = (value as Partial<SelectedLessonProgress>).lessonId;
-  return typeof lessonId === "string" ? { lessonId } : null;
 }
 
 function getQueryLessonId() {

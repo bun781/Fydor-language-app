@@ -24,6 +24,7 @@ Fydor is a local-first language-learning desktop app: Next.js (static export) fr
 │   └── AppShell.tsx        Nav shell used by every page
 ├── lib/
 │   ├── desktopApi.ts       ⭐ THE data layer — every Tauri invoke() call lives here
+│   ├── storage.ts          Browser local/session storage helpers with Zod validation
 │   ├── review/             Queue building, SRS scheduling, recall modes, deck hooks
 │   ├── language/           importResources.ts (guide/prompt content) + types.ts
 │   ├── imported-content/   Study mode types and pure utilities
@@ -51,7 +52,7 @@ UI component → hook (e.g. `lib/review/useReviewDeck.ts`) → `lib/desktopApi.t
 - All reads and writes go through `lib/desktopApi.ts`. Never add another data-access path.
 - Command name strings in `invoke("...")` must exactly match the `#[tauri::command]` fn names in Rust. Do not rename either side independently.
 - TS types for command payloads live in `lib/{review,language,imported-content}/types.ts` and must stay in shape-sync with `src-tauri/src/models.rs`.
-- Frontend state is plain React state + hooks. Session progress persists via `components/imported-content/sessionProgress.ts` (localStorage). There is no state library — do not add one.
+- Frontend state is plain React state + hooks. Browser-backed UI/session progress persists via `lib/storage.ts` with Zod validation. There is no state library — do not add one.
 
 ## Feature Ownership Map
 

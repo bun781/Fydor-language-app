@@ -1,10 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { updateReviewItem } from "@/lib/desktopApi";
-import { clearSessionProgress, readSessionProgress, writeSessionProgress } from "@/components/imported-content/sessionProgress";
+import { updateItemReview, updateReviewItem } from "@/lib/desktopApi";
+import { clearSessionProgress, readSessionProgress, writeSessionProgress } from "@/lib/storage";
 import { applyReviewDecision } from "./scheduler";
-import { buildInterleavedReviewQueue, summarizeReviewSentences, type ReviewQueueFilter } from "./queue";
+import {
+  buildInterleavedReviewQueue,
+  itemTargetToQueueEntry,
+  parseReviewTargetKey,
+  summarizeReviewSentences,
+  type ReviewQueueFilter
+} from "./queue";
 import {
   buildReviewSessionSummary,
   classifyReviewSource,
@@ -12,6 +18,7 @@ import {
   type ReviewSessionSummary
 } from "./sessionSummary";
 import type { ReviewDecision, ReviewSentence } from "./types";
+import { z } from "zod";
 
 const REVIEW_DECK_PROGRESS_KEY = "review.deck";
 
@@ -35,7 +42,90 @@ interface ReviewDeckState {
   } | null;
 }
 
-export function useReviewDeck(initialSentences: ReviewSentence[]) {
+const reviewDecisionSchema = z.enum(["forgot", "hard", "remembered", "easy", "forgotten"]);
+const reviewQueueFilterSchema = z.enum(["mixed", "due", "new", "all"]);
+
+const reviewSentenceSchema = z.object({
+  id: z.string(),
+  sentenceId: z.string().optional(),
+  lessonId: z.string().optional(),
+  importId: z.string().optional(),
+  language: z.string(),
+  text: z.string(),
+  translation: z.string(),
+  reviewState: z.enum(["unknown", "remembered", "forgotten"]),
+  reviewStreak: z.number(),
+  reviewedAt: z.string().nullable(),
+  dueAt: z.string().optional(),
+  lastReviewedAt: z.string().nullable().optional(),
+  repetitions: z.number().optional(),
+  lapses: z.number().optional(),
+  difficulty: z.number().optional(),
+  stability: z.number().optional(),
+  recallMode: z.enum(["full_support", "translation_hidden", "sentence_only", "fill_blank", "reverse_translate"]).optional(),
+  schedulerEngine: z.enum(["fixed-interval", "fsrs"]).optional(),
+  focusText: z.string().nullable().optional(),
+  focusMeaning: z.string().nullable().optional(),
+  focusExplanation: z.string().nullable().optional(),
+  itemType: z.enum(["word", "grammar", "chunk"]).optional()
+});
+
+const reviewSessionEventSchema = z.object({
+  sentenceId: z.string(),
+  lessonId: z.string().optional(),
+  text: z.string(),
+  translation: z.string(),
+  decision: reviewDecisionSchema,
+  before: reviewSentenceSchema,
+  after: reviewSentenceSchema,
+  sourceBucket: z.enum(["due", "new", "mastered"])
+});
+
+const activeSessionSchema = z.object({
+  startedAt: z.union([z.string(), z.date()]).transform((value, ctx) => {
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Invalid date" });
+      return z.NEVER;
+    }
+    return date;
+  }),
+  queueIds: z.array(z.string()),
+  reviewed: z.array(reviewSessionEventSchema)
+});
+
+const completedSessionSchema = z.object({
+  filter: z.union([reviewQueueFilterSchema, z.literal("custom")]),
+  label: z.string(),
+  summary: z.custom<ReviewSessionSummary>((value) => Boolean(value))
+});
+
+const reviewDeckProgressSchema = z.object({
+  order: z.array(z.string()),
+  position: z.number().int(),
+  filter: reviewQueueFilterSchema,
+  started: z.boolean(),
+  activeSession: z.unknown().transform((value) => activeSessionSchema.safeParse(value).data ?? null),
+  completedSession: z.unknown().transform((value) => completedSessionSchema.safeParse(value).data ?? null)
+}).transform((item) => ({
+  order: item.order,
+  position: item.position,
+  sentences: [],
+  saving: false,
+  error: null,
+  filter: item.filter,
+  started: item.started,
+  activeSession: item.activeSession,
+  completedSession: item.completedSession
+}));
+
+export interface ReviewDeckOptions {
+  // Daily new-card cap remaining today; undefined means uncapped. Applied when the
+  // queue is built, so it bounds "mixed" and "new" sessions but not "all" browsing.
+  newLimit?: number;
+}
+
+export function useReviewDeck(initialSentences: ReviewSentence[], options: ReviewDeckOptions = {}) {
   const [state, setState] = useState<ReviewDeckState>(() => restoreReviewDeckState(initialSentences) ?? ({
     order: [],
     position: 0,
@@ -74,10 +164,11 @@ export function useReviewDeck(initialSentences: ReviewSentence[]) {
   const currentSentence = currentId ? state.sentences.find((sentence) => sentence.id === currentId) ?? null : null;
   const summary = summarizeReviewSentences(state.sentences);
 
+  const newLimit = options.newLimit;
   const startReview = useCallback((filter: ReviewQueueFilter = "mixed") => {
     setState((prev) => {
       const startedAt = new Date();
-      const order = buildInterleavedReviewQueue(prev.sentences, { filter, seed: startedAt.getTime(), shuffled: true, now: startedAt });
+      const order = buildInterleavedReviewQueue(prev.sentences, { filter, seed: startedAt.getTime(), shuffled: true, now: startedAt, newLimit });
 
       return {
         ...prev,
@@ -90,7 +181,7 @@ export function useReviewDeck(initialSentences: ReviewSentence[]) {
         completedSession: null
       };
     });
-  }, []);
+  }, [newLimit]);
 
   const startFocusedReview = useCallback((sentenceIds: string[], label = "Targeted retry") => {
     setState((prev) => {
@@ -185,7 +276,12 @@ export function useReviewDeck(initialSentences: ReviewSentence[]) {
     }));
 
     try {
-      const savedSentence = await updateReviewItem(currentSentence.id, decision);
+      // Entries with an "item:<id>" key persist through the item-level command; any
+      // other key is a raw sentence id and follows the unchanged sentence path.
+      const itemTarget = parseReviewTargetKey(currentSentence.id);
+      const savedSentence = itemTarget?.kind === "item"
+        ? itemTargetToQueueEntry(await updateItemReview(itemTarget.id, decision))
+        : await updateReviewItem(currentSentence.id, decision);
       setState((prev) => ({
         ...prev,
         sentences: prev.sentences.map((sentence) => (sentence.id === savedSentence.id ? savedSentence : sentence))
@@ -227,7 +323,7 @@ function getSessionLabel(filter: ReviewQueueFilter) {
 }
 
 function restoreReviewDeckState(initialSentences: ReviewSentence[]): ReviewDeckState | null {
-  const saved = readSessionProgress(REVIEW_DECK_PROGRESS_KEY, validateReviewDeckProgress);
+  const saved = readSessionProgress(REVIEW_DECK_PROGRESS_KEY, reviewDeckProgressSchema);
   if (!saved) return null;
 
   const sentenceIds = new Set(initialSentences.map((sentence) => sentence.id));
@@ -259,93 +355,4 @@ function writeReviewDeckState(state: ReviewDeckState) {
     saving: false,
     error: null
   });
-}
-
-function validateReviewDeckProgress(value: unknown): ReviewDeckState | null {
-  if (!value || typeof value !== "object") return null;
-  const item = value as Partial<ReviewDeckState>;
-
-  if (!isStringArray(item.order)) return null;
-  if (typeof item.position !== "number" || !Number.isInteger(item.position)) return null;
-  if (!isReviewQueueFilter(item.filter)) return null;
-  if (typeof item.started !== "boolean") return null;
-  if (item.completedSession !== null && item.completedSession !== undefined && !isCompletedSession(item.completedSession)) return null;
-
-  return {
-    order: item.order,
-    position: item.position,
-    sentences: [],
-    saving: false,
-    error: null,
-    filter: item.filter,
-    started: item.started,
-    activeSession: parseActiveSession(item.activeSession),
-    completedSession: item.completedSession ?? null
-  };
-}
-
-function parseActiveSession(value: unknown): ReviewDeckState["activeSession"] {
-  if (!value || typeof value !== "object") return null;
-  const item = value as Partial<NonNullable<ReviewDeckState["activeSession"]>> & { startedAt?: unknown };
-  const startedAt = typeof item.startedAt === "string" || item.startedAt instanceof Date ? new Date(item.startedAt) : null;
-
-  if (!startedAt || Number.isNaN(startedAt.getTime())) return null;
-  if (!isStringArray(item.queueIds)) return null;
-  if (!Array.isArray(item.reviewed) || !item.reviewed.every(isReviewSessionEvent)) return null;
-
-  return {
-    startedAt,
-    queueIds: item.queueIds,
-    reviewed: item.reviewed
-  };
-}
-
-function isCompletedSession(value: unknown): value is NonNullable<ReviewDeckState["completedSession"]> {
-  if (!value || typeof value !== "object") return false;
-  const item = value as Partial<NonNullable<ReviewDeckState["completedSession"]>>;
-  return (
-    (isReviewQueueFilter(item.filter) || item.filter === "custom") &&
-    typeof item.label === "string" &&
-    Boolean(item.summary)
-  );
-}
-
-function isReviewSessionEvent(value: unknown): value is ReviewSessionEvent {
-  if (!value || typeof value !== "object") return false;
-  const item = value as Partial<ReviewSessionEvent>;
-  return (
-    typeof item.sentenceId === "string" &&
-    typeof item.text === "string" &&
-    typeof item.translation === "string" &&
-    isReviewDecision(item.decision) &&
-    isReviewSentence(item.before) &&
-    isReviewSentence(item.after) &&
-    (item.sourceBucket === "due" || item.sourceBucket === "new" || item.sourceBucket === "mastered")
-  );
-}
-
-function isReviewSentence(value: unknown): value is ReviewSentence {
-  if (!value || typeof value !== "object") return false;
-  const sentence = value as Partial<ReviewSentence>;
-  return (
-    typeof sentence.id === "string" &&
-    typeof sentence.language === "string" &&
-    typeof sentence.text === "string" &&
-    typeof sentence.translation === "string" &&
-    (sentence.reviewState === "unknown" || sentence.reviewState === "remembered" || sentence.reviewState === "forgotten") &&
-    typeof sentence.reviewStreak === "number" &&
-    (sentence.reviewedAt === null || typeof sentence.reviewedAt === "string")
-  );
-}
-
-function isReviewDecision(value: unknown): value is ReviewDecision {
-  return value === "forgot" || value === "hard" || value === "remembered" || value === "easy" || value === "forgotten";
-}
-
-function isReviewQueueFilter(value: unknown): value is ReviewQueueFilter {
-  return value === "mixed" || value === "due" || value === "new" || value === "all";
-}
-
-function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((item) => typeof item === "string");
 }

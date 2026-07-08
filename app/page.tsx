@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/AppShell";
 
 export default function HomePage() {
+  const router = useRouter();
+
   useEffect(() => {
-    window.location.replace("/lessons/manage");
-  }, []);
+    router.replace("/lessons/manage");
+  }, [router]);
 
   return (
     <AppShell>

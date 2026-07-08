@@ -1,3 +1,4 @@
+import { tokenizeForReading, type ReadingToken } from "@/lib/reading/tokenizer";
 import type { StudySentence } from "./types";
 
 export interface TextSpan {
@@ -19,9 +20,12 @@ export interface AnnotationRange extends TextSpan {
 interface NormalizedChar {
   value: string;
   sourceIndex: number;
+  sourceEndIndex: number;
 }
 
 const TOKEN_CHAR_RE = /[\p{L}\p{N}\p{M}]/u;
+
+export type TextToken = Pick<ReadingToken, "text" | "start" | "end" | "isWordLike">;
 
 export function normalizePracticeAnswer(value: string): string {
   return value
@@ -35,6 +39,10 @@ export function normalizePracticeAnswer(value: string): string {
 
 export function answersMatch(actual: string, expected: string): boolean {
   return normalizePracticeAnswer(actual) === normalizePracticeAnswer(expected);
+}
+
+export function tokenizeText(source: string, locale?: string): TextToken[] {
+  return tokenizeForReading(source, locale).map(({ text, start, end, isWordLike }) => ({ text, start, end, isWordLike }));
 }
 
 export function buildAnnotationRanges(sentence: StudySentence): AnnotationRange[] {
@@ -103,7 +111,7 @@ export function findTextSpans(source: string, query: string): TextSpan[] {
     const endChar = normalizedSource.chars[matchIndex + normalizedQuery.length - 1];
     if (startChar && endChar) {
       const start = startChar.sourceIndex;
-      const end = endChar.sourceIndex + source[endChar.sourceIndex].length;
+      const end = endChar.sourceEndIndex;
       if (isTokenBoundary(source[start - 1]) && isTokenBoundary(source[end])) {
         spans.push({ start, end });
       }
@@ -132,13 +140,12 @@ function findExactSpans(source: string, query: string): TextSpan[] {
 function normalizeWithMap(source: string): { text: string; chars: NormalizedChar[] } {
   const chars: NormalizedChar[] = [];
 
-  for (let i = 0; i < source.length; i += 1) {
-    const raw = source[i];
+  for (const { text: raw, start, end } of iterateCodePoints(source)) {
     const normalized = normalizePracticeAnswer(raw);
     if (!normalized) continue;
 
     for (const value of normalized.replace(/\s/g, "")) {
-      chars.push({ value, sourceIndex: i });
+      chars.push({ value, sourceIndex: start, sourceEndIndex: end });
     }
   }
 
@@ -146,6 +153,20 @@ function normalizeWithMap(source: string): { text: string; chars: NormalizedChar
     text: chars.map((char) => char.value).join(""),
     chars
   };
+}
+
+function iterateCodePoints(source: string): TextToken[] {
+  const chars: TextToken[] = [];
+  let index = 0;
+
+  for (const text of source) {
+    const start = index;
+    const end = start + text.length;
+    chars.push({ text, start, end, isWordLike: TOKEN_CHAR_RE.test(text) });
+    index = end;
+  }
+
+  return chars;
 }
 
 function normalizeSpanSearchText(value: string): string {

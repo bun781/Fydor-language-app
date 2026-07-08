@@ -1,16 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import ServiceWorker from "@/components/ServiceWorker";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Fydor",
   description: "Language study — lesson builder, saved lessons, and sentence review. Free for the people.",
-  manifest: "/manifest.json",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
-    title: "Fydor"
-  },
   icons: {
     icon: [
       { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
@@ -28,11 +21,19 @@ export const viewport: Viewport = {
   viewportFit: "cover"
 };
 
+// The PWA service worker was removed when Fydor became a Tauri desktop app.
+// Unregister any worker left behind by older installs so they don't serve stale caches.
+const unregisterLegacyServiceWorker = `
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.getRegistrations().then((rs) => rs.forEach((r) => r.unregister())).catch(() => {});
+}
+`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body>
-        <ServiceWorker />
+        <script dangerouslySetInnerHTML={{ __html: unregisterLegacyServiceWorker }} />
         {children}
       </body>
     </html>

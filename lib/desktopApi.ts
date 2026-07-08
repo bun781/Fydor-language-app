@@ -4,7 +4,8 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { StudyLesson, StudyLessonMeta } from "@/lib/imported-content/types";
 import type { LessonImportInput, LessonImportPreviewResult, LessonImportSummary } from "@/lib/language/types";
-import type { ReviewDecision, ReviewResetScope, ReviewSentence } from "@/lib/review/types";
+import type { ReadingInputs } from "@/lib/reading/analyzer";
+import type { ReviewDecision, ReviewItemTarget, ReviewProgressSnapshot, ReviewResetScope, ReviewSentence } from "@/lib/review/types";
 
 export async function getLessons(): Promise<StudyLessonMeta[]> {
   return invoke("get_lessons");
@@ -63,6 +64,22 @@ export async function updateReviewItem(sentenceId: string, decision: ReviewDecis
 
 export async function resetReviewProgress(scope: ReviewResetScope): Promise<void> {
   return invoke("reset_review_progress", { scope });
+}
+
+export async function getItemReviewTargets(): Promise<ReviewItemTarget[]> {
+  return invoke("get_item_review_targets");
+}
+
+export async function updateItemReview(learningItemId: string, decision: ReviewDecision): Promise<ReviewItemTarget> {
+  return invoke("update_item_review", { learningItemId, decision });
+}
+
+export async function getReviewProgress(): Promise<ReviewProgressSnapshot> {
+  return invoke("get_review_progress");
+}
+
+export async function getReadingInputs(): Promise<ReadingInputs> {
+  return invoke("get_reading_inputs");
 }
 
 export async function saveUserSettings(settings: Record<string, unknown>): Promise<void> {

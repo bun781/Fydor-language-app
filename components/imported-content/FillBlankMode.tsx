@@ -3,11 +3,24 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AudioButton } from "@/components/ui/AudioButton";
-import { getLessonCached } from "@/lib/desktopApi";
 import type { StudyLesson, StudyLessonMeta, StudySentence } from "@/lib/imported-content/types";
 import { buildClozeCandidates, type ClozeCandidate } from "@/lib/imported-content/study-utils";
+import { stableShuffle } from "@/lib/imported-content/stableShuffle";
 import { answersMatch, normalizePracticeAnswer } from "@/lib/imported-content/text-spans";
-import { clearSessionProgress, readSessionProgress, writeSessionProgress } from "./sessionProgress";
+import { clearSessionProgress, readSessionProgress, writeSessionProgress } from "@/lib/storage";
+import {
+  createResultId,
+  getSelectedLessonTitles,
+  readSavedQuizResults,
+  saveQuizResult,
+  scoreSchema,
+  useQuizLessonSelection,
+  type SavedTestResult,
+  type TestMode,
+  type TestStatus
+} from "./quizSession";
+import { PastQuizResults } from "./PastQuizResults";
+import { z } from "zod";
 
 interface Props {
   lesson: StudyLesson | null;
@@ -15,8 +28,6 @@ interface Props {
 }
 
 type AnswerMode = "type" | "choice";
-type TestMode = "continuous" | "full";
-type TestStatus = "setup" | "active" | "complete";
 
 interface FillBlankCard {
   id: string;
@@ -24,16 +35,6 @@ interface FillBlankCard {
   candidate: ClozeCandidate;
   lessonId: string;
   lessonTitle: string;
-}
-
-interface SavedTestResult {
-  id: string;
-  completedAt: string;
-  mode: TestMode;
-  lessonTitles: string[];
-  questionCount: number;
-  correct: number;
-  wrong: number;
 }
 
 const RESULTS_KEY = "fydor.fill-blank-test-results";
@@ -55,23 +56,81 @@ interface FillBlankProgress {
   showResults: boolean;
 }
 
+const studySentenceSchema = z.custom<StudySentence>((value) => {
+  if (!value || typeof value !== "object") return false;
+  const sentence = value as Partial<StudySentence>;
+  return (
+    typeof sentence.id === "string" &&
+    typeof sentence.text === "string" &&
+    typeof sentence.translation === "string" &&
+    Array.isArray(sentence.words) &&
+    Array.isArray(sentence.grammar) &&
+    Array.isArray(sentence.chunks)
+  );
+});
+
+const clozeCandidateSchema = z.custom<ClozeCandidate>((value) => {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<ClozeCandidate>;
+  return (
+    typeof candidate.id === "string" &&
+    (candidate.kind === "word" || candidate.kind === "grammar" || candidate.kind === "chunk") &&
+    typeof candidate.start === "number" &&
+    typeof candidate.end === "number" &&
+    typeof candidate.answerText === "string"
+  );
+});
+
+const fillBlankCardSchema = z.object({
+  id: z.string(),
+  sentence: studySentenceSchema,
+  candidate: clozeCandidateSchema,
+  lessonId: z.string(),
+  lessonTitle: z.string()
+});
+
+const fillBlankProgressSchema = z.object({
+  selectedLessonIds: z.array(z.string()),
+  questionCount: z.number().int(),
+  testMode: z.enum(["continuous", "full"]),
+  answerMode: z.enum(["type", "choice"]),
+  status: z.enum(["setup", "active", "complete"]),
+  deck: z.array(fillBlankCardSchema),
+  index: z.number().int(),
+  answers: z.record(z.string()),
+  submittedCards: z.array(z.string()),
+  score: scoreSchema,
+  resultSaved: z.boolean(),
+  showResults: z.boolean().optional().default(false)
+}).transform((item) => ({
+  ...item,
+  index: Math.min(Math.max(0, item.index), item.deck.length),
+  submittedCards: item.submittedCards.filter((id) => item.deck.some((card) => card.id === id))
+}));
+
 export function FillBlankMode({ lesson, lessons = [] }: Props) {
-  const availableLessons = useMemo(() => (
-    lessons.length ? lessons : lesson ? [lessonToMeta(lesson)] : []
-  ), [lesson, lessons]);
-  const [initialProgress] = useState(() => readSessionProgress(PROGRESS_KEY, validateFillBlankProgress));
-  const [selectedLessonIds, setSelectedLessonIds] = useState<Set<string>>(() => {
-    return new Set(initialProgress?.selectedLessonIds ?? (lesson ? [lesson.id] : []));
+  const [initialProgress] = useState(() => readSessionProgress(PROGRESS_KEY, fillBlankProgressSchema));
+  const [status, setStatus] = useState<TestStatus>(() => initialProgress?.status ?? "setup");
+  const {
+    availableLessons,
+    selectedLessonIds,
+    loadedLessons,
+    loadingLessons,
+    loadError,
+    toggleLesson
+  } = useQuizLessonSelection({
+    lesson,
+    lessons,
+    initialSelectedLessonIds: initialProgress?.selectedLessonIds ?? [],
+    canChangeSelection: status === "setup"
   });
-  const [loadedLessons, setLoadedLessons] = useState<StudyLesson[]>(() => (lesson ? [lesson] : []));
-  const [loadingLessons, setLoadingLessons] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [questionCount, setQuestionCount] = useState(() => initialProgress?.questionCount ?? DEFAULT_QUESTION_COUNT);
+  const [questionCountText, setQuestionCountText] = useState(() => String(initialProgress?.questionCount ?? DEFAULT_QUESTION_COUNT));
+  const [confirmExit, setConfirmExit] = useState(false);
   const [testMode, setTestMode] = useState<TestMode>(() => initialProgress?.testMode ?? "continuous");
   const [answerMode, setAnswerMode] = useState<AnswerMode>(() => initialProgress?.answerMode ?? "choice");
   const [showResults, setShowResults] = useState(() => initialProgress?.showResults ?? false);
-  const [savedResults, setSavedResults] = useState<SavedTestResult[]>(() => readSavedResults());
-  const [status, setStatus] = useState<TestStatus>(() => initialProgress?.status ?? "setup");
+  const [savedResults, setSavedResults] = useState<SavedTestResult[]>(() => readSavedQuizResults(RESULTS_KEY));
   const [deck, setDeck] = useState<FillBlankCard[]>(() => initialProgress?.deck ?? []);
   const [index, setIndex] = useState(() => initialProgress?.index ?? 0);
   const [answers, setAnswers] = useState<Record<string, string>>(() => initialProgress?.answers ?? {});
@@ -80,55 +139,6 @@ export function FillBlankMode({ lesson, lessons = [] }: Props) {
   ));
   const [score, setScore] = useState(() => initialProgress?.score ?? { correct: 0, wrong: 0 });
   const [resultSaved, setResultSaved] = useState(() => initialProgress?.resultSaved ?? false);
-
-  useEffect(() => {
-    if (!availableLessons.length) {
-      setSelectedLessonIds(new Set());
-      return;
-    }
-
-    setSelectedLessonIds((current) => {
-      const validIds = new Set(availableLessons.map((item) => item.id));
-      const next = new Set([...current].filter((id) => validIds.has(id)));
-      if (!next.size) next.add(lesson?.id && validIds.has(lesson.id) ? lesson.id : availableLessons[0].id);
-      return next;
-    });
-  }, [availableLessons, lesson?.id]);
-
-  useEffect(() => {
-    if (!lesson) return;
-    setLoadedLessons((current) => {
-      const others = current.filter((item) => item.id !== lesson.id);
-      return [lesson, ...others];
-    });
-  }, [lesson]);
-
-  useEffect(() => {
-    const ids = [...selectedLessonIds];
-    if (!ids.length) {
-      setLoadedLessons([]);
-      return;
-    }
-
-    let cancelled = false;
-    async function loadSelectedLessons() {
-      setLoadingLessons(true);
-      setLoadError(null);
-      try {
-        const loaded = await Promise.all(ids.map((id) => lesson?.id === id ? lesson : getLessonCached(id)));
-        if (!cancelled) setLoadedLessons(loaded.filter((item): item is StudyLesson => Boolean(item)));
-      } catch (err) {
-        if (!cancelled) setLoadError(err instanceof Error ? err.message : "Unable to load selected lessons.");
-      } finally {
-        if (!cancelled) setLoadingLessons(false);
-      }
-    }
-
-    void loadSelectedLessons();
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedLessonIds, lesson]);
 
   const pool = useMemo(() => buildFillBlankDeck(loadedLessons), [loadedLessons]);
   const maxQuestions = Math.max(1, pool.length);
@@ -143,7 +153,10 @@ export function FillBlankMode({ lesson, lessons = [] }: Props) {
 
   useEffect(() => {
     // Only clamp once the pool has loaded; an empty pool would floor the saved count to 1.
-    if (pool.length > 0 && questionCount > pool.length) setQuestionCount(pool.length);
+    if (pool.length > 0 && questionCount > pool.length) {
+      setQuestionCount(pool.length);
+      setQuestionCountText(String(pool.length));
+    }
   }, [pool.length, questionCount]);
 
   useEffect(() => {
@@ -169,9 +182,12 @@ export function FillBlankMode({ lesson, lessons = [] }: Props) {
       if (isEditableShortcutTarget(event.target)) return;
       if (event.key === "Escape") {
         event.preventDefault();
-        resetToMenu();
+        // Confirm before discarding an in-progress test; one keypress should not destroy a run.
+        if (status === "active") setConfirmExit((open) => !open);
+        else resetToMenu();
         return;
       }
+      if (confirmExit) return;
       if (status !== "active" || !card) return;
       if (/^[1-9]$/.test(event.key) && !currentSubmitted && answerMode === "choice" && choices.length >= 2) {
         const choice = choices[Number(event.key) - 1];
@@ -195,7 +211,7 @@ export function FillBlankMode({ lesson, lessons = [] }: Props) {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, card, currentSubmitted, answerMode, choices, testMode, index, deck.length]);
+  }, [status, card, currentSubmitted, answerMode, choices, testMode, index, deck.length, confirmExit]);
 
   if (!availableLessons.length) {
     return (
@@ -205,18 +221,11 @@ export function FillBlankMode({ lesson, lessons = [] }: Props) {
     );
   }
 
-  function toggleLesson(lessonId: string) {
-    if (status !== "setup") return;
-    setSelectedLessonIds((current) => {
-      const next = new Set(current);
-      if (next.has(lessonId)) next.delete(lessonId);
-      else next.add(lessonId);
-      return next;
-    });
-  }
-
   function startTest() {
-    const nextDeck = sampleDeck(pool, clampedQuestionCount);
+    // Re-pick cloze candidates with a per-attempt seed so a repeated test doesn't
+    // always blank the exact same span in every sentence.
+    const attemptPool = buildFillBlankDeck(loadedLessons, String(Date.now()));
+    const nextDeck = sampleDeck(attemptPool, Math.min(clampedQuestionCount, Math.max(1, attemptPool.length)));
     if (!nextDeck.length) return;
     setDeck(nextDeck);
     setIndex(0);
@@ -267,7 +276,7 @@ export function FillBlankMode({ lesson, lessons = [] }: Props) {
 
   function completeTest(finalScore: { correct: number; wrong: number }) {
     if (!resultSaved) {
-      const next = saveResult({
+      const next = saveQuizResult(RESULTS_KEY, {
         id: createResultId(),
         completedAt: new Date().toISOString(),
         mode: testMode,
@@ -288,6 +297,7 @@ export function FillBlankMode({ lesson, lessons = [] }: Props) {
 
   function resetToMenu() {
     clearSessionProgress(PROGRESS_KEY);
+    setConfirmExit(false);
     setStatus("setup");
     setDeck([]);
     setIndex(0);
@@ -349,27 +359,38 @@ export function FillBlankMode({ lesson, lessons = [] }: Props) {
                   type="number"
                   min={1}
                   max={maxQuestions}
-                  value={questionCount}
-                  onChange={(event) => setQuestionCount(Number(event.target.value) || 1)}
+                  value={questionCountText}
+                  onChange={(event) => {
+                    const text = event.target.value;
+                    setQuestionCountText(text);
+                    const parsed = Number(text);
+                    if (Number.isInteger(parsed) && parsed >= 1) setQuestionCount(parsed);
+                  }}
+                  onBlur={() => {
+                    const parsed = Number(questionCountText);
+                    const clamped = Math.min(Math.max(1, Number.isInteger(parsed) && parsed >= 1 ? parsed : questionCount), maxQuestions);
+                    setQuestionCount(clamped);
+                    setQuestionCountText(String(clamped));
+                  }}
                 />
               </label>
 
               <span className="cloze-context-label">Check answers</span>
               <div className="mode-tabs cloze-answer-tabs" role="tablist" aria-label="Test mode">
-                <button type="button" className={testMode === "continuous" ? "active" : ""} onClick={() => setTestMode("continuous")}>
+                <button type="button" role="tab" aria-selected={testMode === "continuous"} className={testMode === "continuous" ? "active" : ""} onClick={() => setTestMode("continuous")}>
                   Continuous
                 </button>
-                <button type="button" className={testMode === "full" ? "active" : ""} onClick={() => setTestMode("full")}>
+                <button type="button" role="tab" aria-selected={testMode === "full"} className={testMode === "full" ? "active" : ""} onClick={() => setTestMode("full")}>
                   Full test
                 </button>
               </div>
 
               <span className="cloze-context-label">Answer style</span>
               <div className="mode-tabs cloze-answer-tabs" role="tablist" aria-label="Answer style">
-                <button type="button" className={answerMode === "type" ? "active" : ""} onClick={() => setAnswerMode("type")}>
+                <button type="button" role="tab" aria-selected={answerMode === "type"} className={answerMode === "type" ? "active" : ""} onClick={() => setAnswerMode("type")}>
                   Type
                 </button>
-                <button type="button" className={answerMode === "choice" ? "active" : ""} onClick={() => setAnswerMode("choice")}>
+                <button type="button" role="tab" aria-selected={answerMode === "choice"} className={answerMode === "choice" ? "active" : ""} onClick={() => setAnswerMode("choice")}>
                   Multiple choice
                 </button>
               </div>
@@ -391,7 +412,7 @@ export function FillBlankMode({ lesson, lessons = [] }: Props) {
             {loadingLessons ? "Loading lessons..." : "Start test"}
           </button>
 
-          {showResults ? <PastResults results={savedResults} /> : null}
+          {showResults ? <PastQuizResults emptyMessage="No completed fill-blank tests yet." results={savedResults} /> : null}
         </section>
       ) : null}
 
@@ -419,7 +440,7 @@ export function FillBlankMode({ lesson, lessons = [] }: Props) {
           <div className="row">
             <span className="pill">Question {index + 1} / {deck.length}</span>
             <span className={`pill cloze-kind-${card.candidate.kind}`}>{card.candidate.kind}</span>
-            <button type="button" className="button secondary" onClick={resetToMenu}>Back</button>
+            <button type="button" className="button secondary" onClick={() => setConfirmExit(true)}>Back</button>
           </div>
 
           <div className="cloze-context">
@@ -497,6 +518,7 @@ export function FillBlankMode({ lesson, lessons = [] }: Props) {
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
                     if (testMode === "continuous") submitContinuous();
+                    else if (index + 1 >= deck.length) finishFull();
                     else moveFull(1);
                   }
                 }}
@@ -537,6 +559,29 @@ export function FillBlankMode({ lesson, lessons = [] }: Props) {
           </p>
         </section>
       ) : null}
+
+      {confirmExit ? (
+        <div
+          className="confirm-backdrop"
+          role="presentation"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) setConfirmExit(false);
+          }}
+        >
+          <section className="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="fill-blank-exit-title">
+            <h2 id="fill-blank-exit-title">Leave this test?</h2>
+            <p className="muted">Your answers so far will be discarded and the test will not be saved.</p>
+            <div className="row">
+              <button className="button secondary" type="button" autoFocus onClick={() => setConfirmExit(false)}>
+                Keep testing
+              </button>
+              <button className="button danger" type="button" onClick={resetToMenu}>
+                Discard test
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -547,11 +592,11 @@ function isEditableShortcutTarget(target: EventTarget | null): boolean {
   return ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
 }
 
-export function buildFillBlankDeck(lessons: StudyLesson[] | StudyLesson | null): FillBlankCard[] {
+export function buildFillBlankDeck(lessons: StudyLesson[] | StudyLesson | null, attemptSeed = ""): FillBlankCard[] {
   const lessonList = Array.isArray(lessons) ? lessons : lessons ? [lessons] : [];
   return lessonList.flatMap((item) =>
     item.sentences.flatMap((sentence) => {
-      const candidate = pickClozeCandidate(sentence);
+      const candidate = pickClozeCandidate(sentence, attemptSeed);
       return candidate ? [{
         id: `${item.id}:${sentence.id}:${candidate.id}`,
         sentence,
@@ -578,10 +623,10 @@ export function buildChoices(answer: string | null, deck: FillBlankCard[]): stri
   return stableShuffle([answer, ...distractors.slice(0, 3)], answer);
 }
 
-function pickClozeCandidate(sentence: StudySentence): ClozeCandidate | null {
+function pickClozeCandidate(sentence: StudySentence, attemptSeed = ""): ClozeCandidate | null {
   const candidates = buildClozeCandidates(sentence);
   if (!candidates.length) return null;
-  return stableShuffle(candidates, sentence.id)[0];
+  return stableShuffle(candidates, `${sentence.id}${attemptSeed}`)[0];
 }
 
 function sampleDeck(deck: FillBlankCard[], count: number): FillBlankCard[] {
@@ -596,175 +641,6 @@ function calculateScore(deck: FillBlankCard[], answers: Record<string, string>) 
       return current;
     },
     { correct: 0, wrong: 0 }
-  );
-}
-
-function stableShuffle<T>(values: T[], seed: string): T[] {
-  const out = [...values];
-  let state = 0;
-  for (let i = 0; i < seed.length; i += 1) state = (state * 31 + seed.charCodeAt(i)) >>> 0;
-  for (let i = out.length - 1; i > 0; i -= 1) {
-    state = (state * 1664525 + 1013904223) >>> 0;
-    const j = state % (i + 1);
-    [out[i], out[j]] = [out[j], out[i]];
-  }
-  return out;
-}
-
-function readSavedResults(): SavedTestResult[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(RESULTS_KEY) ?? "[]");
-    return Array.isArray(parsed) ? parsed.filter(isSavedResult) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveResult(result: SavedTestResult): SavedTestResult[] {
-  const next = [result, ...readSavedResults()].slice(0, 20);
-  if (typeof window !== "undefined") {
-    try {
-      window.localStorage.setItem(RESULTS_KEY, JSON.stringify(next));
-    } catch {
-      // Results are optional history; the test should still finish if storage is unavailable.
-    }
-  }
-  return next;
-}
-
-function isSavedResult(value: unknown): value is SavedTestResult {
-  if (!value || typeof value !== "object") return false;
-  const result = value as Partial<SavedTestResult>;
-  return typeof result.id === "string" && typeof result.completedAt === "string" && typeof result.questionCount === "number";
-}
-
-function validateFillBlankProgress(value: unknown): FillBlankProgress | null {
-  if (!value || typeof value !== "object") return null;
-  const item = value as Partial<FillBlankProgress>;
-  const index = item.index;
-  const questionCount = item.questionCount;
-
-  if (!isStringArray(item.selectedLessonIds)) return null;
-  if (typeof questionCount !== "number" || !Number.isInteger(questionCount)) return null;
-  if (item.testMode !== "continuous" && item.testMode !== "full") return null;
-  if (item.answerMode !== "type" && item.answerMode !== "choice") return null;
-  if (item.status !== "setup" && item.status !== "active" && item.status !== "complete") return null;
-  if (!Array.isArray(item.deck) || !item.deck.every(isFillBlankCard)) return null;
-  if (typeof index !== "number" || !Number.isInteger(index)) return null;
-  if (!isAnswerMap(item.answers)) return null;
-  if (!isStringArray(item.submittedCards)) return null;
-  if (!isScore(item.score)) return null;
-  if (typeof item.resultSaved !== "boolean") return null;
-  if (item.showResults !== undefined && typeof item.showResults !== "boolean") return null;
-
-  const deck = item.deck;
-
-  return {
-    selectedLessonIds: item.selectedLessonIds,
-    questionCount,
-    testMode: item.testMode,
-    answerMode: item.answerMode,
-    status: item.status,
-    deck,
-    index: Math.min(Math.max(0, index), deck.length),
-    answers: item.answers,
-    submittedCards: item.submittedCards.filter((id) => deck.some((card) => card.id === id)),
-    score: item.score,
-    resultSaved: item.resultSaved,
-    showResults: item.showResults ?? false
-  };
-}
-
-function isFillBlankCard(value: unknown): value is FillBlankCard {
-  if (!value || typeof value !== "object") return false;
-  const card = value as Partial<FillBlankCard>;
-  return (
-    typeof card.id === "string" &&
-    typeof card.lessonId === "string" &&
-    typeof card.lessonTitle === "string" &&
-    isStudySentence(card.sentence) &&
-    isClozeCandidate(card.candidate)
-  );
-}
-
-function isStudySentence(value: unknown): value is StudySentence {
-  if (!value || typeof value !== "object") return false;
-  const sentence = value as Partial<StudySentence>;
-  return (
-    typeof sentence.id === "string" &&
-    typeof sentence.text === "string" &&
-    typeof sentence.translation === "string" &&
-    Array.isArray(sentence.words) &&
-    Array.isArray(sentence.grammar) &&
-    Array.isArray(sentence.chunks)
-  );
-}
-
-function isClozeCandidate(value: unknown): value is ClozeCandidate {
-  if (!value || typeof value !== "object") return false;
-  const candidate = value as Partial<ClozeCandidate>;
-  return (
-    typeof candidate.id === "string" &&
-    (candidate.kind === "word" || candidate.kind === "grammar" || candidate.kind === "chunk") &&
-    typeof candidate.start === "number" &&
-    typeof candidate.end === "number" &&
-    typeof candidate.answerText === "string"
-  );
-}
-
-function isAnswerMap(value: unknown): value is Record<string, string> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-  return Object.values(value).every((answer) => typeof answer === "string");
-}
-
-function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((item) => typeof item === "string");
-}
-
-function isScore(value: unknown): value is FillBlankProgress["score"] {
-  if (!value || typeof value !== "object") return false;
-  const score = value as Partial<FillBlankProgress["score"]>;
-  return Number.isInteger(score.correct) && Number.isInteger(score.wrong);
-}
-
-function createResultId() {
-  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
-
-function getSelectedLessonTitles(lessons: StudyLessonMeta[], selectedIds: Set<string>) {
-  return lessons.filter((item) => selectedIds.has(item.id)).map((item) => item.title);
-}
-
-function lessonToMeta(lesson: StudyLesson): StudyLessonMeta {
-  return {
-    id: lesson.id,
-    language: lesson.language,
-    baseLanguage: lesson.baseLanguage,
-    title: lesson.title,
-    description: lesson.description,
-    level: lesson.level,
-    tags: lesson.tags,
-    sentenceCount: lesson.sentences.length
-  };
-}
-
-function PastResults({ results }: { results: SavedTestResult[] }) {
-  if (!results.length) return <p className="muted">No completed fill-blank tests yet.</p>;
-
-  return (
-    <div className="past-results stack">
-      {results.map((result) => (
-        <div className="past-result-row" key={result.id}>
-          <div>
-            <strong>{result.correct}/{result.questionCount}</strong>
-            <p className="muted">{result.lessonTitles.join(", ") || "Selected lessons"}</p>
-          </div>
-          <span className="pill">{result.mode === "continuous" ? "Continuous" : "Full test"}</span>
-          <small>{new Date(result.completedAt).toLocaleString()}</small>
-        </div>
-      ))}
-    </div>
   );
 }
 

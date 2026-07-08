@@ -18,6 +18,17 @@ export function ImportHelpPanel() {
   );
 
   useEffect(() => {
+    if (!isOpen) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setIsOpen(false);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isOpen]);
+
+  useEffect(() => {
     if (!copiedTemplate) return;
     const timeout = window.setTimeout(() => setCopiedPromptId(null), 2200);
     return () => window.clearTimeout(timeout);

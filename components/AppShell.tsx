@@ -5,6 +5,7 @@ import {
   Brain,
   Boxes,
   ClipboardList,
+  FileText,
   HelpCircle,
   Layers3,
   Library,
@@ -19,13 +20,13 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import fyLogo from "@/Fy.png";
 import { GuidedTour, replayGuidedTour } from "@/components/system/GuidedTour";
-import { readSessionProgress, writeSessionProgress } from "@/components/imported-content/sessionProgress";
+import { readSessionProgress, writeSessionProgress } from "@/lib/storage";
+import { z } from "zod";
 
 const APP_SHELL_PROGRESS_KEY = "app-shell";
 
-interface AppShellProgress {
-  sidebarPinned: boolean;
-}
+const appShellProgressSchema = z.object({ sidebarPinned: z.boolean() });
+type AppShellProgress = z.infer<typeof appShellProgressSchema>;
 
 const navSections: Array<{
   label: string;
@@ -43,6 +44,7 @@ const navSections: Array<{
     label: "Study",
     links: [
       { href: "/review", label: "Review", icon: ClipboardList },
+      { href: "/reading" as Route<string>, label: "Reading", icon: FileText },
       { href: "/study/imported-content", label: "Flashcards", icon: Layers3 },
       { href: "/study/fill-blank", label: "Fill Blank", icon: RectangleEllipsis },
       { href: "/study/multiple-choice", label: "Multiple Choice", icon: BookOpen }
@@ -56,15 +58,33 @@ const navSections: Array<{
   }
 ];
 
+const routeTitles: Record<string, string> = {
+  "/": "Fydor",
+  "/admin/imports": "Builder",
+  "/lessons/manage": "Lessons",
+  "/fydor-exchange": "Fydor Exchange",
+  "/review": "Review",
+  "/reading": "Reading",
+  "/study/imported-content": "Flashcards",
+  "/study/fill-blank": "Fill Blank",
+  "/study/multiple-choice": "Multiple Choice",
+  "/learning-science": "Learning Science"
+};
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [sidebarPinned, setSidebarPinned] = useState(() => (
-    readSessionProgress(APP_SHELL_PROGRESS_KEY, validateAppShellProgress)?.sidebarPinned ?? false
+    readSessionProgress(APP_SHELL_PROGRESS_KEY, appShellProgressSchema)?.sidebarPinned ?? false
   ));
 
   useEffect(() => {
     writeSessionProgress(APP_SHELL_PROGRESS_KEY, { sidebarPinned } satisfies AppShellProgress);
   }, [sidebarPinned]);
+
+  useEffect(() => {
+    const screen = routeTitles[pathname];
+    document.title = screen && screen !== "Fydor" ? `${screen} · Fydor` : "Fydor";
+  }, [pathname]);
 
   return (
     <div className={`app-shell${sidebarPinned ? " sidebar-pinned" : ""}`}>
@@ -123,10 +143,4 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <GuidedTour />
     </div>
   );
-}
-
-function validateAppShellProgress(value: unknown): AppShellProgress | null {
-  if (!value || typeof value !== "object") return null;
-  const sidebarPinned = (value as Partial<AppShellProgress>).sidebarPinned;
-  return typeof sidebarPinned === "boolean" ? { sidebarPinned } : null;
 }

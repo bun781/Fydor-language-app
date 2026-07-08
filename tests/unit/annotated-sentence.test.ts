@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildAnnotatedSentenceRuns } from "@/components/imported-content/AnnotatedSentence";
+import { findTextSpans, tokenizeText } from "@/lib/imported-content/text-spans";
 import type { StudySentence } from "@/lib/imported-content/types";
 
 describe("annotated sentence runs", () => {
@@ -61,6 +62,17 @@ describe("annotated sentence runs", () => {
       }),
       { kind: "plain", text: "." }
     ]);
+  });
+
+  it("matches normalized spans after non-BMP characters", () => {
+    expect(findTextSpans("👩‍🏫 Let's eat, now.", "eat now")).toEqual([{ start: 12, end: 20 }]);
+  });
+
+  it("tokenizes CJK text into word-like segments", () => {
+    const tokens = tokenizeText("저는 학생입니다.", "ko").filter((token) => token.isWordLike);
+
+    expect(tokens.map((token) => token.text).join("")).toBe("저는학생입니다");
+    expect(tokens.every((token) => token.start < token.end)).toBe(true);
   });
 });
 

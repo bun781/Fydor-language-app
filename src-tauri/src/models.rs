@@ -163,9 +163,91 @@ pub struct ReviewSentence {
     pub difficulty: f64,
     pub stability: f64,
     pub recall_mode: String,
+    pub scheduler_engine: String,
     pub focus_text: Option<String>,
     pub focus_meaning: Option<String>,
     pub focus_explanation: Option<String>,
+}
+
+// A canonical learning item as a review target: its scheduling state (from
+// item_review_states, or new-item defaults when no row exists) plus the best sentence
+// example to review it through. Mirrors ReviewItemTarget in lib/review/types.ts.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReviewItemTarget {
+    pub id: String,
+    pub item_type: String,
+    pub canonical_key: String,
+    pub display_text: String,
+    pub meaning: Option<String>,
+    pub explanation: Option<String>,
+    pub language: String,
+    pub due_at: String,
+    pub last_reviewed_at: Option<String>,
+    pub repetitions: i64,
+    pub lapses: i64,
+    pub difficulty: f64,
+    pub stability: f64,
+    pub scheduler_engine: String,
+    pub example_sentence_id: String,
+    pub example_text: String,
+    pub example_translation: String,
+    pub example_surface_text: String,
+    pub example_count: i64,
+}
+
+// Aggregated review history and mastery counters for the progress layer (streaks,
+// heatmaps, mastery %). Mirrors ReviewProgressSnapshot in lib/review/types.ts.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReviewDayActivity {
+    pub day: String,
+    pub reviews: i64,
+    pub new_cards: i64,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReviewMasteryStats {
+    pub total: i64,
+    pub graded: i64,
+    pub mastered: i64,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReviewProgressSnapshot {
+    pub daily_activity: Vec<ReviewDayActivity>,
+    pub item_stats: ReviewMasteryStats,
+    pub sentence_stats: ReviewMasteryStats,
+}
+
+// Minimal inputs for the reading analyzer so large libraries do not require loading
+// every full lesson in the frontend. Mirrors ReadingInputs in lib/reading/analyzer.ts.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReadingLexiconInput {
+    pub item_type: String,
+    pub canonical_key: String,
+    pub display_text: String,
+    pub meaning: Option<String>,
+    pub surfaces: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReadingItemStateInput {
+    pub item_type: String,
+    pub canonical_key: String,
+    pub repetitions: i64,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReadingInputs {
+    pub lexicon: Vec<ReadingLexiconInput>,
+    pub item_states: Vec<ReadingItemStateInput>,
+    pub remembered_sentence_keys: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]

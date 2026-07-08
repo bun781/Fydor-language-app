@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { findLanguageOption } from "@/lib/language/importResources";
 import type { LessonImportInput, LessonSentenceInput } from "@/lib/language/types";
 
@@ -160,58 +161,8 @@ export function getCharIndex(node: Node | null): number | null {
 
 export type WorkspaceMode = "builder" | "json" | "lessons";
 
-export interface LessonManagerProgress {
-  mode: WorkspaceMode;
-  lesson: LessonImportInput;
-  activeSentenceIndex: number;
-  draft: AnnotationDraft;
-  source: string;
-  appendSource: string;
-  targetLessonId: string;
-  editorLessonId: string | null;
-  selectedLibraryLessonId: string | null;
-  baselineSource: string;
-}
-
-export function validateLessonManagerProgress(value: unknown): LessonManagerProgress | null {
-  if (!value || typeof value !== "object") return null;
-  const item = value as Partial<LessonManagerProgress>;
-
-  if (!isWorkspaceMode(item.mode)) return null;
-  if (!isLessonImportInput(item.lesson)) return null;
-  if (typeof item.activeSentenceIndex !== "number" || !Number.isInteger(item.activeSentenceIndex)) return null;
-  if (!isAnnotationDraft(item.draft)) return null;
-  if (typeof item.source !== "string") return null;
-  if (typeof item.appendSource !== "string") return null;
-  if (typeof item.targetLessonId !== "string") return null;
-  if (item.editorLessonId !== null && typeof item.editorLessonId !== "string") return null;
-  if (item.selectedLibraryLessonId !== null && typeof item.selectedLibraryLessonId !== "string") return null;
-
-  return {
-    mode: item.mode,
-    lesson: item.lesson,
-    activeSentenceIndex: clampSentenceIndex(item.activeSentenceIndex, item.lesson),
-    draft: item.draft,
-    source: item.source,
-    appendSource: item.appendSource,
-    targetLessonId: item.targetLessonId,
-    editorLessonId: item.editorLessonId,
-    selectedLibraryLessonId: item.selectedLibraryLessonId,
-    // Older saved progress predates baselineSource; treating the restored draft as
-    // unsaved (baseline = pristine lesson) errs on the side of asking before discarding.
-    baselineSource: typeof item.baselineSource === "string" ? item.baselineSource : stringifyLesson(initialLesson)
-  };
-}
-
-export function clampSentenceIndex(index: number, lesson: LessonImportInput) {
-  return Math.min(Math.max(0, index), Math.max(0, lesson.sentences.length - 1));
-}
-
-function isWorkspaceMode(value: unknown): value is WorkspaceMode {
-  return value === "builder" || value === "json" || value === "lessons";
-}
-
-function isLessonImportInput(value: unknown): value is LessonImportInput {
+// Structural check only — the Rust import pipeline is the real validator for lesson content.
+const lessonImportInputSchema = z.custom<LessonImportInput>((value) => {
   if (!value || typeof value !== "object") return false;
   const lesson = value as Partial<LessonImportInput>;
   return (
@@ -220,23 +171,41 @@ function isLessonImportInput(value: unknown): value is LessonImportInput {
     typeof lesson.title === "string" &&
     Array.isArray(lesson.sentences)
   );
-}
+});
 
-function isAnnotationDraft(value: unknown): value is AnnotationDraft {
-  if (!value || typeof value !== "object") return false;
-  const draft = value as Partial<AnnotationDraft>;
-  return (
-    (draft.kind === "word" || draft.kind === "grammar" || draft.kind === "chunk") &&
-    typeof draft.surface === "string" &&
-    typeof draft.lemma === "string" &&
-    typeof draft.pattern === "string" &&
-    typeof draft.meaning === "string" &&
-    typeof draft.explanation === "string" &&
-    typeof draft.role === "string" &&
-    typeof draft.chunkType === "string" &&
-    typeof draft.level === "string" &&
-    typeof draft.tags === "string"
-  );
+export const lessonManagerProgressSchema = z.object({
+  mode: z.enum(["builder", "json", "lessons"]),
+  lesson: lessonImportInputSchema,
+  activeSentenceIndex: z.number().int(),
+  draft: z.object({
+    kind: z.enum(["word", "grammar", "chunk"]),
+    surface: z.string(),
+    lemma: z.string(),
+    pattern: z.string(),
+    meaning: z.string(),
+    explanation: z.string(),
+    role: z.string(),
+    chunkType: z.string(),
+    level: z.string(),
+    tags: z.string()
+  }),
+  source: z.string(),
+  appendSource: z.string(),
+  targetLessonId: z.string(),
+  editorLessonId: z.string().nullable(),
+  selectedLibraryLessonId: z.string().nullable(),
+  // Older saved progress predates baselineSource; treating the restored draft as
+  // unsaved (baseline = pristine lesson) errs on the side of asking before discarding.
+  baselineSource: z.string().catch(() => stringifyLesson(initialLesson))
+}).transform((item) => ({
+  ...item,
+  activeSentenceIndex: clampSentenceIndex(item.activeSentenceIndex, item.lesson)
+}));
+
+export type LessonManagerProgress = z.infer<typeof lessonManagerProgressSchema>;
+
+export function clampSentenceIndex(index: number, lesson: LessonImportInput) {
+  return Math.min(Math.max(0, index), Math.max(0, lesson.sentences.length - 1));
 }
 
 export function slugifyLessonTitle(title: string) {

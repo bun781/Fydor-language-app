@@ -5,19 +5,19 @@ import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { ReviewDeck } from "@/components/review/ReviewDeck";
 import { PageState } from "@/components/system/PageState";
-import { getLessonCached, getLessons, getReviewQueue, resetReviewProgress } from "@/lib/desktopApi";
-import { readSessionProgress, writeSessionProgress } from "@/components/imported-content/sessionProgress";
+import { getItemReviewTargets, getLessonCached, getLessons, getReviewQueue, resetReviewProgress } from "@/lib/desktopApi";
+import { readSessionProgress, writeSessionProgress } from "@/lib/storage";
 import type { StudyLesson, StudyLessonMeta } from "@/lib/imported-content/types";
-import type { ReviewResetScope, ReviewSentence } from "@/lib/review/types";
+import type { ReviewItemTarget, ReviewResetScope, ReviewSentence } from "@/lib/review/types";
+import { z } from "zod";
 
 const REVIEW_SELECTION_KEY = "review.selected-lessons";
 
-interface ReviewSelectionProgress {
-  lessonIds: string[];
-}
+const reviewSelectionSchema = z.object({ lessonIds: z.array(z.string()) });
 
 export default function ReviewPage() {
   const [sentences, setSentences] = useState<ReviewSentence[]>([]);
+  const [itemTargets, setItemTargets] = useState<ReviewItemTarget[]>([]);
   const [lessons, setLessons] = useState<StudyLessonMeta[]>([]);
   const [fullLessons, setFullLessons] = useState<StudyLesson[]>([]);
   const [selectedLessonIds, setSelectedLessonIds] = useState<string[]>([]);
@@ -27,16 +27,23 @@ export default function ReviewPage() {
     () => filterSentencesByLesson(sentences, selectedLessonIds),
     [selectedLessonIds, sentences]
   );
+  // An item belongs to the current selection when its example sentence does — items
+  // themselves are cross-lesson and carry no lessonId.
+  const filteredItemTargets = useMemo(() => {
+    const sentenceIds = new Set(filteredSentences.map((sentence) => sentence.id));
+    return itemTargets.filter((item) => sentenceIds.has(item.exampleSentenceId));
+  }, [filteredSentences, itemTargets]);
   const sentenceCountByLesson = useMemo(() => getSentenceCountByLesson(sentences), [sentences]);
 
   useEffect(() => {
     let cancelled = false;
 
-    Promise.all([getReviewQueue(), getLessons()])
-      .then(([queue, lessonList]) => {
+    Promise.all([getReviewQueue(), getLessons(), loadItemTargets()])
+      .then(([queue, lessonList, targets]) => {
         if (cancelled) return;
+        setItemTargets(targets);
         const availableLessonIds = getAvailableLessonIds(queue, lessonList);
-        const savedSelection = readSessionProgress(REVIEW_SELECTION_KEY, validateReviewSelectionProgress);
+        const savedSelection = readSessionProgress(REVIEW_SELECTION_KEY, reviewSelectionSchema);
         const restoredLessonIds = savedSelection
           ? savedSelection.lessonIds.filter((id) => availableLessonIds.includes(id))
           : [];
@@ -68,8 +75,9 @@ export default function ReviewPage() {
 
   async function handleResetProgress(scope: ReviewResetScope) {
     await resetReviewProgress(scope);
-    const queue = await getReviewQueue();
+    const [queue, targets] = await Promise.all([getReviewQueue(), loadItemTargets()]);
     setSentences(queue);
+    setItemTargets(targets);
   }
 
   return (
@@ -92,6 +100,7 @@ export default function ReviewPage() {
           sentenceCountByLesson={sentenceCountByLesson}
           selectedLessonIds={selectedLessonIds}
           sentences={filteredSentences}
+          items={filteredItemTargets}
           onResetProgress={handleResetProgress}
           onSelectedLessonIdsChange={(lessonIds) => {
             setSelectedLessonIds(lessonIds);
@@ -110,18 +119,18 @@ export default function ReviewPage() {
   );
 }
 
+// The item layer is additive: if it fails to load, sentence review must still work.
+function loadItemTargets(): Promise<ReviewItemTarget[]> {
+  return getItemReviewTargets().catch((err) => {
+    console.error("Failed to load item review targets", err);
+    return [];
+  });
+}
+
 function filterLessonsByLesson(lessons: StudyLesson[], selectedLessonIds: string[]) {
   if (!selectedLessonIds.length) return [];
   const selected = new Set(selectedLessonIds);
   return lessons.filter((lesson) => selected.has(lesson.id));
-}
-
-function validateReviewSelectionProgress(value: unknown): ReviewSelectionProgress | null {
-  if (!value || typeof value !== "object") return null;
-  const lessonIds = (value as Partial<ReviewSelectionProgress>).lessonIds;
-  return Array.isArray(lessonIds) && lessonIds.every((id) => typeof id === "string")
-    ? { lessonIds }
-    : null;
 }
 
 function getSentenceCountByLesson(sentences: ReviewSentence[]) {

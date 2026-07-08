@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildInterleavedReviewQueue,
   buildReviewQueue,
   buildReviewQueueWithCurrent,
   getReviewShortcutAction,
@@ -170,6 +171,12 @@ describe("review algorithm", () => {
     expect(queue).toHaveLength(sentences.length);
   });
 
+  it("deduplicates duplicate rows in the legacy queue path", () => {
+    const queue = buildReviewQueue([sentences[0], sentences[1], { ...sentences[1] }], 7, false);
+
+    expect(queue).toEqual(["forgotten", "unknown-a"]);
+  });
+
   it("keeps buckets in sequential order when shuffle is off", () => {
     const queue = buildReviewQueue(sentences, 7, false);
 
@@ -197,6 +204,47 @@ describe("review algorithm", () => {
 
     expect(first).not.toEqual(second);
     expect(new Set(first)).toEqual(new Set(second));
+  });
+
+  it("deduplicates duplicate sentence ids in the interleaved queue path", () => {
+    const now = new Date("2026-06-26T10:00:00.000Z");
+    const queue = buildInterleavedReviewQueue([
+      {
+        id: "due-a",
+        language: "ko",
+        text: "Due A",
+        translation: "Due A",
+        reviewState: "remembered",
+        reviewStreak: 2,
+        reviewedAt: null,
+        dueAt: "2026-06-25T10:00:00.000Z",
+        repetitions: 2
+      },
+      {
+        id: "due-a",
+        language: "ko",
+        text: "Due A duplicate",
+        translation: "Due A duplicate",
+        reviewState: "remembered",
+        reviewStreak: 2,
+        reviewedAt: null,
+        dueAt: "2026-06-25T10:00:00.000Z",
+        repetitions: 2
+      },
+      {
+        id: "new-a",
+        language: "ko",
+        text: "New A",
+        translation: "New A",
+        reviewState: "unknown",
+        reviewStreak: 0,
+        reviewedAt: null,
+        dueAt: "2026-06-30T10:00:00.000Z",
+        repetitions: 0
+      }
+    ], { filter: "all", now, seed: 3, shuffled: false });
+
+    expect(queue).toEqual(["due-a", "new-a"]);
   });
 
   it("summarizes the review state counts", () => {

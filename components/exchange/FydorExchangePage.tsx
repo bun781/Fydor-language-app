@@ -14,7 +14,8 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
-import { readSessionProgress, writeSessionProgress } from "@/components/imported-content/sessionProgress";
+import { readLocal, readSessionProgress, writeLocal, writeSessionProgress } from "@/lib/storage";
+import { z } from "zod";
 import {
   countSentences,
   createFydorPack,
@@ -49,42 +50,48 @@ interface InstalledPackRecord {
   sentenceCount: number;
 }
 
-interface InstallSummary {
-  installed: number;
-  skipped: number;
-  replaced: number;
-  sentenceCount: number;
-  details: string[];
-}
+const installSummarySchema = z.object({
+  installed: z.number(),
+  skipped: z.number(),
+  replaced: z.number(),
+  sentenceCount: z.number(),
+  details: z.array(z.string())
+});
+type InstallSummary = z.infer<typeof installSummarySchema>;
 
 const INSTALLED_PACKS_KEY = "fydor.exchange.installedPacks.v1";
 const EXCHANGE_PROGRESS_KEY = "fydor.exchange.workspace";
 
+const installedPacksSchema = z.array(z.custom<InstalledPackRecord>((value) => (
+  Boolean(value) && typeof value === "object"
+)));
+
+const exchangeProgressSchema = z.object({
+  packSource: z.string(),
+  duplicateMode: z.enum(["skip", "replace", "keep"]),
+  selectedInstallLessons: z.array(z.number().int()),
+  installSummary: installSummarySchema.nullish().transform((value) => value ?? null),
+  status: z.string(),
+  selectedLessonIds: z.array(z.string()),
+  metadata: z.object({
+    title: z.string(),
+    description: z.string(),
+    author: z.string(),
+    organization: z.string(),
+    version: z.string(),
+    license: z.string(),
+    tags: z.string()
+  }),
+  packSearch: z.string(),
+  packLanguage: z.string(),
+  packLevel: z.string()
+});
+type ExchangeProgress = z.infer<typeof exchangeProgressSchema>;
+
 const emptyPackSource = "";
 
-interface ExchangeProgress {
-  packSource: string;
-  duplicateMode: DuplicateMode;
-  selectedInstallLessons: number[];
-  installSummary: InstallSummary | null;
-  status: string;
-  selectedLessonIds: string[];
-  metadata: {
-    title: string;
-    description: string;
-    author: string;
-    organization: string;
-    version: string;
-    license: string;
-    tags: string;
-  };
-  packSearch: string;
-  packLanguage: string;
-  packLevel: string;
-}
-
 export function FydorExchangePage() {
-  const [savedProgress] = useState(() => readSessionProgress(EXCHANGE_PROGRESS_KEY, validateExchangeProgress));
+  const [savedProgress] = useState(() => readSessionProgress(EXCHANGE_PROGRESS_KEY, exchangeProgressSchema));
   const [lessons, setLessons] = useState<StudyLessonMeta[]>([]);
   const [lessonsLoading, setLessonsLoading] = useState(true);
   const [installedPacks, setInstalledPacks] = useState<InstalledPackRecord[]>([]);
@@ -768,19 +775,11 @@ function splitTags(value: string): string[] {
 }
 
 function readInstalledPacks(): InstalledPackRecord[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const source = window.localStorage.getItem(INSTALLED_PACKS_KEY);
-    if (!source) return [];
-    const parsed = JSON.parse(source);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+  return readLocal(INSTALLED_PACKS_KEY, installedPacksSchema) ?? [];
 }
 
 function writeInstalledPacks(packs: InstalledPackRecord[]) {
-  window.localStorage.setItem(INSTALLED_PACKS_KEY, JSON.stringify(packs));
+  writeLocal(INSTALLED_PACKS_KEY, packs);
 }
 
 function upsertInstalledPack(packs: InstalledPackRecord[], nextPack: InstalledPackRecord): InstalledPackRecord[] {
@@ -788,69 +787,3 @@ function upsertInstalledPack(packs: InstalledPackRecord[], nextPack: InstalledPa
   return [nextPack, ...existing];
 }
 
-function validateExchangeProgress(value: unknown): ExchangeProgress | null {
-  if (!value || typeof value !== "object") return null;
-  const item = value as Partial<ExchangeProgress>;
-
-  if (typeof item.packSource !== "string") return null;
-  if (!isDuplicateMode(item.duplicateMode)) return null;
-  if (!isNumberArray(item.selectedInstallLessons)) return null;
-  if (item.installSummary !== null && item.installSummary !== undefined && !isInstallSummary(item.installSummary)) return null;
-  if (typeof item.status !== "string") return null;
-  if (!isStringArray(item.selectedLessonIds)) return null;
-  if (!isExchangeMetadata(item.metadata)) return null;
-  if (typeof item.packSearch !== "string") return null;
-  if (typeof item.packLanguage !== "string") return null;
-  if (typeof item.packLevel !== "string") return null;
-
-  return {
-    packSource: item.packSource,
-    duplicateMode: item.duplicateMode,
-    selectedInstallLessons: item.selectedInstallLessons,
-    installSummary: item.installSummary ?? null,
-    status: item.status,
-    selectedLessonIds: item.selectedLessonIds,
-    metadata: item.metadata,
-    packSearch: item.packSearch,
-    packLanguage: item.packLanguage,
-    packLevel: item.packLevel
-  };
-}
-
-function isDuplicateMode(value: unknown): value is DuplicateMode {
-  return value === "skip" || value === "replace" || value === "keep";
-}
-
-function isInstallSummary(value: unknown): value is InstallSummary {
-  if (!value || typeof value !== "object") return false;
-  const summary = value as Partial<InstallSummary>;
-  return (
-    typeof summary.installed === "number" &&
-    typeof summary.skipped === "number" &&
-    typeof summary.replaced === "number" &&
-    typeof summary.sentenceCount === "number" &&
-    isStringArray(summary.details)
-  );
-}
-
-function isExchangeMetadata(value: unknown): value is ExchangeProgress["metadata"] {
-  if (!value || typeof value !== "object") return false;
-  const metadata = value as Partial<ExchangeProgress["metadata"]>;
-  return (
-    typeof metadata.title === "string" &&
-    typeof metadata.description === "string" &&
-    typeof metadata.author === "string" &&
-    typeof metadata.organization === "string" &&
-    typeof metadata.version === "string" &&
-    typeof metadata.license === "string" &&
-    typeof metadata.tags === "string"
-  );
-}
-
-function isNumberArray(value: unknown): value is number[] {
-  return Array.isArray(value) && value.every((item) => typeof item === "number" && Number.isInteger(item));
-}
-
-function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((item) => typeof item === "string");
-}
