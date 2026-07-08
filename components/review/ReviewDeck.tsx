@@ -272,6 +272,21 @@ export function ReviewDeck({
             </>
           ) : (
             <section className="review-start-panel review-start-panel-controls">
+              <div className="review-start-actions">
+                <button className="button" type="button" data-tour="review-start-mixed" onClick={() => startReview("mixed")}>
+                  Start Mixed Review
+                </button>
+                <div className="review-filter-row" aria-label="Review filters">
+                  <button className="button secondary" type="button" data-tour="review-start-due" onClick={() => startReview("due")} disabled={queueDashboard.due === 0}>Due only</button>
+                  <button className="button secondary" type="button" data-tour="review-start-new" onClick={() => startReview("new")} disabled={queueDashboard.new === 0}>New only</button>
+                  <button className="button secondary" type="button" onClick={() => startReview("all")}>All selected</button>
+                  {onResetProgress && selectedLessonIds.length ? (
+                    <button className="button secondary" type="button" data-tour="review-reset-progress" onClick={() => setConfirmResetLesson(true)}>
+                      <RotateCcw size={16} /> Reset Progress
+                    </button>
+                  ) : null}
+                </div>
+              </div>
               <ReviewLessonSelect
                 lessons={lessonOptions}
                 selectedLessonIds={selectedLessonIds}
