@@ -1,20 +1,22 @@
 # AGENTS.md — Fydor (Habitz) Coding Agent Guide
 
-Fydor is a local-first language-learning desktop app: Next.js (static export) frontend inside a Tauri shell, with all persistence in SQLite via Rust commands. There is no web server and no server-side database — `next.config.ts` uses `output: "export"`.
+Fydor is a local-first language-learning desktop app: a Vite + React SPA inside a Tauri shell, with all persistence in SQLite via Rust commands. There is no web server and no server-side database — `vite build` emits a static bundle to `dist/` that Tauri serves. Routing is client-side via React Router's `HashRouter` (hash URLs work from a single static `index.html` without server rewrites).
 
 ## Repository Overview
 
 ```
 /
-├── app/                    Next.js App Router pages (all "use client", static export)
-│   ├── lessons/manage/     Lesson manager (main entry; / redirects here)
-│   ├── admin/imports/      Lesson Builder (same component, builder mode)
-│   ├── study/*/            4 study modes (imported-content, fill-blank, multiple-choice, sentence-forge)
-│   ├── review/             SRS review deck
-│   ├── fydor-exchange/     .fydorpack import/export/sharing
-│   └── learning-science/   Static reference page
+├── index.html              Vite entry document (favicons, SW unregister script)
+├── src/                    App entry + route table
+│   ├── main.tsx            ReactDOM root; imports globals.css
+│   ├── App.tsx             ⭐ Route table (HashRouter). / redirects to /lessons/manage
+│   ├── ErrorBoundary.tsx   Top-level render-error screen
+│   ├── globals.css         All styling (single global stylesheet)
+│   └── pages/              Pages with their own load logic (ReviewPage, LearningSciencePage);
+│                           all other routes are thin shells declared inline in App.tsx
 ├── components/             React UI by feature
 │   ├── review/             ReviewDeck, ReviewControls, ReviewSentenceCard, ReviewStatsBrowser
+│   ├── reading/            ReadingWorkspace (tab shell), LessonReader, TextAnalyzer
 │   ├── imported-content/   Study mode UI (flashcards, quiz modes, annotated sentences)
 │   ├── admin-imports/      Lesson Builder UI (LessonImportsPage + LessonBuilderEditor)
 │   ├── exchange/           Fydor Exchange UI (pack install/share/library)
@@ -26,6 +28,7 @@ Fydor is a local-first language-learning desktop app: Next.js (static export) fr
 │   ├── desktopApi.ts       ⭐ THE data layer — every Tauri invoke() call lives here
 │   ├── storage.ts          Browser local/session storage helpers with Zod validation
 │   ├── review/             Queue building, SRS scheduling, recall modes, deck hooks
+│   ├── reading/            Tokenizer, coverage analyzer, reader navigation helpers
 │   ├── language/           importResources.ts (guide/prompt content) + types.ts
 │   ├── imported-content/   Study mode types and pure utilities
 │   ├── speech.ts           Web Speech API service + playback hooks (single file)
@@ -67,6 +70,7 @@ UI component → hook (e.g. `lib/review/useReviewDeck.ts`) → `lib/desktopApi.t
 | Import guide + prompt templates | `lib/language/importResources.ts` |
 | Lesson Builder UI | `components/admin-imports/LessonImportsPage.tsx` |
 | Study modes | `components/imported-content/` + `lib/imported-content/` |
+| Reading Mode (lesson reader + text analyzer) | `components/reading/`, `lib/reading/` |
 | Text normalization / canonical keys | `src-tauri/src/normalize.rs` |
 | Database schema | `src-tauri/src/db.rs` |
 | .fydorpack format | `lib/fydor-pack.ts` |
@@ -87,7 +91,7 @@ UI component → hook (e.g. `lib/review/useReviewDeck.ts`) → `lib/desktopApi.t
 - `src-tauri/src/normalize.rs` — canonical-key changes break deduplication against existing data
 - `lib/review/scheduler.ts`, `lib/review/queue.ts`, `lib/review/recallModes.ts` — SRS behavior
 - `lib/fydor-pack.ts` — pack format is a shared contract with files users have already exported
-- The `/` route is a redirect stub to `/lessons/manage` — keep
+- The `/` route redirects to `/lessons/manage` (Navigate in `src/App.tsx`) — keep
 
 ## Rules Against Common Agent Mistakes
 
@@ -95,5 +99,5 @@ UI component → hook (e.g. `lib/review/useReviewDeck.ts`) → `lib/desktopApi.t
 - No duplicate state systems — review state lives in SQLite via Tauri commands; do not mirror it in React state or localStorage.
 - No new abstractions, barrel exports, or shared utilities unless the task requires them.
 - Do not add a second DB access layer or bypass `lib/desktopApi.ts`.
-- Do not add business logic to `app/*/page.tsx` files — they are thin shells over components.
+- Do not add business logic to route declarations in `src/App.tsx` or `src/pages/*` shells — routes stay thin over components.
 - There is no legacy web pipeline: the drizzle/PGlite layer was removed in July 2026. Ignore any docs/history that reference `db/schema.ts`, `lib/server/`, or `lib/language/importLesson.ts` — persistence is Rust-only.
