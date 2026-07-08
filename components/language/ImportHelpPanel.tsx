@@ -1,5 +1,3 @@
-"use client";
-
 import { Check, Copy, HelpCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { importGuideSections, importPromptTemplates } from "@/lib/language/importResources";

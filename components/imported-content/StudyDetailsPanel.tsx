@@ -1,5 +1,3 @@
-"use client";
-
 import type { SelectedItem } from "@/lib/imported-content/types";
 
 interface Props {

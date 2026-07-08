@@ -1,6 +1,4 @@
-"use client";
-
-import Link from "next/link";
+import { Link } from "react-router-dom";
 import {
   Archive,
   CheckCircle2,
@@ -470,8 +468,8 @@ export function FydorExchangePage() {
                 <span><strong>{installSummary.sentenceCount}</strong> sentences</span>
               </div>
               <div className="exchange-actions">
-                <Link className="button secondary" href="/lessons/manage">Go to Lessons</Link>
-                <Link className="button" href="/review">Start Review</Link>
+                <Link className="button secondary" to="/lessons/manage">Go to Lessons</Link>
+                <Link className="button" to="/review">Start Review</Link>
               </div>
             </section>
           ) : null}

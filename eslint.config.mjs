@@ -1,29 +1,34 @@
-import { FlatCompat } from "@eslint/eslintrc";
 import js from "@eslint/js";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import reactHooks from "eslint-plugin-react-hooks";
+import reactRefresh from "eslint-plugin-react-refresh";
+import tseslint from "typescript-eslint";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-  recommendedConfig: js.configs.recommended,
-  allConfig: js.configs.all
-});
-
-const eslintConfig = [
+export default tseslint.config(
   {
     ignores: [
+      "dist/**",
       ".next/**",
       "out/**",
       "node_modules/**",
-      "next-env.d.ts",
-      "src-tauri/next-standalone/**",
-      "src-tauri/target/**"
+      "src-tauri/**",
+      "fydor-website/**"
     ]
   },
-  ...compat.extends("next/core-web-vitals", "next/typescript")
-];
-
-export default eslintConfig;
+  {
+    files: ["**/*.{ts,tsx,mjs}"],
+    extends: [
+      js.configs.recommended,
+      ...tseslint.configs.recommended,
+      reactHooks.configs.flat.recommended
+    ],
+    plugins: {
+      "react-refresh": reactRefresh
+    },
+    rules: {
+      "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
+      // New in eslint-plugin-react-hooks v7; flags a load-then-setState pattern
+      // used throughout this codebase. Revisit per-file rather than as a blanket refactor.
+      "react-hooks/set-state-in-effect": "off"
+    }
+  }
+);

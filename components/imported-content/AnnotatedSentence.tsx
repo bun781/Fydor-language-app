@@ -1,5 +1,3 @@
-"use client";
-
 import { useId } from "react";
 import type { StudySentence } from "@/lib/imported-content/types";
 import { buildAnnotationRanges, type AnnotationRange } from "@/lib/imported-content/text-spans";

@@ -1,5 +1,3 @@
-"use client";
-
 import {
   BookOpen,
   Brain,
@@ -13,11 +11,8 @@ import {
   PencilRuler,
   RectangleEllipsis
 } from "lucide-react";
-import type { Route } from "next";
-import Image from "next/image";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import fyLogo from "@/Fy.png";
 import { GuidedTour, replayGuidedTour } from "@/components/system/GuidedTour";
 import { readSessionProgress, writeSessionProgress } from "@/lib/storage";
@@ -30,7 +25,7 @@ type AppShellProgress = z.infer<typeof appShellProgressSchema>;
 
 const navSections: Array<{
   label: string;
-  links: Array<{ href: Route<string>; label: string; icon: React.ComponentType<{ size?: number }> }>;
+  links: Array<{ href: string; label: string; icon: React.ComponentType<{ size?: number }> }>;
 }> = [
   {
     label: "Create",
@@ -44,7 +39,7 @@ const navSections: Array<{
     label: "Study",
     links: [
       { href: "/review", label: "Review", icon: ClipboardList },
-      { href: "/reading" as Route<string>, label: "Reading", icon: FileText },
+      { href: "/reading", label: "Reading", icon: FileText },
       { href: "/study/imported-content", label: "Flashcards", icon: Layers3 },
       { href: "/study/fill-blank", label: "Fill Blank", icon: RectangleEllipsis },
       { href: "/study/multiple-choice", label: "Multiple Choice", icon: BookOpen }
@@ -72,7 +67,7 @@ const routeTitles: Record<string, string> = {
 };
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
+  const { pathname } = useLocation();
   const [sidebarPinned, setSidebarPinned] = useState(() => (
     readSessionProgress(APP_SHELL_PROGRESS_KEY, appShellProgressSchema)?.sidebarPinned ?? false
   ));
@@ -88,8 +83,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className={`app-shell${sidebarPinned ? " sidebar-pinned" : ""}`}>
-      <Link href="/" className="app-brand" aria-label="Fydor home">
-        <Image className="app-brand-mark" src={fyLogo} alt="" aria-hidden="true" priority />
+      <Link to="/" className="app-brand" aria-label="Fydor home">
+        <img className="app-brand-mark" src={fyLogo} alt="" aria-hidden="true" />
         <span className="app-brand-name">Fydor</span>
       </Link>
       <aside className="sidebar" aria-label="App navigation">
@@ -112,7 +107,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               {section.links.map(({ href, label, icon: Icon }) => (
                 <Link
                   key={href}
-                  href={href}
+                  to={href}
                   title={label}
                   data-tour={href === "/lessons/manage" ? "nav-library" : undefined}
                   className={pathname === href || pathname.startsWith(href + "/") ? "nav-active" : ""}

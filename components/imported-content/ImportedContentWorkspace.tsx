@@ -1,6 +1,4 @@
-"use client";
-
-import Link from "next/link";
+import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { PageState } from "@/components/system/PageState";
 import { getLessons } from "@/lib/desktopApi";
@@ -85,7 +83,7 @@ export function ImportedContentWorkspace({ mode = "lesson" }: Props) {
         eyebrow="No data yet"
         title="No flashcards yet"
         description="Save a lesson first. When lessons exist, this page will show them grouped by language and let you study them sentence by sentence."
-        actions={<Link className="button" href="/lessons/manage">Open lesson manager</Link>}
+        actions={<Link className="button" to="/lessons/manage">Open lesson manager</Link>}
       />
     );
   }

@@ -1,5 +1,3 @@
-"use client";
-
 import { useMemo } from "react";
 import type { SelectedItem, StudySentence } from "@/lib/imported-content/types";
 import { findRelatedSentences } from "@/lib/imported-content/study-utils";

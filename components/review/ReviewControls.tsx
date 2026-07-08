@@ -1,5 +1,3 @@
-"use client";
-
 interface ReviewControlsProps {
   disabled?: boolean;
   visible?: boolean;

@@ -1,5 +1,3 @@
-"use client";
-
 import { CalendarDays, Flame, Sparkles, Trophy } from "lucide-react";
 import {
   buildHeatmapCells,

@@ -1,5 +1,3 @@
-"use client";
-
 import { useMemo, useState } from "react";
 import type { StudySentence } from "@/lib/imported-content/types";
 import { generateQuizQuestion } from "@/lib/imported-content/study-utils";

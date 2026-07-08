@@ -1,5 +1,3 @@
-"use client";
-
 import type { RevealState } from "@/lib/imported-content/types";
 import { Tooltip } from "@/components/ui/Tooltip";
 

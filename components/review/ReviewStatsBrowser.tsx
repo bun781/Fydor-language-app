@@ -1,5 +1,3 @@
-"use client";
-
 import { useMemo, useState } from "react";
 import { ArrowDownAZ, ArrowUpAZ, RotateCcw, Search } from "lucide-react";
 import { PieChart } from "@/components/ui/PieChart";

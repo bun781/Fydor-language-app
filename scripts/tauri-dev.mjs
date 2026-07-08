@@ -36,30 +36,24 @@ const tauriConfig = JSON.stringify({
   }
 });
 
-console.log(`Starting Next dev server on ${devUrl}`);
+console.log(`Starting Vite dev server on ${devUrl}`);
 
-const next = run(npmCommand, ["exec", "next", "--", "dev", "-p", String(port), "-H", "127.0.0.1"], {
-  env: {
-    ...process.env,
-    PORT: String(port),
-    HOSTNAME: "127.0.0.1"
-  }
-});
+const devServer = run(npmCommand, ["exec", "vite", "--", "--port", String(port), "--host", "127.0.0.1", "--strictPort"]);
 
-let tauri;
+let tauri = null;
 let shuttingDown = false;
 
 function shutdown(code = 0) {
   if (shuttingDown) return;
   shuttingDown = true;
   if (tauri && !tauri.killed) tauri.kill();
-  if (!next.killed) next.kill();
+  if (!devServer.killed) devServer.kill();
   process.exit(code);
 }
 
-next.once("exit", (code) => {
+devServer.once("exit", (code) => {
   if (!shuttingDown) {
-    console.error(`Next dev server exited with code ${code ?? "unknown"}.`);
+    console.error(`Vite dev server exited with code ${code ?? "unknown"}.`);
     shutdown(code ?? 1);
   }
 });

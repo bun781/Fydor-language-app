@@ -1,5 +1,3 @@
-"use client";
-
 import type { ReactNode } from "react";
 import { AudioButton } from "@/components/ui/AudioButton";
 import { getFillBlankPrompt, getRecallModeLabel } from "@/lib/review/recallModes";

@@ -1,5 +1,3 @@
-"use client";
-
 import { AlertTriangle, Check, X } from "lucide-react";
 import { formatLanguageLabel } from "@/lib/language/importResources";
 import type { LessonImportPreviewItem, LessonImportPreviewResult } from "@/lib/language/types";

@@ -1,5 +1,3 @@
-"use client";
-
 import { Check, Highlighter, Plus, Trash2 } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
 import { Tooltip } from "@/components/ui/Tooltip";

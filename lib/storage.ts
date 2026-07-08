@@ -1,5 +1,3 @@
-"use client";
-
 // Single localStorage/sessionStorage access point. Every persisted value is read
 // through a zod schema so corrupt or outdated payloads degrade to null instead of
 // crashing the UI. Do not read window.localStorage directly elsewhere.

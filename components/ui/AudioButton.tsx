@@ -1,5 +1,3 @@
-"use client";
-
 import { Volume2 } from "lucide-react";
 import { Tooltip } from "./Tooltip";
 import { useSpeechPlayback } from "@/lib/speech";

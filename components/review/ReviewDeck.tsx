@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CalendarClock, CheckCircle2, HelpCircle, Layers3, RotateCcw, Sparkles } from "lucide-react";
 import { getReviewProgress } from "@/lib/desktopApi";

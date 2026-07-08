@@ -1,5 +1,3 @@
-"use client";
-
 import { BookOpen, Download, Plus, Trash2 } from "lucide-react";
 import { formatLanguageLabel } from "@/lib/language/importResources";
 import type { StudyLessonMeta } from "@/lib/imported-content/types";

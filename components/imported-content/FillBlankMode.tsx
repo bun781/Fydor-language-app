@@ -1,6 +1,4 @@
-"use client";
-
-import Link from "next/link";
+import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { AudioButton } from "@/components/ui/AudioButton";
 import type { StudyLesson, StudyLessonMeta, StudySentence } from "@/lib/imported-content/types";
@@ -331,7 +329,7 @@ export function FillBlankMode({ lesson, lessons = [] }: Props) {
               <button type="button" className="button secondary" onClick={() => setShowResults((value) => !value)}>
                 {showResults ? "Hide past test results" : "Statistics"}
               </button>
-              <Link className="button secondary" href="/study/imported-content">Back</Link>
+              <Link className="button secondary" to="/study/imported-content">Back</Link>
             </div>
           </div>
 

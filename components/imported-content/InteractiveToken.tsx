@@ -1,5 +1,3 @@
-"use client";
-
 import type { ItemFamiliarity } from "@/lib/imported-content/types";
 import { Tooltip } from "@/components/ui/Tooltip";
 

@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useMemo, useState } from "react";
 import { getLessonCached } from "@/lib/desktopApi";
 import { groupLessonsByLanguage } from "@/lib/language/importResources";

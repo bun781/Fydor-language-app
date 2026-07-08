@@ -1,7 +1,5 @@
-"use client";
-
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { AppShell } from "@/components/AppShell";
 import { ReviewDeck } from "@/components/review/ReviewDeck";
 import { PageState } from "@/components/system/PageState";
@@ -90,7 +88,7 @@ export default function ReviewPage() {
           tone="error"
           title="Review failed to load"
           description={error}
-          actions={<a className="button" href="/review">Retry</a>}
+          actions={<button className="button" type="button" onClick={() => window.location.reload()}>Retry</button>}
         />
       ) : sentences.length ? (
         <ReviewDeck
@@ -112,7 +110,7 @@ export default function ReviewPage() {
           eyebrow="No data yet"
           title="No sentences to review"
           description="Import a lesson first. Once a lesson saves sentences into the database, they will appear here for review."
-          actions={<Link className="button" href="/lessons/manage">Open lesson manager</Link>}
+          actions={<Link className="button" to="/lessons/manage">Open lesson manager</Link>}
         />
       )}
     </AppShell>

@@ -6,13 +6,13 @@
     "beforeBuildCommand": "npm run build",
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://127.0.0.1:3001",
-    "frontendDist": "../out"
+    "frontendDist": "../dist"
   },
   "app": {
     "windows": [
       {
         "title": "Fydor",
-        "url": "/lessons/manage",
+        "url": "index.html",
         "width": 1000,
         "height": 800,
         "resizable": true,

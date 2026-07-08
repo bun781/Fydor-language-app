@@ -1,5 +1,3 @@
-"use client";
-
 import React, { cloneElement, useId } from "react";
 import type { ReactElement, ReactNode } from "react";
 

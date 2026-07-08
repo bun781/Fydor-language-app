@@ -131,9 +131,14 @@
 - Existing `review_items` is sentence-shaped with `UNIQUE(sentence_id)`;
   overloading it for canonical items would be brittle.
 - FSRS and fixed-interval rows use different numeric meanings for difficulty and
-  stability.
-- Reading status is currently inferred from remembered sentence rows, which is a
-  useful bridge but not a durable item mastery model.
+  stability. The first-grade FSRS policy never converts rows with history, but
+  any future bulk migration would need a value translation.
+- The daily new-card cap counts `was_new` events by **local** calendar day
+  (SQLite `localtime`); a timezone change can shrink or stretch one day's
+  budget. Accepted: worst case is a one-day over/under-allowance.
+- `review_events` grows unboundedly (one row per grade). Fine for years of
+  personal use; revisit with an aggregation table only if it ever shows up in
+  profiles.
 - Language-specific tokenization should use vetted libraries only when the Tauri
   and static-export footprint is acceptable.
 
@@ -141,27 +146,30 @@
 
 - `/reading` is additive and read-only. Remove `app/reading/page.tsx`,
   `components/reading/ReadingWorkspace.tsx`, the nav entry, and reading CSS to
-  roll back the UI.
-- `lib/reading/*` is pure and only used by reading plus the compatibility
-  tokenizer export in `text-spans.ts`; restoring the old tokenizer body there
-  fully detaches it.
-- Schema migration 3 (`src-tauri/src/db.rs`) added the
-  `review_items.scheduler_engine` column with default `'fixed-interval'`. It is
-  additive and backward compatible; rolling back the code does not require
-  removing the column because older readers ignore it.
+  roll back the UI. `ReadingWorkspace` already contains the legacy full-lesson
+  inference as its fallback path, so removing `get_reading_inputs` (command +
+  `src-tauri/src/reading.rs`) alone reverts reading to the old behavior.
+- Schema migrations 3–5 are additive and backward compatible: older readers
+  ignore `scheduler_engine`, `item_review_states`, and `review_events`. Rolling
+  back code does not require dropping them.
+- FSRS default policy: revert `NEW_CARD_SCHEDULER_ENGINE` to `"fixed-interval"`
+  in `src-tauri/src/review.rs`. Rows already started on FSRS keep scheduling
+  correctly because the engine is stored per row.
+- New-card cap and progress layer: remove the `getReviewProgress` call and
+  `ReviewProgressPanel` from `ReviewDeck`; with `newLimit` undefined the queue
+  builder is byte-identical to the uncapped queue.
 
 ## Next Agent Prompt
 
-Switch reading-mode known-item inference to persisted item review state. Start
-by reading `AGENTS.md`, `docs/review-architecture.md`,
-`docs/fydor-next-implementation-plan.md`, `lib/reading/analyzer.ts`,
-`src-tauri/src/review.rs` (`get_item_review_targets`), and `lib/desktopApi.ts`.
-Make the reading analyzer treat canonical keys with graded `item_review_states`
-rows as known (falling back to remembered-sentence inference when no item rows
-exist), and add a Rust read command that returns the minimal analysis inputs so
-large libraries do not require loading every full lesson in the frontend. Keep
-`/reading` additive and read-only. Add analyzer Vitest tests for
-item-state-driven knowledge and Rust tests for the new command. Do not change
-the .fydorpack format and do not make FSRS the default engine. Run
+Make the daily new-card cap user-configurable. Start by reading `AGENTS.md`,
+`docs/fydor-next-implementation-plan.md`, `src-tauri/src/settings.rs`,
+`lib/review/progress.ts`, and `components/review/ReviewDeck.tsx`. Add a
+`get_user_settings` Rust read command (only `save_user_settings` exists today),
+expose it through `lib/desktopApi.ts`, and let a `newCardsPerDay` setting
+override `DEFAULT_NEW_CARDS_PER_DAY` in `ReviewDeck` (0 = no new cards,
+missing/invalid = default 20). Add a small settings UI on the review start menu
+next to the queue dashboard. Keep the review queue builder unchanged — the cap
+already flows through the `newLimit` option. Add Rust tests for the settings
+round-trip and Vitest coverage for the override parsing. Run
 `npm run typecheck`, `npm test`, `npm run lint`, `npm run build`, and
 `cargo test` before finishing.

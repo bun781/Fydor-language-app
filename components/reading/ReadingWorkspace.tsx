@@ -1,5 +1,3 @@
-"use client";
-
 import { FileText, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { getLessonCached, getLessons, getReadingInputs, getReviewQueue } from "@/lib/desktopApi";

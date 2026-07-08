@@ -1,5 +1,3 @@
-"use client";
-
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { updateReviewItem } from "@/lib/desktopApi";
 import type { StudySentence } from "@/lib/imported-content/types";

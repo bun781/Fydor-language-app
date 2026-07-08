@@ -1,14 +1,11 @@
-"use client";
-
 import type { CSSProperties } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
-import type { Route } from "next";
+import { useLocation, useNavigate } from "react-router-dom";
 
 type TourPlacement = "top" | "bottom" | "left" | "right";
 
 interface TourStep {
-  route: Route<string>;
+  route: string;
   section: string;
   title: string;
   description: string;
@@ -365,8 +362,8 @@ export function createTourScope(route: string, tab?: string) {
 }
 
 export function GuidedTour() {
-  const router = useRouter();
-  const pathname = usePathname();
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [mounted, setMounted] = useState(false);
   const [activeScope, setActiveScope] = useState<string | null>(null);
   const [activeStepIndex, setActiveStepIndex] = useState(0);
@@ -480,7 +477,7 @@ export function GuidedTour() {
     setActiveStepIndex(stepIndex);
     setTarget(null);
     if (pathname !== nextStep.route) {
-      router.push(nextStep.route);
+      navigate(nextStep.route);
     }
   }
 

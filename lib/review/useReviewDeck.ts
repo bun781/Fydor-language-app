@@ -1,5 +1,3 @@
-"use client";
-
 import { useCallback, useEffect, useRef, useState } from "react";
 import { updateItemReview, updateReviewItem } from "@/lib/desktopApi";
 import { clearSessionProgress, readSessionProgress, writeSessionProgress } from "@/lib/storage";
