@@ -1,5 +1,6 @@
 import { FileText, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { errorMessage } from "@/lib/errors";
 import { getLessonCached, getLessons, getReadingInputs, getReviewQueue } from "@/lib/desktopApi";
 import type { StudyLesson, StudySentence } from "@/lib/imported-content/types";
 import {
@@ -42,7 +43,7 @@ export function TextAnalyzer() {
     try {
       setKnowledge(await loadReadingKnowledge());
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to load reading data.");
+      setError(errorMessage(err, "Unable to load reading data."));
     } finally {
       setLoading(false);
     }

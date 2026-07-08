@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { errorMessage } from "@/lib/errors";
 import { updateItemReview, updateReviewItem } from "@/lib/desktopApi";
 import { clearSessionProgress, readSessionProgress, writeSessionProgress } from "@/lib/storage";
 import { applyReviewDecision } from "./scheduler";
@@ -250,6 +251,15 @@ export function useReviewDeck(initialSentences: ReviewSentence[], options: Revie
     };
     const reviewedEvents = [...state.activeSession.reviewed, event];
     const sessionFinished = nextPosition >= state.order.length;
+    // Everything the optimistic update below touches, so a failed save can be undone
+    // instead of leaving the deck claiming the card was graded.
+    const rollback = {
+      sentences: state.sentences,
+      order: state.order,
+      position: state.position,
+      activeSession: state.activeSession,
+      completedSession: state.completedSession
+    };
 
     setState((prev) => ({
       ...prev,
@@ -285,15 +295,18 @@ export function useReviewDeck(initialSentences: ReviewSentence[], options: Revie
         sentences: prev.sentences.map((sentence) => (sentence.id === savedSentence.id ? savedSentence : sentence))
       }));
     } catch (error) {
+      // Roll the deck back to the pre-grade state: the card is shown again and the
+      // grade can be retried, so the UI never disagrees with what was persisted.
       setState((prev) => ({
         ...prev,
-        error: error instanceof Error ? error.message : "Unable to save review decision."
+        ...rollback,
+        error: errorMessage(error, "Unable to save review decision.")
       }));
     } finally {
       reviewInFlightRef.current = false;
       setState((prev) => ({ ...prev, saving: false }));
     }
-  }, [currentSentence, state.activeSession, state.order.length, state.position, state.saving, state.sentences]);
+  }, [currentSentence, state.activeSession, state.completedSession, state.order, state.position, state.saving, state.sentences]);
 
   return {
     currentSentence,

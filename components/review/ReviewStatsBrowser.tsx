@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { ArrowDownAZ, ArrowUpAZ, RotateCcw, Search } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { PieChart } from "@/components/ui/PieChart";
 import type { StudyLesson } from "@/lib/imported-content/types";
 import type { ReviewResetScope, ReviewSentence } from "@/lib/review/types";
@@ -243,16 +244,16 @@ export function ReviewStatsBrowser({ lessons, lessonTitleById, sentences, onRese
       </div>
 
       {confirm ? (
-        <div className="confirm-backdrop" role="presentation">
-          <section className="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="review-reset-title">
-            <h2 id="review-reset-title">{confirm.title}</h2>
-            <p className="muted">{confirm.description}</p>
-            <div className="review-complete-actions">
-              <button type="button" className="button secondary" onClick={() => setConfirm(null)}>Cancel</button>
-              <button type="button" className="button" onClick={() => void confirmReset()}>Reset</button>
-            </div>
-          </section>
-        </div>
+        <ConfirmDialog
+          idPrefix="review-reset"
+          title={confirm.title}
+          description={confirm.description}
+          cancelLabel="Cancel"
+          confirmLabel="Reset"
+          actionsClassName="review-complete-actions"
+          onCancel={() => setConfirm(null)}
+          onConfirm={() => void confirmReset()}
+        />
       ) : null}
     </section>
   );

@@ -1,15 +1,9 @@
 import { describe, expect, it } from "vitest";
-import {
-  buildInterleavedReviewQueue,
-  buildReviewQueue,
-  buildReviewQueueWithCurrent,
-  getReviewShortcutAction,
-  summarizeReviewSentences
-} from "@/lib/review/queue";
+import { buildInterleavedReviewQueue, summarizeReviewSentences } from "@/lib/review/queue";
 import { applyReviewDecision } from "@/lib/review/scheduler";
-import { isSpaceKey, shouldIgnoreReviewHotkey, shouldRevealOnSpaceRelease } from "@/lib/review/keyboard";
+import { getReviewShortcutAction, isSpaceKey, shouldIgnoreReviewHotkey, shouldRevealOnSpaceRelease } from "@/lib/review/keyboard";
 import { buildReviewSessionSummary, classifyReviewSource } from "@/lib/review/sessionSummary";
-import type { ReviewSentenceRow } from "@/lib/review/types";
+import type { ReviewSentence } from "@/lib/review/types";
 
 describe("review keyboard shortcuts", () => {
   it("maps arrow keys to review decisions", () => {
@@ -60,7 +54,6 @@ describe("review state updates", () => {
     expect(updated.reviewState).toBe("remembered");
     expect(updated.reviewStreak).toBe(1);
     expect(updated.reviewedAt).toBe(reviewedAt.toISOString());
-    expect(updated.dueAt).toBe("2026-06-24T10:00:00.000Z");
     expect(updated.recallMode).toBe("translation_hidden");
   });
 
@@ -80,8 +73,34 @@ describe("review state updates", () => {
 
     expect(updated.reviewState).toBe("forgotten");
     expect(updated.reviewStreak).toBe(0);
-    expect(updated.lapses).toBe(1);
     expect(updated.recallMode).toBe("full_support");
+  });
+
+  it("never fabricates scheduling numbers on the client (review.rs is the scheduler)", () => {
+    const updated = applyReviewDecision(
+      {
+        id: "sentence-1",
+        language: "ko",
+        text: "안녕하세요.",
+        translation: "Hello.",
+        reviewState: "unknown",
+        reviewStreak: 0,
+        reviewedAt: null,
+        dueAt: "2026-06-20T10:00:00.000Z",
+        repetitions: 0,
+        lapses: 0,
+        difficulty: 0.3,
+        stability: 0
+      },
+      "remembered",
+      new Date("2026-06-21T10:00:00.000Z")
+    );
+
+    expect(updated.dueAt).toBe("2026-06-20T10:00:00.000Z");
+    expect(updated.repetitions).toBe(0);
+    expect(updated.lapses).toBe(0);
+    expect(updated.difficulty).toBe(0.3);
+    expect(updated.stability).toBe(0);
   });
 
   it("keeps recall mode on hard and moves two stages on easy", () => {
@@ -102,14 +121,12 @@ describe("review state updates", () => {
     const easy = applyReviewDecision(hard, "easy", new Date("2026-06-22T10:00:00.000Z"));
 
     expect(hard.recallMode).toBe("sentence_only");
-    expect(hard.dueAt).toBe("2026-06-22T10:00:00.000Z");
     expect(easy.recallMode).toBe("reverse_translate");
-    expect(easy.dueAt).toBe("2026-06-29T10:00:00.000Z");
   });
 });
 
 describe("review algorithm", () => {
-  const sentences: ReviewSentenceRow[] = [
+  const sentences: ReviewSentence[] = [
       {
         id: "forgotten",
         language: "ko",
@@ -157,50 +174,16 @@ describe("review algorithm", () => {
     }
   ];
 
-  it("prioritizes forgotten items and pushes remembered items later as streak grows", () => {
-    const queue = buildReviewQueue(sentences, 42);
-
-    expect(queue[0]).toBe("forgotten");
-    expect(queue.indexOf("remembered-high")).toBeGreaterThan(queue.indexOf("remembered-low"));
-  });
-
-  it("generates a shuffled queue without duplicates until the cycle is exhausted", () => {
-    const queue = buildReviewQueue(sentences, 7);
-
-    expect(new Set(queue).size).toBe(queue.length);
-    expect(queue).toHaveLength(sentences.length);
-  });
-
-  it("deduplicates duplicate rows in the legacy queue path", () => {
-    const queue = buildReviewQueue([sentences[0], sentences[1], { ...sentences[1] }], 7, false);
-
-    expect(queue).toEqual(["forgotten", "unknown-a"]);
-  });
-
-  it("keeps buckets in sequential order when shuffle is off", () => {
-    const queue = buildReviewQueue(sentences, 7, false);
-
-    expect(queue).toEqual(["forgotten", "unknown-a", "unknown-b", "remembered-low", "remembered-high"]);
-  });
-
-  it("moves the current sentence to the front when rebuilding the queue", () => {
-    const queue = buildReviewQueueWithCurrent(sentences, "unknown-b", 7, false);
-
-    expect(queue[0]).toBe("unknown-b");
-    expect(queue).toContain("forgotten");
-    expect(new Set(queue).size).toBe(queue.length);
-  });
-
   it("changes order when the shuffle seed changes", () => {
-    const shuffledSentences: ReviewSentenceRow[] = [
+    const shuffledSentences: ReviewSentence[] = [
       { id: "one", language: "ko", text: "One", translation: "One", reviewState: "unknown", reviewStreak: 0, reviewedAt: null },
       { id: "two", language: "ko", text: "Two", translation: "Two", reviewState: "unknown", reviewStreak: 0, reviewedAt: null },
       { id: "three", language: "ko", text: "Three", translation: "Three", reviewState: "unknown", reviewStreak: 0, reviewedAt: null },
       { id: "four", language: "ko", text: "Four", translation: "Four", reviewState: "unknown", reviewStreak: 0, reviewedAt: null }
     ];
 
-    const first = buildReviewQueue(shuffledSentences, 1);
-    const second = buildReviewQueue(shuffledSentences, 2);
+    const first = buildInterleavedReviewQueue(shuffledSentences, { seed: 1 });
+    const second = buildInterleavedReviewQueue(shuffledSentences, { seed: 2 });
 
     expect(first).not.toEqual(second);
     expect(new Set(first)).toEqual(new Set(second));

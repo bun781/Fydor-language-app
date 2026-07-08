@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { errorMessage } from "@/lib/errors";
 import { getLessonCached } from "@/lib/desktopApi";
 import { groupLessonsByLanguage } from "@/lib/language/importResources";
 import type { StudyLesson, StudyLessonMeta } from "@/lib/imported-content/types";
@@ -82,7 +83,7 @@ export function useImportedLessonBrowser(initialLesson: StudyLesson | null, allL
       .catch((err) => {
         if (!cancelled) {
           setLesson(null);
-          setError(err instanceof Error ? err.message : "Unable to load selected lesson.");
+          setError(errorMessage(err, "Unable to load selected lesson."));
         }
       })
       .finally(() => {

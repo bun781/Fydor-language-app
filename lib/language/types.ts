@@ -1,5 +1,4 @@
 export type LearningItemType = "word" | "grammar" | "chunk";
-export type SentenceGrade = "easy" | "correct" | "hard" | "failed";
 
 export interface LessonWordInput {
   surface: string;
@@ -42,11 +41,6 @@ export interface LessonImportInput {
   level?: string;
   tags?: string[];
   sentences: LessonSentenceInput[];
-}
-
-export interface ImportValidationResult {
-  lesson?: LessonImportInput;
-  errors: string[];
 }
 
 export interface LessonImportPreviewLesson {

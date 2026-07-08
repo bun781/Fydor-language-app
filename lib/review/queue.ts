@@ -1,6 +1,5 @@
 // Source of truth for review queue ordering. The interleaving ratios (30% fresh, 12% mastered) are intentional; do not adjust without product review.
-import type { ReviewItemTarget, ReviewSentence, ReviewSentenceRow, SentenceReviewState } from "./types";
-import { hydrateReviewSentence } from "./scheduler";
+import type { ReviewItemTarget, ReviewSentence, SentenceReviewState } from "./types";
 
 export type ReviewQueueFilter = "mixed" | "due" | "new" | "all";
 
@@ -20,14 +19,6 @@ export function parseReviewTargetKey(key: string): { kind: ReviewTargetKind; id:
   return { kind, id };
 }
 
-/**
- * Builds a mixed queue of sentence and item targets. Sentence entries keep their raw
- * sentence ids, so sentence-only input is byte-identical to buildInterleavedReviewQueue —
- * including persisted session progress and grade dispatch. Item targets are namespaced as
- * "item:<learningItemId>" (parse with parseReviewTargetKey; a key that does not parse is a
- * sentence id) and ride the same due/fresh/mastered interleaving through their best
- * sentence example.
- */
 export interface ReviewQueueOptions {
   filter?: ReviewQueueFilter;
   seed?: number;
@@ -38,15 +29,12 @@ export interface ReviewQueueOptions {
   newLimit?: number;
 }
 
-export function buildTargetedReviewQueue(
-  sentences: ReviewSentence[],
-  items: ReviewItemTarget[],
-  options: ReviewQueueOptions = {}
-): string[] {
-  return buildInterleavedReviewQueue([...sentences, ...items.map(itemTargetToQueueEntry)], options);
-}
-
-/** Converts a persisted item target into the sentence-shaped entry the deck renders and schedules. */
+/**
+ * Converts a persisted item target into the sentence-shaped entry the deck renders and
+ * schedules, so sentences and items ride the same due/fresh/mastered interleaving.
+ * Item entries are namespaced as "item:<learningItemId>" (parse with parseReviewTargetKey;
+ * a key that does not parse is a raw sentence id).
+ */
 export function itemTargetToQueueEntry(item: ReviewItemTarget): ReviewSentence {
   return {
     id: makeReviewTargetKey("item", item.id),
@@ -114,26 +102,7 @@ export function buildInterleavedReviewQueue(
   return avoidSameLessonRuns(ordered(fallback, rng, true)).map((sentence) => sentence.id);
 }
 
-export function buildReviewQueue(sentences: ReviewSentenceRow[], seed = Date.now(), shuffled = true): string[] {
-  const hydrated = sentences.map(hydrateReviewSentence);
-  if (sentences.every((sentence) => !sentence.dueAt && !sentence.repetitions && !sentence.lessonId)) {
-    return buildLegacyReviewQueue(sentences, seed, shuffled);
-  }
-  return buildInterleavedReviewQueue(hydrated, { seed, shuffled, filter: "mixed" });
-}
-
-export function buildReviewQueueWithCurrent(
-  sentences: ReviewSentenceRow[],
-  currentSentenceId: string | null,
-  seed = Date.now(),
-  shuffled = true
-): string[] {
-  const queue = buildReviewQueue(sentences, seed, shuffled);
-  if (!currentSentenceId) return queue;
-  return [currentSentenceId, ...queue.filter((id) => id !== currentSentenceId)];
-}
-
-export function summarizeReviewSentences(sentences: ReviewSentenceRow[] | ReviewSentence[]) {
+export function summarizeReviewSentences(sentences: ReviewSentence[]) {
   return sentences.reduce(
     (snapshot, sentence) => {
       snapshot.total += 1;
@@ -142,31 +111,6 @@ export function summarizeReviewSentences(sentences: ReviewSentenceRow[] | Review
     },
     { total: 0, remembered: 0, forgotten: 0, unknown: 0 } satisfies Record<"total" | SentenceReviewState, number>
   );
-}
-
-export function getReviewShortcutAction(key: string) {
-  if (key === "ArrowLeft" || key === "1") return "forgot" as const;
-  if (key === "2") return "hard" as const;
-  if (key === "ArrowRight" || key === "3") return "remembered" as const;
-  if (key === "4") return "easy" as const;
-  return null;
-}
-
-function buildLegacyReviewQueue(sentences: ReviewSentenceRow[], seed = Date.now(), shuffled = true): string[] {
-  const rng = createSeededRng(seed);
-  const buckets = new Map<number, ReviewSentenceRow[]>();
-
-  for (const sentence of uniqueById(sentences)) {
-    const score = scoreReviewSentence(sentence);
-    const bucket = buckets.get(score) ?? [];
-    bucket.push(sentence);
-    buckets.set(score, bucket);
-  }
-
-  return [...buckets.entries()]
-    .sort(([a], [b]) => a - b)
-    .flatMap(([, bucket]) => shuffled ? shuffle(bucket, rng) : bucket)
-    .map((sentence) => sentence.id);
 }
 
 function uniqueById<T extends { id: string }>(sentences: T[]): T[] {
@@ -182,12 +126,6 @@ function uniqueById<T extends { id: string }>(sentences: T[]): T[] {
   return unique;
 }
 
-function scoreReviewSentence(sentence: ReviewSentenceRow): number {
-  const baseScore = statePriority[sentence.reviewState] * 100;
-  const streakPenalty = sentence.reviewState === "remembered" ? sentence.reviewStreak * 10 : 0;
-  return baseScore + streakPenalty;
-}
-
 function isDue(sentence: ReviewSentence, now: Date): boolean {
   return new Date(sentence.dueAt ?? 0).getTime() <= now.getTime();
 }
@@ -200,12 +138,12 @@ function ordered(sentences: ReviewSentence[], rng: () => number, shuffled: boole
   const sorted = [...sentences].sort((a, b) => {
     const dueDiff = new Date(a.dueAt ?? 0).getTime() - new Date(b.dueAt ?? 0).getTime();
     if (dueDiff !== 0) return dueDiff;
-    return scoreAnyReviewSentence(a) - scoreAnyReviewSentence(b);
+    return scoreReviewSentence(a) - scoreReviewSentence(b);
   });
   return shuffled ? shuffle(sorted, rng) : sorted;
 }
 
-function scoreAnyReviewSentence(sentence: ReviewSentence): number {
+function scoreReviewSentence(sentence: ReviewSentence): number {
   const baseScore = statePriority[sentence.reviewState] * 100;
   const streakPenalty = sentence.reviewState === "remembered" ? sentence.reviewStreak * 10 : 0;
   return baseScore + streakPenalty;

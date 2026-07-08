@@ -13,11 +13,13 @@ import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import { AppShell } from "@/components/AppShell";
 import { LessonBuilderEditor, type ActiveAnnotation } from "@/components/admin-imports/LessonBuilderEditor";
 import { LessonLibraryPanel } from "@/components/admin-imports/LessonLibraryPanel";
-import { LanguageField } from "@/components/admin-imports/LanguageField";
+import { AppendJsonPanel, LessonMetaEditor } from "@/components/admin-imports/LessonMetaEditor";
 import { ImportHelpPanel } from "@/components/language/ImportHelpPanel";
 import { ImportPreview } from "@/components/language/ImportPreview";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { createTourScope, replayGuidedTour } from "@/components/system/GuidedTour";
+import { errorMessage } from "@/lib/errors";
 import { clearLocal, readLocal, readSessionProgress, writeSessionProgress } from "@/lib/storage";
 import {
   deleteLesson as deleteLessonApi,
@@ -193,7 +195,7 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
       const items = await getLessons();
       setLessonOptions(items);
     } catch (error) {
-      setErrors([error instanceof Error ? error.message : "Unable to load lessons."]);
+      setErrors([errorMessage(error, "Unable to load lessons.")]);
     }
   }
 
@@ -375,7 +377,7 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
         setStatus(modeLabel === "validate" ? "Validation passed." : "Preview ready.");
       } catch (error) {
         setPreview(null);
-        setErrors([error instanceof Error ? error.message : "Unable to validate lesson."]);
+        setErrors([errorMessage(error, "Unable to validate lesson.")]);
       } finally {
         setLoading(false);
       }
@@ -405,7 +407,7 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
         if (!shouldAppendSentenceJson) setBaselineSource(jsonSource);
         await refreshLessons();
       } catch (error) {
-        setErrors([error instanceof Error ? error.message : "Unable to import lesson."]);
+        setErrors([errorMessage(error, "Unable to import lesson.")]);
       } finally {
         setImporting(false);
       }
@@ -419,7 +421,7 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
       try {
         await callback(buildAppendJsonSource(appendSource, lessonId), lessonId);
       } catch (error) {
-        setErrors([error instanceof Error ? error.message : "Invalid append sentence JSON."]);
+        setErrors([errorMessage(error, "Invalid append sentence JSON.")]);
       }
       return;
     }
@@ -433,7 +435,7 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
     try {
       parsed = JSON.parse(source) as LessonImportInput;
     } catch (error) {
-      setErrors([`Invalid JSON: ${error instanceof Error ? error.message : "the text could not be parsed."}`]);
+      setErrors([`Invalid JSON: ${errorMessage(error, "the text could not be parsed.")}`]);
       return;
     }
     setLesson(parsed);
@@ -492,7 +494,7 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
       loadLessonSource(stringifyLesson(exportedLesson), "builder", lessonId);
       setMode("builder");
     } catch (error) {
-      setErrors([error instanceof Error ? error.message : "Unable to open the selected lesson."]);
+      setErrors([errorMessage(error, "Unable to open the selected lesson.")]);
     }
   }
 
@@ -513,7 +515,7 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
       window.URL.revokeObjectURL(url);
       setStatus(`Exported ${exportedLesson.title}.`);
     } catch (error) {
-      setErrors([error instanceof Error ? error.message : "Unable to export lesson."]);
+      setErrors([errorMessage(error, "Unable to export lesson.")]);
     }
   }
 
@@ -546,7 +548,7 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
       if (selectedLibraryLessonId === lessonId) {
         setSelectedLibraryLessonId(lessonId);
       }
-      setErrors([error instanceof Error ? error.message : "Unable to delete lesson."]);
+      setErrors([errorMessage(error, "Unable to delete lesson.")]);
     } finally {
       setDeletingLessonId(null);
     }
@@ -639,149 +641,42 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
               <ImportHelpPanel />
             </div>
 
-            <div className="lesson-meta-compact">
-              <div className="lesson-title-block">
-                <input
-                  className="lesson-title-input"
-                  value={lesson.title}
-                  placeholder="Lesson title"
-                  aria-label="Lesson title"
-                  onChange={(event) => updateLessonField("title", event.target.value)}
-                />
-                <span className="lesson-sentence-count">
-                  {lesson.sentences.length} sentence{lesson.sentences.length === 1 ? "" : "s"}
-                </span>
-              </div>
-
-              <div className="lesson-meta-inline" aria-label="Lesson metadata">
-                <LanguageField
-                  label="Language"
-                  value={lesson.language}
-                  className="compact-language-field"
-                  inputClassName="input compact-meta-input"
-                  onChange={(value) => updateLessonField("language", value)}
-                />
-                <span className="meta-separator" aria-hidden="true">→</span>
-                <LanguageField
-                  label="Base"
-                  value={lesson.baseLanguage}
-                  className="compact-language-field"
-                  inputClassName="input compact-meta-input"
-                  onChange={(value) => updateLessonField("baseLanguage", value)}
-                />
-                <span className="meta-separator" aria-hidden="true">.</span>
-                <label className="field compact-field">
-                  <span>Level</span>
-                  <input
-                    className="input compact-meta-input"
-                    value={lesson.level ?? ""}
-                    placeholder="Level"
-                    onChange={(event) => updateLessonField("level", event.target.value)}
-                  />
-                </label>
-                <span className="meta-separator" aria-hidden="true">.</span>
-                <label className="field compact-field">
-                  <span>Source</span>
-                  <input
-                    className="input compact-meta-input"
-                    value={lesson.source ?? ""}
-                    placeholder="Source"
-                    onChange={(event) => updateLessonField("source", event.target.value)}
-                  />
-                </label>
-              </div>
-
-              <input
-                className="input compact-description-input"
-                value={lesson.description ?? ""}
-                placeholder="Description"
-                aria-label="Description"
-                onChange={(event) => updateLessonField("description", event.target.value)}
-              />
-
-              <div className="lesson-meta-footer">
-                <div className="tag-editor" aria-label="Lesson tags">
-                  {(lesson.tags ?? []).map((tag) => (
-                    <button className="tag-chip" key={tag} type="button" title={`Remove ${tag}`} aria-label={`Remove tag ${tag}`} onClick={() => removeLessonTag(tag)}>
-                      {tag}
-                      <span aria-hidden="true">×</span>
-                    </button>
-                  ))}
-                  <input
-                    className="tag-input"
-                    placeholder={(lesson.tags ?? []).length ? "Add tag" : "Add tags"}
-                    aria-label="Add lesson tag"
-                    onKeyDown={handleTagKeyDown}
-                    onBlur={(event) => {
-                      addTagFromValue(event.currentTarget.value);
-                      event.currentTarget.value = "";
-                    }}
-                  />
-                </div>
-
-                <div className="lesson-target-compact">
-                  <span>Target:</span>
-                  {editingExistingLesson ? (
-                    <strong>Current lesson</strong>
-                  ) : (
-                    <select
-                      className="compact-target-select"
-                      disabled={lessonsLoading}
-                      value={targetLessonId}
-                      aria-label="Import target"
-                      onChange={(event) => {
-                        setTargetLessonId(event.target.value);
-                        if (event.target.value === "new") setAppendSource("");
-                        setPreview(null);
-                        setSummary(null);
-                        setStatus("");
-                      }}
-                    >
-                      <option value="new">New lesson</option>
-                      {lessonOptions.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.title} ({item.language})
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                  <small>{editingExistingLesson ? "Updates in place" : targetLesson ? "Appends sentences" : "Creates a lesson"}</small>
-                </div>
-              </div>
-            </div>
+            <LessonMetaEditor
+              lesson={lesson}
+              lessonOptions={lessonOptions}
+              lessonsLoading={lessonsLoading}
+              targetLessonId={targetLessonId}
+              editingExistingLesson={editingExistingLesson}
+              targetLesson={targetLesson}
+              onFieldChange={updateLessonField}
+              onRemoveTag={removeLessonTag}
+              onTagKeyDown={handleTagKeyDown}
+              onAddTag={addTagFromValue}
+              onTargetLessonChange={(value) => {
+                setTargetLessonId(value);
+                if (value === "new") setAppendSource("");
+                setPreview(null);
+                setSummary(null);
+                setStatus("");
+              }}
+            />
 
             {canAppendSentenceJson ? (
-              <section className="append-json-panel stack">
-                <div className="row">
-                  <div>
-                    <h2>Append Sentence JSON</h2>
-                    <p className="muted">Paste here to append to the selected lesson instead of updating the full lesson.</p>
-                  </div>
-                  <button
-                    className="button secondary compact-button"
-                    type="button"
-                    onClick={() => {
-                      setAppendSource("");
-                      setPreview(null);
-                      setSummary(null);
-                    }}
-                  >
-                    Clear
-                  </button>
-                </div>
-                <textarea
-                  className="input code-input append-json-input"
-                  value={appendSource}
-                  placeholder={appendJsonPlaceholder}
-                  onChange={(event) => {
-                    setAppendSource(event.target.value);
-                    setPreview(null);
-                    setSummary(null);
-                    setStatus("");
-                  }}
-                  aria-label="Append sentence JSON"
-                />
-              </section>
+              <AppendJsonPanel
+                appendSource={appendSource}
+                placeholder={appendJsonPlaceholder}
+                onClear={() => {
+                  setAppendSource("");
+                  setPreview(null);
+                  setSummary(null);
+                }}
+                onChange={(value) => {
+                  setAppendSource(value);
+                  setPreview(null);
+                  setSummary(null);
+                  setStatus("");
+                }}
+              />
             ) : null}
           </>
         )}
@@ -865,69 +760,36 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
       ) : null}
 
       {pendingReplaceAction ? (
-        <div
-          className="confirm-backdrop"
-          role="presentation"
-          onClick={(event) => {
-            if (event.target === event.currentTarget) setPendingReplaceAction(null);
+        <ConfirmDialog
+          idPrefix="replace-draft"
+          title="Discard unsaved changes?"
+          description="The editor has changes that were never saved. Loading new content will discard them."
+          cancelLabel="Keep editing"
+          confirmLabel="Discard and continue"
+          confirmDanger
+          onCancel={() => setPendingReplaceAction(null)}
+          onConfirm={() => {
+            const action = pendingReplaceAction;
+            setPendingReplaceAction(null);
+            action();
           }}
-        >
-          <section className="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="replace-draft-title">
-            <h2 id="replace-draft-title">Discard unsaved changes?</h2>
-            <p className="muted">The editor has changes that were never saved. Loading new content will discard them.</p>
-            <div className="row">
-              <button className="button secondary" type="button" autoFocus onClick={() => setPendingReplaceAction(null)}>
-                Keep editing
-              </button>
-              <button
-                className="button danger"
-                type="button"
-                onClick={() => {
-                  const action = pendingReplaceAction;
-                  setPendingReplaceAction(null);
-                  action();
-                }}
-              >
-                Discard and continue
-              </button>
-            </div>
-          </section>
-        </div>
+        />
       ) : null}
 
       {pendingDeleteLessonId ? (
-        <div
-          className="confirm-backdrop"
-          role="presentation"
-          onClick={(event) => {
-            if (event.target === event.currentTarget && !deletingLessonId) setPendingDeleteLessonId(null);
-          }}
-        >
-          <section className="confirm-dialog lesson-delete-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-lesson-title">
-            <h2 id="delete-lesson-title">Delete lesson?</h2>
-            <p>Delete {lessonOptions.find((item) => item.id === pendingDeleteLessonId)?.title ?? "this lesson"}? This cannot be undone.</p>
-            <div className="row">
-              <button
-                className="button secondary"
-                type="button"
-                autoFocus
-                disabled={deletingLessonId !== null}
-                onClick={() => setPendingDeleteLessonId(null)}
-              >
-                Cancel
-              </button>
-              <button
-                className="button danger"
-                type="button"
-                disabled={deletingLessonId !== null}
-                onClick={confirmDeleteLesson}
-              >
-                <Trash2 size={18} />
-                {deletingLessonId ? "Deleting..." : "Delete lesson"}
-              </button>
-            </div>
-          </section>
-        </div>
+        <ConfirmDialog
+          idPrefix="delete-lesson"
+          title="Delete lesson?"
+          description={<>Delete {lessonOptions.find((item) => item.id === pendingDeleteLessonId)?.title ?? "this lesson"}? This cannot be undone.</>}
+          descriptionMuted={false}
+          cancelLabel="Cancel"
+          confirmLabel={<><Trash2 size={18} />{deletingLessonId ? "Deleting..." : "Delete lesson"}</>}
+          confirmDanger
+          busy={deletingLessonId !== null}
+          dialogClassName="lesson-delete-dialog"
+          onCancel={() => setPendingDeleteLessonId(null)}
+          onConfirm={confirmDeleteLesson}
+        />
       ) : null}
     </AppShell>
   );

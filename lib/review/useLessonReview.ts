@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { errorMessage } from "@/lib/errors";
 import { updateReviewItem } from "@/lib/desktopApi";
+import { isEditableShortcutTarget } from "@/lib/dom";
 import type { StudySentence } from "@/lib/imported-content/types";
 import type { ReviewDecision } from "./types";
 
@@ -72,6 +74,14 @@ export function useLessonReview(sentences: StudySentence[], options: UseLessonRe
     markedCardRef.current = currentCard.id;
     onDecision?.(currentCard, decision);
 
+    // Snapshot for rollback: a failed save re-presents the card instead of counting it.
+    const rollback = {
+      queue: state.queue,
+      reviewed: state.reviewed,
+      remembered: state.remembered,
+      forgotten: state.forgotten
+    };
+
     setState((prev) => {
       if (!prev.active || prev.queue[0] !== currentCard.id) return prev;
 
@@ -96,15 +106,17 @@ export function useLessonReview(sentences: StudySentence[], options: UseLessonRe
         onSaved?.(currentCard.id, decision);
       })
       .catch((error) => {
+        markedCardRef.current = null;
         setState((prev) => ({
           ...prev,
-          error: error instanceof Error ? error.message : "Unable to save review result."
+          ...rollback,
+          error: errorMessage(error, "Unable to save review result.")
         }));
       })
       .finally(() => {
         setState((prev) => ({ ...prev, saving: false }));
       });
-  }, [currentCard, onDecision, onSaved, state.active]);
+  }, [currentCard, onDecision, onSaved, state.active, state.forgotten, state.queue, state.remembered, state.reviewed]);
 
   const markRemembered = useCallback((cardId?: string) => {
     if (cardId && cardId !== currentCard?.id) return;
@@ -173,10 +185,4 @@ function reinsertForgottenCard(queue: string[], cardId: string): string[] {
   const offset = REINSERT_MIN_OFFSET + Math.floor(Math.random() * (REINSERT_MAX_OFFSET - REINSERT_MIN_OFFSET + 1));
   const index = Math.min(queue.length, offset);
   return [...queue.slice(0, index), cardId, ...queue.slice(index)];
-}
-
-function isEditableShortcutTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  if (target.isContentEditable) return true;
-  return ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
 }

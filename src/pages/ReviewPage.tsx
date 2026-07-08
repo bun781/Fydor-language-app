@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { AppShell } from "@/components/AppShell";
 import { ReviewDeck } from "@/components/review/ReviewDeck";
 import { PageState } from "@/components/system/PageState";
+import { errorMessage } from "@/lib/errors";
 import { getItemReviewTargets, getLessonCached, getLessons, getReviewQueue, resetReviewProgress } from "@/lib/desktopApi";
 import { readSessionProgress, writeSessionProgress } from "@/lib/storage";
 import type { StudyLesson, StudyLessonMeta } from "@/lib/imported-content/types";
@@ -60,7 +61,7 @@ export default function ReviewPage() {
           });
       })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Unable to load review sentences.");
+        if (!cancelled) setError(errorMessage(err, "Unable to load review sentences."));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);

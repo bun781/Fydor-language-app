@@ -105,7 +105,7 @@ export function stringifyLesson(lesson: LessonImportInput): string {
   return JSON.stringify(cleanLesson(lesson), null, 2);
 }
 
-export function cleanLesson(lesson: LessonImportInput): LessonImportInput {
+function cleanLesson(lesson: LessonImportInput): LessonImportInput {
   return dropEmpty({
     ...lesson,
     tags: lesson.tags?.filter(Boolean),
@@ -124,7 +124,7 @@ export function pruneEmpty<T extends object>(item: T): T {
   return dropEmpty(item);
 }
 
-export function dropEmpty<T extends object>(item: T): T {
+function dropEmpty<T extends object>(item: T): T {
   return Object.fromEntries(
     Object.entries(item).filter(([, value]) => {
       if (Array.isArray(value)) return value.length > 0;

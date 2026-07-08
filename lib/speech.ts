@@ -65,7 +65,7 @@ export function createSpeechService(language: string, provider?: SpeechProvider)
   return new SpeechService(language, provider);
 }
 
-export function createSpeechProvider() {
+function createSpeechProvider() {
   if (typeof window === "undefined") return new SilentSpeechProvider();
   return new BrowserSpeechProvider();
 }

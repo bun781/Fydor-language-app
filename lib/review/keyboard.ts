@@ -1,3 +1,13 @@
+import type { ReviewGrade } from "./types";
+
+export function getReviewShortcutAction(key: string): ReviewGrade | null {
+  if (key === "ArrowLeft" || key === "1") return "forgot";
+  if (key === "2") return "hard";
+  if (key === "ArrowRight" || key === "3") return "remembered";
+  if (key === "4") return "easy";
+  return null;
+}
+
 export function shouldIgnoreReviewHotkey(event: Pick<KeyboardEvent, "repeat" | "target">): boolean {
   return event.repeat || isInteractiveTarget(event.target);
 }
@@ -10,7 +20,7 @@ export function shouldRevealOnSpaceRelease(pressedSentenceId: string | null, cur
   return pressedSentenceId !== null && pressedSentenceId === currentSentenceId;
 }
 
-export function isInteractiveTarget(target: EventTarget | null): boolean {
+function isInteractiveTarget(target: EventTarget | null): boolean {
   if (!target || typeof target !== "object") return false;
 
   const element = target as {

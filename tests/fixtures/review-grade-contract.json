@@ -1,0 +1,32 @@
+{
+  "comment": "Contract between src-tauri/src/review.rs and lib/review (scheduler.ts, recallModes.ts). Both sides assert every case; change this file only when deliberately changing the learning model in BOTH languages.",
+  "grades": [
+    { "decision": "forgot", "normalized": "forgot", "legacyState": "forgotten" },
+    { "decision": "forgotten", "normalized": "forgot", "legacyState": "forgotten" },
+    { "decision": "hard", "normalized": "hard", "legacyState": "unknown" },
+    { "decision": "remembered", "normalized": "remembered", "legacyState": "remembered" },
+    { "decision": "easy", "normalized": "easy", "legacyState": "remembered" }
+  ],
+  "recallModeProgression": [
+    { "mode": "full_support", "grade": "forgot", "next": "full_support" },
+    { "mode": "translation_hidden", "grade": "forgot", "next": "full_support" },
+    { "mode": "sentence_only", "grade": "forgot", "next": "translation_hidden" },
+    { "mode": "fill_blank", "grade": "forgot", "next": "sentence_only" },
+    { "mode": "reverse_translate", "grade": "forgot", "next": "fill_blank" },
+    { "mode": "full_support", "grade": "hard", "next": "full_support" },
+    { "mode": "translation_hidden", "grade": "hard", "next": "translation_hidden" },
+    { "mode": "sentence_only", "grade": "hard", "next": "sentence_only" },
+    { "mode": "fill_blank", "grade": "hard", "next": "fill_blank" },
+    { "mode": "reverse_translate", "grade": "hard", "next": "reverse_translate" },
+    { "mode": "full_support", "grade": "remembered", "next": "translation_hidden" },
+    { "mode": "translation_hidden", "grade": "remembered", "next": "sentence_only" },
+    { "mode": "sentence_only", "grade": "remembered", "next": "fill_blank" },
+    { "mode": "fill_blank", "grade": "remembered", "next": "reverse_translate" },
+    { "mode": "reverse_translate", "grade": "remembered", "next": "reverse_translate" },
+    { "mode": "full_support", "grade": "easy", "next": "sentence_only" },
+    { "mode": "translation_hidden", "grade": "easy", "next": "fill_blank" },
+    { "mode": "sentence_only", "grade": "easy", "next": "reverse_translate" },
+    { "mode": "fill_blank", "grade": "easy", "next": "reverse_translate" },
+    { "mode": "reverse_translate", "grade": "easy", "next": "reverse_translate" }
+  ]
+}

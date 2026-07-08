@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnnotatedSentence } from "@/components/imported-content/AnnotatedSentence";
 import { PageState } from "@/components/system/PageState";
 import { AudioButton } from "@/components/ui/AudioButton";
+import { errorMessage } from "@/lib/errors";
 import { getLessonCached, getLessons } from "@/lib/desktopApi";
 import type { StudyLesson, StudyLessonMeta } from "@/lib/imported-content/types";
 import {
@@ -51,7 +52,7 @@ export function LessonReader() {
         }
       })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Unable to load lessons.");
+        if (!cancelled) setError(errorMessage(err, "Unable to load lessons."));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -83,7 +84,7 @@ export function LessonReader() {
       setSentenceIndex(0);
       setRevealedSentences(new Set());
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to load the lesson.");
+      setError(errorMessage(err, "Unable to load the lesson."));
     }
   }, []);
 

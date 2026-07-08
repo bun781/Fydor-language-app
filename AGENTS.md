@@ -17,12 +17,13 @@ Fydor is a local-first language-learning desktop app: a Vite + React SPA inside 
 ├── components/             React UI by feature
 │   ├── review/             ReviewDeck, ReviewControls, ReviewSentenceCard, ReviewStatsBrowser
 │   ├── reading/            ReadingWorkspace (tab shell), LessonReader, TextAnalyzer
-│   ├── imported-content/   Study mode UI (flashcards, quiz modes, annotated sentences)
+│   ├── imported-content/   Study mode UI (flashcards, quiz modes, annotated sentences);
+│   │                       quizSession.ts = shared quiz engine hook, QuizShell.tsx = shared quiz panels
 │   ├── admin-imports/      Lesson Builder UI (LessonImportsPage + LessonBuilderEditor)
 │   ├── exchange/           Fydor Exchange UI (pack install/share/library)
 │   ├── language/           Import help panel + preview
 │   ├── system/             GuidedTour, PageState
-│   ├── ui/                 AudioButton, Tooltip
+│   ├── ui/                 AudioButton, Tooltip, ConfirmDialog, PieChart
 │   └── AppShell.tsx        Nav shell used by every page
 ├── lib/
 │   ├── desktopApi.ts       ⭐ THE data layer — every Tauri invoke() call lives here
@@ -40,8 +41,7 @@ Fydor is a local-first language-learning desktop app: a Vite + React SPA inside 
 │       ├── review.rs       Review queue + SRS update commands
 │       ├── db.rs           SQLite schema, setup, migrations
 │       ├── models.rs       Rust structs mirroring the TS types in lib/*/types.ts
-│       ├── normalize.rs    Text normalization / canonical keys
-│       └── settings.rs     User settings persistence
+│       └── normalize.rs    Text normalization / canonical keys
 ├── tests/unit/             Vitest tests for pure frontend logic
 ├── docs/                   Feature docs and historical logs
 ├── samples/                Sample course content (.json, .fydorpack)
@@ -62,7 +62,7 @@ UI component → hook (e.g. `lib/review/useReviewDeck.ts`) → `lib/desktopApi.t
 | Feature | Primary files |
 |---|---|
 | Review queue order + shortcuts | `lib/review/queue.ts`, `lib/review/keyboard.ts` |
-| SRS grading/scheduling | `lib/review/scheduler.ts` (client), `src-tauri/src/review.rs` (persisted) |
+| SRS grading/scheduling | `src-tauri/src/review.rs` (source of truth, incl. FSRS); `lib/review/scheduler.ts` is only the optimistic client mirror |
 | Recall mode progression | `lib/review/recallModes.ts` |
 | Review deck state | `lib/review/useReviewDeck.ts` |
 | Review UI | `components/review/ReviewDeck.tsx` |

@@ -1,6 +1,4 @@
-// Single point of contact between the Next.js frontend and Tauri Rust commands. All invoke() calls live here. Command name strings must match #[tauri::command] names in src-tauri/src/.
-"use client";
-
+// Single point of contact between the frontend and Tauri Rust commands. All invoke() calls live here. Command name strings must match #[tauri::command] names in src-tauri/src/.
 import { invoke } from "@tauri-apps/api/core";
 import type { StudyLesson, StudyLessonMeta } from "@/lib/imported-content/types";
 import type { LessonImportInput, LessonImportPreviewResult, LessonImportSummary } from "@/lib/language/types";
@@ -11,7 +9,7 @@ export async function getLessons(): Promise<StudyLessonMeta[]> {
   return invoke("get_lessons");
 }
 
-export async function getLesson(lessonId: string): Promise<StudyLesson | null> {
+async function getLesson(lessonId: string): Promise<StudyLesson | null> {
   return invoke("get_lesson", { lessonId });
 }
 
@@ -80,8 +78,4 @@ export async function getReviewProgress(): Promise<ReviewProgressSnapshot> {
 
 export async function getReadingInputs(): Promise<ReadingInputs> {
   return invoke("get_reading_inputs");
-}
-
-export async function saveUserSettings(settings: Record<string, unknown>): Promise<void> {
-  await invoke("save_user_settings", { settings });
 }

@@ -5,8 +5,6 @@
   --ink: #1c1917;
   --muted: #78716c;
   --line: #e7e2da;
-  --brand: #1c1917;
-  --brand-strong: #000000;
   --accent: #b59a6a;
   --warn: #92400e;
   --ok: #166534;
@@ -78,6 +76,9 @@ a {
 button, input, textarea, select {
   font: inherit;
 }
+
+/* Global CSS is for app shell, reusable primitives, and page-level feature sections.
+   Prefer CSS modules for isolated shared widgets; ConfirmDialog is the pilot. */
 
 /* ── App shell ─────────────────────────────────────────── */
 
@@ -332,10 +333,6 @@ button, input, textarea, select {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.grid-2 {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
 .card {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -347,10 +344,6 @@ button, input, textarea, select {
   display: grid;
   gap: 12px;
   max-width: 44rem;
-}
-
-.page-state-error {
-  border-color: rgba(146, 64, 14, 0.35);
 }
 
 .page-state-eyebrow {
@@ -454,10 +447,6 @@ button, input, textarea, select {
   opacity: 1;
 }
 
-.button.kind-word { background: var(--word); border-color: var(--word); }
-.button.kind-grammar { background: var(--grammar); border-color: var(--grammar); }
-.button.kind-chunk { background: var(--chunk); border-color: var(--chunk); }
-
 .button.review-positive {
   background: #166534;
   border-color: #166534;
@@ -521,10 +510,6 @@ button, input, textarea, select {
   padding: 3px 7px;
   text-transform: uppercase;
 }
-
-.pill-word { border-color: var(--word); color: var(--word); }
-.pill-grammar { border-color: var(--grammar); color: var(--grammar); }
-.pill-chunk { border-color: var(--chunk); color: var(--chunk); }
 .pill-accent { border-color: var(--accent); color: var(--accent); }
 
 /* ── Reading ────────────────────────────────────────────── */
@@ -778,17 +763,6 @@ button, input, textarea, select {
   padding: 18px;
 }
 
-.review-start-panel-primary,
-.review-start-panel-secondary {
-  display: grid;
-  gap: 12px;
-  min-width: 0;
-}
-
-.review-start-panel-secondary {
-  align-content: start;
-}
-
 .review-start-panel-controls {
   align-items: start;
   grid-template-columns: minmax(0, 1fr);
@@ -959,10 +933,6 @@ button, input, textarea, select {
 
 .review-mastery-fill {
   background: var(--accent);
-}
-
-.review-menu-tabs {
-  flex: 1 1 100%;
 }
 
 .review-menu-actions {
@@ -1402,29 +1372,6 @@ button, input, textarea, select {
   padding: 24px;
 }
 
-.confirm-backdrop {
-  align-items: center;
-  background: rgba(20, 24, 28, 0.42);
-  display: flex;
-  inset: 0;
-  justify-content: center;
-  padding: 18px;
-  position: fixed;
-  z-index: 30;
-}
-
-.confirm-dialog {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  box-shadow: 0 20px 60px rgba(20, 24, 28, 0.22);
-  display: grid;
-  gap: 12px;
-  max-width: 420px;
-  padding: 20px;
-  width: 100%;
-}
-
 .review-lesson-select {
   border: 0;
   display: grid;
@@ -1508,64 +1455,6 @@ button, input, textarea, select {
 }
 
 .review-lesson-check small {
-  color: var(--muted);
-}
-
-.review-lesson-panel {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  display: grid;
-  gap: 14px;
-  padding: 18px;
-}
-
-.review-lesson-panel-top {
-  align-items: flex-start;
-  display: flex;
-  gap: 16px;
-  justify-content: space-between;
-}
-
-.review-lesson-grid {
-  display: grid;
-  gap: 8px;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-}
-
-.review-lesson-option {
-  align-items: flex-start;
-  background: var(--surface-muted);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  cursor: pointer;
-  display: flex;
-  gap: 10px;
-  min-height: 68px;
-  padding: 12px;
-}
-
-.review-lesson-option:has(input:checked) {
-  background: rgba(47, 107, 79, 0.08);
-  border-color: rgba(47, 107, 79, 0.35);
-}
-
-.review-lesson-option input {
-  margin-top: 3px;
-}
-
-.review-lesson-option span {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-}
-
-.review-lesson-option strong,
-.review-lesson-option small {
-  overflow-wrap: anywhere;
-}
-
-.review-lesson-option small {
   color: var(--muted);
 }
 
@@ -1840,18 +1729,13 @@ button, input, textarea, select {
   padding: 16px;
 }
 
-.learning-science-compact {
-  align-self: end;
-}
-
 .learning-science-grid {
   display: grid;
   gap: 8px 14px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.learning-science-grid p,
-.learning-science-more p {
+.learning-science-grid p {
   color: var(--muted);
   font-size: 12px;
   line-height: 1.5;
@@ -1860,104 +1744,6 @@ button, input, textarea, select {
 .learning-science-grid strong {
   color: var(--ink);
   font-weight: 600;
-}
-
-.learning-science-more {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.learning-science-more summary {
-  cursor: pointer;
-  font-weight: 600;
-}
-
-/* ── Shuffle toggle ──────────────────────────────────────── */
-
-.shuffle-toggle {
-  align-items: center;
-  background: transparent;
-  border: 1px solid var(--line);
-  border-radius: 20px;
-  cursor: pointer;
-  display: inline-flex;
-  gap: 8px;
-  padding: 5px 12px 5px 10px;
-  transition: border-color 0.18s, background 0.18s, transform 0.12s;
-  user-select: none;
-}
-
-.shuffle-toggle:hover {
-  border-color: var(--ink);
-  transform: translateY(-1px);
-}
-
-.shuffle-toggle:active {
-  transform: scale(0.96);
-}
-
-.shuffle-toggle:disabled {
-  cursor: not-allowed;
-  opacity: 0.38;
-  transform: none;
-}
-
-.shuffle-icon {
-  color: var(--muted);
-  flex-shrink: 0;
-  transition: color 0.18s, transform 0.3s;
-}
-
-.shuffle-toggle--on .shuffle-icon {
-  color: var(--ink);
-  transform: rotate(180deg);
-}
-
-.shuffle-track {
-  background: var(--line);
-  border-radius: 20px;
-  flex-shrink: 0;
-  height: 20px;
-  position: relative;
-  transition: background 0.2s;
-  width: 38px;
-}
-
-.shuffle-toggle--on .shuffle-track {
-  background: var(--ink);
-}
-
-.shuffle-thumb {
-  background: #ffffff;
-  border-radius: 50%;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
-  height: 14px;
-  left: 3px;
-  position: absolute;
-  top: 3px;
-  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
-  width: 14px;
-}
-
-.shuffle-toggle--on .shuffle-thumb {
-  transform: translateX(18px);
-}
-
-.shuffle-label {
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.03em;
-  transition: color 0.18s;
-}
-
-.shuffle-toggle--on .shuffle-label {
-  color: var(--ink);
-}
-
-.shuffle-toggle--on {
-  background: var(--surface-muted);
-  border-color: var(--ink);
 }
 
 /* ── Form inputs ────────────────────────────────────────── */
@@ -2006,8 +1792,6 @@ textarea.input {
   justify-items: end;
   position: relative;
 }
-
-.import-help-toggle-tabs,
 .lesson-builder-topbar .mode-tabs {
   margin-bottom: 0;
 }
@@ -2018,8 +1802,7 @@ textarea.input {
   color: var(--ink);
 }
 
-.import-help-panel,
-.language-browser {
+.import-help-panel {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(244, 242, 237, 0.86));
 }
@@ -2083,50 +1866,6 @@ textarea.input {
 .help-code {
   margin: 0;
   white-space: pre-wrap;
-}
-
-.language-tabs {
-  display: grid;
-  gap: 8px;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-}
-
-.language-tabs button {
-  align-items: flex-start;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 3px;
-  color: var(--muted);
-  cursor: pointer;
-  display: grid;
-  gap: 4px;
-  justify-items: start;
-  padding: 10px 12px;
-  text-align: left;
-  transition: border-color 0.15s, color 0.15s, background 0.15s, transform 0.12s;
-}
-
-.language-tabs button:hover {
-  transform: translateY(-1px);
-}
-
-.language-tabs button:active {
-  transform: scale(0.97);
-}
-
-.language-tabs button small {
-  color: var(--muted);
-  font-size: 11px;
-}
-
-.language-tabs button.active {
-  background: var(--surface-muted);
-  border-color: var(--ink);
-  color: var(--ink);
-}
-
-.language-tabs button.active small {
-  color: var(--ink);
 }
 
 /* ── Notices / status ───────────────────────────────────── */
@@ -2313,8 +2052,7 @@ textarea.input {
 
 /* ── Interactive sentence ───────────────────────────────── */
 
-.sentence-text,
-.interactive-sentence {
+.sentence-text {
   font-family: Georgia, serif;
   font-size: 28px;
   line-height: 1.6;
@@ -2329,13 +2067,6 @@ textarea.input {
 
 .sentence-line .sentence-text {
   margin: 0;
-}
-
-.interactive-sentence {
-  align-items: baseline;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
 }
 
 .token-chip {
@@ -2430,26 +2161,6 @@ textarea.input {
   color: var(--ink);
 }
 
-.annotation-types button.kind-word { color: var(--word); }
-.annotation-types button.kind-grammar { color: var(--grammar); }
-.annotation-types button.kind-chunk { color: var(--chunk); }
-
-.annotation-types button.kind-word.active {
-  background: var(--word-bg);
-  box-shadow: inset 0 0 0 1.5px var(--word);
-  color: var(--word);
-}
-.annotation-types button.kind-grammar.active {
-  background: var(--grammar-bg);
-  box-shadow: inset 0 0 0 1.5px var(--grammar);
-  color: var(--grammar);
-}
-.annotation-types button.kind-chunk.active {
-  background: var(--chunk-bg);
-  box-shadow: inset 0 0 0 1.5px var(--chunk);
-  color: var(--chunk);
-}
-
 /* ── Lesson builder ─────────────────────────────────────── */
 
 .lesson-builder,
@@ -2487,18 +2198,6 @@ textarea.input {
   position: relative;
 }
 
-.sentence-count-badge {
-  background: var(--surface-muted);
-  border: 1px solid var(--line);
-  border-radius: 20px;
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  padding: 3px 10px;
-  white-space: nowrap;
-}
-
 .lesson-builder-actions {
   align-items: center;
   display: flex;
@@ -2509,12 +2208,6 @@ textarea.input {
   font-size: 12px;
   min-height: 32px;
   padding: 0 12px;
-}
-
-.lesson-meta-grid {
-  display: grid;
-  gap: 10px 12px;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
 .lesson-meta-compact {
@@ -2690,32 +2383,9 @@ textarea.input {
   padding: 3px 24px 3px 7px;
 }
 
-.lesson-meta-title {
-  grid-column: span 2;
-}
-
-.lesson-meta-description {
-  grid-column: span 3;
-}
-
-.lesson-meta-tags {
-  grid-column: span 2;
-}
-
 .lesson-mode-note {
   border-top: 1px solid var(--line);
   padding-top: 12px;
-}
-
-.lesson-edit-note {
-  align-items: center;
-  background: var(--surface-muted);
-  border: 1px solid var(--line);
-  color: var(--muted);
-  display: flex;
-  font-size: 13px;
-  min-height: 38px;
-  padding: 6px 10px;
 }
 
 .append-json-panel {
@@ -3190,21 +2860,6 @@ textarea.input {
   font-size: 15px;
 }
 
-.annotated-word {
-  background: var(--word-bg);
-  border-bottom: 2.5px solid var(--word);
-}
-
-.annotated-grammar {
-  background: var(--grammar-bg);
-  border-bottom: 2.5px solid var(--grammar);
-}
-
-.annotated-chunk {
-  background: var(--chunk-bg);
-  border-bottom: 2.5px solid var(--chunk);
-}
-
 .annotated-has-word {
   background: var(--word-bg);
 }
@@ -3261,12 +2916,6 @@ textarea.input {
   padding: 5px 10px;
 }
 
-.meta-grid-2 {
-  display: grid;
-  gap: 8px;
-  grid-template-columns: 1fr 1fr;
-}
-
 /* ── Token chip type colors (ImportPreview) ─────────────── */
 
 .token-chip-word { border-color: var(--word); color: var(--word); }
@@ -3280,8 +2929,7 @@ textarea.input {
   gap: 10px;
 }
 
-.annotation-row,
-.action-bar {
+.annotation-row {
   align-items: center;
   display: flex;
   gap: 12px;
@@ -3331,21 +2979,6 @@ textarea.input {
   cursor: not-allowed;
   opacity: 0.32;
   transform: none;
-}
-
-.action-bar {
-  margin-top: 16px;
-}
-
-.import-action-bar {
-  margin-bottom: 16px;
-  margin-top: -16px;
-}
-
-.grade-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
 }
 
 /* ── Button active state (reveal controls) ──────────────── */
@@ -3443,13 +3076,6 @@ textarea.input {
   padding: 8px 12px;
 }
 
-/* ── Active practice panels ─────────────────────────────── */
-
-.practice-tabs {
-  margin-bottom: 0;
-  width: fit-content;
-}
-
 .cloze-answer-tabs {
   margin-bottom: 0;
   width: fit-content;
@@ -3458,19 +3084,6 @@ textarea.input {
 .cloze-answer-tabs button:disabled {
   cursor: not-allowed;
   opacity: 0.42;
-}
-
-.practice-panel {
-  background: color-mix(in srgb, var(--surface-muted) 62%, var(--surface));
-  border: 1px solid var(--line);
-  border-radius: 3px;
-  padding: 14px;
-}
-
-.practice-panel h2 {
-  font-family: ui-sans-serif, system-ui, sans-serif;
-  font-size: 13px;
-  font-weight: 650;
 }
 
 .practice-sentence {
@@ -3570,8 +3183,7 @@ textarea.input {
   color: var(--warn);
 }
 
-.practice-answer-row,
-.practice-feedback-row {
+.practice-answer-row {
   align-items: center;
   display: flex;
   flex-wrap: wrap;
@@ -3581,23 +3193,6 @@ textarea.input {
 .practice-answer-row .input {
   flex: 1 1 170px;
   min-width: 0;
-}
-
-.practice-feedback {
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 5px 9px;
-}
-
-.practice-feedback.correct {
-  background: rgba(22, 101, 52, 0.1);
-  color: var(--ok);
-}
-
-.practice-feedback.incorrect {
-  background: rgba(146, 64, 14, 0.1);
-  color: var(--warn);
 }
 
 /* ── Reveal controls ─────────────────────────────────────── */
@@ -3896,11 +3491,6 @@ textarea.input {
   min-width: 8px;
 }
 
-.grade-btn.grade-easy.active  { background: rgba(22, 101, 52, 0.1); border-color: var(--ok); color: var(--ok); }
-.grade-btn.grade-correct.active { background: rgba(59, 130, 246, 0.1); border-color: var(--word); color: var(--word); }
-.grade-btn.grade-hard.active  { background: rgba(181, 154, 106, 0.15); border-color: var(--accent); color: var(--accent); }
-.grade-btn.grade-failed.active { background: rgba(146, 64, 14, 0.1); border-color: var(--warn); color: var(--warn); }
-
 .random-order-toggle.active {
   background: var(--surface-muted);
   border-color: var(--ink);
@@ -3915,16 +3505,6 @@ textarea.input {
   flex-wrap: wrap;
   gap: 8px;
   padding-top: 14px;
-}
-
-.button.secondary.review-forgotten:hover {
-  border-color: #7f1d1d;
-  color: #7f1d1d;
-}
-
-.button.secondary.review-remembered:hover {
-  border-color: #14532d;
-  color: #14532d;
 }
 
 /* ── Responsive ─────────────────────────────────────────── */
@@ -3973,7 +3553,6 @@ textarea.input {
     padding: 24px 18px;
   }
 
-  .grid-2,
   .grid-3 {
     grid-template-columns: 1fr;
   }
@@ -4006,16 +3585,6 @@ textarea.input {
 
   .exchange-my-packs,
   .exchange-wide-field {
-    grid-column: auto;
-  }
-
-  .lesson-meta-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .lesson-meta-title,
-  .lesson-meta-description,
-  .lesson-meta-tags {
     grid-column: auto;
   }
 
@@ -4056,8 +3625,7 @@ textarea.input {
 
   .topbar,
   .row,
-  .item-row,
-  .action-bar {
+  .item-row {
     align-items: stretch;
     flex-direction: column;
   }
@@ -4126,7 +3694,6 @@ textarea.input {
   }
 
   .sentence-text,
-  .interactive-sentence,
   .token-chip {
     font-size: 22px;
   }

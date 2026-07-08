@@ -1,8 +1,8 @@
 import { z } from "zod";
 import type { LessonImportInput } from "@/lib/language/types";
 
-export const FYDOR_PACK_TYPE = "fydor_pack";
-export const FYDOR_PACK_SCHEMA_VERSION = 1;
+const FYDOR_PACK_TYPE = "fydor_pack";
+const FYDOR_PACK_SCHEMA_VERSION = 1;
 
 export interface FydorPackAuthor {
   name?: string;

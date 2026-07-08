@@ -6,7 +6,6 @@ mod models;
 mod normalize;
 mod reading;
 mod review;
-mod settings;
 
 use tauri::Manager;
 
@@ -45,8 +44,7 @@ fn main() {
             review::get_item_review_targets,
             review::update_item_review,
             review::get_review_progress,
-            reading::get_reading_inputs,
-            settings::save_user_settings
+            reading::get_reading_inputs
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

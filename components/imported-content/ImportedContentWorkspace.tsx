@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { PageState } from "@/components/system/PageState";
+import { errorMessage } from "@/lib/errors";
 import { getLessons } from "@/lib/desktopApi";
 import type { StudyLessonMeta } from "@/lib/imported-content/types";
 import { useImportedLessonBrowser } from "./useImportedLessonBrowser";
@@ -48,7 +49,7 @@ export function ImportedContentWorkspace({ mode = "lesson" }: Props) {
 
     loadLessons()
       .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Unable to load imported lessons.");
+        if (!cancelled) setError(errorMessage(err, "Unable to load imported lessons."));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);

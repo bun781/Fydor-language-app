@@ -1,13 +1,22 @@
 import { describe, expect, it } from "vitest";
 import {
   buildInterleavedReviewQueue,
-  buildTargetedReviewQueue,
   itemTargetToQueueEntry,
   makeReviewTargetKey,
-  parseReviewTargetKey
+  parseReviewTargetKey,
+  type ReviewQueueOptions
 } from "@/lib/review/queue";
 import { applyReviewDecision } from "@/lib/review/scheduler";
 import type { ReviewItemTarget, ReviewSentence } from "@/lib/review/types";
+
+// Same composition ReviewDeck uses: sentences plus item targets in one interleaved queue.
+function buildTargetedReviewQueue(
+  sentences: ReviewSentence[],
+  items: ReviewItemTarget[],
+  options: ReviewQueueOptions = {}
+): string[] {
+  return buildInterleavedReviewQueue([...sentences, ...items.map(itemTargetToQueueEntry)], options);
+}
 
 const NOW = new Date("2026-07-08T10:00:00.000Z");
 
@@ -216,9 +225,11 @@ describe("mixed review session entries", () => {
     const graded = applyReviewDecision(entry, "remembered", reviewedAt);
 
     expect(graded.id).toBe("item:i1");
-    expect(graded.repetitions).toBe(1);
     expect(graded.reviewState).toBe("remembered");
-    expect(new Date(graded.dueAt ?? 0).getTime()).toBeGreaterThan(reviewedAt.getTime());
+    expect(graded.reviewedAt).toBe(reviewedAt.toISOString());
+    // Scheduling numbers are untouched: update_item_review (Rust) supplies them.
+    expect(graded.repetitions).toBe(0);
+    expect(graded.dueAt).toBe(entry.dueAt);
   });
 
   it("keeps mixed queues resumable through target keys", () => {

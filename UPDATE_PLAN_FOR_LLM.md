@@ -1,8 +1,74 @@
 # UPDATE_PLAN_FOR_LLM.md — Canonical LLM Session Handoff
 
-Last updated: 2026-07-08 (Vite migration + Reading Mode session).
+Last updated: 2026-07-08 (architecture cleanup session; previous: Vite migration + Reading Mode).
 Read `AGENTS.md` first — it is the authoritative architecture guide. This file
 tracks session-to-session status, decisions, and next tasks.
+
+## Architecture Cleanup (2026-07-08, later session)
+
+- **Dead code removed** (verified with knip + grep before each deletion):
+  - Client-side FSRS "engine seam" that production never used: `lib/review/fsrs.ts`,
+    `lib/review/schedulerEngine.ts`, `lib/review/reviewableUnit.ts` + their tests.
+    FSRS lives only in `src-tauri/src/review.rs` now; `lib/review/scheduler.ts` is
+    just the optimistic client mirror for the fixed-interval intervals.
+  - Write-only settings subsystem: `src-tauri/src/settings.rs` + `saveUserSettings`
+    (nothing could ever read a saved setting — there was no `get_user_settings`).
+    The `user_settings` table is kept in `db.rs` for migration safety.
+  - `lib/imported-content/exercise-generators.ts` (no production consumers),
+    `scripts/generate-icons.mjs` + the `sharp` devDependency.
+  - ~270 lines of dead CSS rules/vars in `src/globals.css` (43 rules verified
+    unreferenced, including dynamic `prefix-${...}` class patterns).
+- **Quiz modes consolidated**: FillBlankMode + MultipleChoiceMode previously
+  duplicated an entire quiz state machine each. Shared engine now lives in
+  `components/imported-content/quizSession.ts` (`useQuizSession`: setup/active/
+  complete flow, scoring, session persistence, keyboard shortcuts) and
+  `QuizShell.tsx` (setup/complete/feedback/nav panels). Each mode supplies only
+  its card type, pool builder, correctness fn, and active-question UI.
+  Persisted progress shapes and localStorage keys are unchanged.
+- **ConfirmDialog extracted** to `components/ui/ConfirmDialog.tsx`; all five
+  confirm dialogs (quiz exit, draft replace, lesson delete, review resets) use it.
+- **review.rs**: the duplicated 21-column sentence SELECT is now the shared
+  `REVIEW_SENTENCE_SELECT` const (column order must match `map_review_sentence`).
+- Verification after each step: typecheck, eslint, vitest (91 tests — 24 removed
+  tests were exercising the deleted dead modules), `cargo test` (24), `vite build`.
+- LOC: 22,675 → ~21,100 (TS/TSX/Rust/CSS under src, components, lib, src-tauri,
+  tests, scripts).
+
+## Second-Pass Review (2026-07-08, same day)
+
+Principal-engineer style re-review of the cleanup above. Changes:
+
+- **Legacy review-queue path deleted**: `buildReviewQueue`, `buildReviewQueueWithCurrent`,
+  `buildLegacyReviewQueue`, `hydrateReviewSentence`, and the `ReviewSentenceRow` type
+  (Date-typed rows) were reachable only from tests — production always goes
+  `get_review_queue` (Rust, strings) → `buildInterleavedReviewQueue`. Also removed the
+  tests-only `buildTargetedReviewQueue` wrapper (tests now compose
+  `buildInterleavedReviewQueue` + `itemTargetToQueueEntry`, same as ReviewDeck) and the
+  duplicate `scoreAnyReviewSentence`/`scoreReviewSentence` pair.
+- **`getReviewShortcutAction` moved** from `queue.ts` to `lib/review/keyboard.ts` — it is
+  a keyboard concern; queue.ts is now purely ordering.
+- **Orphaned module deleted**: `lib/imported-content/coverage.ts` (+ its test) had zero
+  production imports — it was stranded when `exercise-generators.ts` was removed.
+- **`isEditableShortcutTarget` deduplicated**: three identical copies (quizSession,
+  useLessonReview, ImportedContentStudy) → one export in `lib/dom.ts`.
+  (`keyboard.ts`'s `isInteractiveTarget` intentionally differs: it also ignores BUTTON.)
+- **ReviewDeck start menu**: the two ~50-line duplicated menu JSX blocks are one
+  `renderStartMenu(hasSentences)` helper. This also fixes a latent bug: in the
+  "lessons selected but zero sentences" state the Reset Progress button opened a
+  confirm dialog that branch never rendered.
+- **CSS**: another ~145 lines of verified-dead rules removed (grouped-selector members
+  and rules inside `@media` blocks the first pass missed). Dynamic
+  `prefix-${...}` classes (cloze-kind-*, review-heatmap-*, token-fam-*, review-state-*,
+  tooltip-*, status-*) re-verified as live and kept.
+- **Deliberately NOT changed** (assessed, judged correct as-is):
+  - Rust FSRS in `review.rs` is live policy (`NEW_CARD_SCHEDULER_ENGINE = "fsrs"`): new
+    cards start on FSRS, previously graded rows keep fixed-interval. Well-tested; keep.
+  - `lib/review/scheduler.ts` optimistic mirror only models fixed-interval; for FSRS
+    cards the optimistic dueAt is wrong for a few ms until the server row replaces it.
+    Accepted trade-off — grading stays instant and the server is authoritative.
+  - `SchedulerEngineId` keeps "fsrs" (Rust returns it).
+  - Rust import pipeline (`lessons/import.rs`) is cleanly staged (parse → plan →
+    preview/apply); no change.
 
 ## Current Architecture (post-Vite migration)
 

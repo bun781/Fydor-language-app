@@ -1,5 +1,7 @@
 // Tauri commands for the review system: get_review_queue, update_review_item, reset_review_progress.
-// Fixed-interval SRS values here must stay in sync with lib/review/scheduler.ts.
+// This file is the ONLY implementation of review scheduling (fixed-interval and FSRS);
+// the client never computes intervals. The grade/recall-mode semantics shared with the
+// frontend are pinned by tests/fixtures/review-grade-contract.json.
 use crate::{
     db,
     models::{
@@ -447,38 +449,22 @@ fn reset_item_review_state(conn: &Connection, item_type: &str, canonical_key: &s
     Ok(())
 }
 
+// Column order must match map_review_sentence.
+const REVIEW_SENTENCE_SELECT: &str = r#"
+    SELECT
+      s.id, s.id, s.lesson_id, s.lesson_id, s.language, s.text, s.translation,
+      s.review_state, s.review_streak, s.reviewed_at,
+      ri.due_at, ri.last_reviewed_at, ri.repetitions, ri.lapses,
+      ri.difficulty, ri.stability, ri.recall_mode, ri.scheduler_engine,
+      s.focus_display_text, s.focus_meaning, s.focus_explanation
+    FROM sentences s
+    JOIN review_items ri ON ri.sentence_id = s.id
+"#;
+
 fn get_review_queue_inner(conn: &Connection) -> Result<Vec<ReviewSentence>> {
     ensure_review_items(conn)?;
-    let mut stmt = conn.prepare(
-        r#"
-        SELECT
-          s.id,
-          s.id,
-          s.lesson_id,
-          s.lesson_id,
-          s.language,
-          s.text,
-          s.translation,
-          s.review_state,
-          s.review_streak,
-          s.reviewed_at,
-          ri.due_at,
-          ri.last_reviewed_at,
-          ri.repetitions,
-          ri.lapses,
-          ri.difficulty,
-          ri.stability,
-          ri.recall_mode,
-          ri.scheduler_engine,
-          s.focus_display_text,
-          s.focus_meaning,
-          s.focus_explanation
-        FROM sentences s
-        JOIN review_items ri ON ri.sentence_id = s.id
-        ORDER BY ri.due_at ASC, s.text ASC
-        "#,
-    )?;
-
+    let mut stmt =
+        conn.prepare(&format!("{REVIEW_SENTENCE_SELECT} ORDER BY ri.due_at ASC, s.text ASC"))?;
     let rows = stmt.query_map([], map_review_sentence)?;
     rows.collect::<rusqlite::Result<Vec<_>>>().map_err(Into::into)
 }
@@ -486,33 +472,7 @@ fn get_review_queue_inner(conn: &Connection) -> Result<Vec<ReviewSentence>> {
 fn get_sentence(conn: &Connection, sentence_id: &str) -> Result<Option<ReviewSentence>> {
     ensure_review_items(conn)?;
     conn.query_row(
-        r#"
-        SELECT
-          s.id,
-          s.id,
-          s.lesson_id,
-          s.lesson_id,
-          s.language,
-          s.text,
-          s.translation,
-          s.review_state,
-          s.review_streak,
-          s.reviewed_at,
-          ri.due_at,
-          ri.last_reviewed_at,
-          ri.repetitions,
-          ri.lapses,
-          ri.difficulty,
-          ri.stability,
-          ri.recall_mode,
-          ri.scheduler_engine,
-          s.focus_display_text,
-          s.focus_meaning,
-          s.focus_explanation
-        FROM sentences s
-        JOIN review_items ri ON ri.sentence_id = s.id
-        WHERE s.id = ?1
-        "#,
+        &format!("{REVIEW_SENTENCE_SELECT} WHERE s.id = ?1"),
         [sentence_id],
         map_review_sentence,
     )
@@ -702,9 +662,7 @@ fn schedule_review(current: &SchedulerState, grade: &str, reviewed_at: &str) -> 
 }
 
 fn next_fixed_due_at(grade: &str, reviewed_at: &str) -> String {
-    let parsed = DateTime::parse_from_rfc3339(reviewed_at)
-        .map(|date| date.with_timezone(&Utc))
-        .unwrap_or_else(|_| Utc::now());
+    let parsed = parse_utc(reviewed_at);
     let next = match grade {
         "forgot" => parsed + Duration::minutes(10),
         "hard" => parsed + Duration::days(1),
@@ -895,11 +853,45 @@ fn next_recall_mode(current: &str, grade: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        get_item_review_targets_inner, get_review_progress_inner, reset_item_review_state,
-        schedule_review, update_item_review_inner, update_review_item_inner, ReviewResetScope,
-        SchedulerState,
+        get_item_review_targets_inner, get_review_progress_inner, legacy_review_state,
+        next_recall_mode, normalize_grade, reset_item_review_state, schedule_review,
+        update_item_review_inner, update_review_item_inner, ReviewResetScope, SchedulerState,
     };
     use rusqlite::Connection;
+
+    // Rust side of the Rust<->TS review contract. The same fixture is asserted from
+    // tests/unit/review-contract.test.ts, so a change to either implementation fails
+    // one side's suite.
+    #[test]
+    fn review_grade_contract_matches_shared_fixture() {
+        let fixture: serde_json::Value = serde_json::from_str(include_str!(
+            "../../tests/fixtures/review-grade-contract.json"
+        ))
+        .expect("parse contract fixture");
+
+        let grades = fixture["grades"].as_array().expect("grades array");
+        assert_eq!(grades.len(), 5);
+        for case in grades {
+            let decision = case["decision"].as_str().unwrap();
+            let normalized = case["normalized"].as_str().unwrap();
+            let legacy = case["legacyState"].as_str().unwrap();
+            assert_eq!(
+                normalize_grade(decision).as_deref(),
+                Some(normalized),
+                "normalize_grade({decision})"
+            );
+            assert_eq!(legacy_review_state(normalized), legacy, "legacy_review_state({normalized})");
+        }
+
+        let transitions = fixture["recallModeProgression"].as_array().expect("recall array");
+        assert_eq!(transitions.len(), 20);
+        for case in transitions {
+            let mode = case["mode"].as_str().unwrap();
+            let grade = case["grade"].as_str().unwrap();
+            let next = case["next"].as_str().unwrap();
+            assert_eq!(next_recall_mode(mode, grade), next, "next_recall_mode({mode}, {grade})");
+        }
+    }
 
     #[test]
     fn deserializes_lesson_reset_scope_from_frontend_payload() {

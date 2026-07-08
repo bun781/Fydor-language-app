@@ -35,30 +35,6 @@ export interface ReviewSentence {
   itemType?: "word" | "grammar" | "chunk";
 }
 
-export interface ReviewSentenceRow {
-  id: string;
-  sentenceId?: string;
-  lessonId?: string;
-  importId?: string;
-  language: string;
-  text: string;
-  translation: string;
-  reviewState: SentenceReviewState;
-  reviewStreak: number;
-  reviewedAt: Date | null;
-  dueAt?: Date;
-  lastReviewedAt?: Date | null;
-  repetitions?: number;
-  lapses?: number;
-  difficulty?: number;
-  stability?: number;
-  recallMode?: RecallMode;
-  schedulerEngine?: SchedulerEngineId;
-  focusText?: string | null;
-  focusMeaning?: string | null;
-  focusExplanation?: string | null;
-}
-
 // Aggregated review history and mastery counters for the progress layer (streaks,
 // heatmaps, mastery %). Mirrors ReviewProgressSnapshot in src-tauri/src/models.rs.
 // daily_activity days are local dates ("YYYY-MM-DD"), ascending.

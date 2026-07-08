@@ -5,6 +5,7 @@ import type {
   StudyLesson,
   StudySentence
 } from "@/lib/imported-content/types";
+import { isEditableShortcutTarget } from "@/lib/dom";
 import type { ReviewDecision } from "@/lib/review/types";
 import { useLessonReview } from "@/lib/review/useLessonReview";
 import { CheckpointQuiz } from "./CheckpointQuiz";
@@ -431,8 +432,3 @@ function getFlashcardProgressKey(lessonId: string) {
   return `flashcards.${lessonId}`;
 }
 
-function isEditableShortcutTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  if (target.isContentEditable) return true;
-  return ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
-}
