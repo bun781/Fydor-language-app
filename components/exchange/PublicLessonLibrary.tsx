@@ -61,7 +61,8 @@ export function PublicLessonLibrary() {
         throw new Error("The lesson metadata changed during download. Refresh the library and try again.");
       }
 
-      const { schemaVersion: _schemaVersion, ...lessonSource } = envelope.lesson;
+      const lessonSource = { ...envelope.lesson };
+      delete (lessonSource as { schemaVersion?: number }).schemaVersion;
       writeLocal(LESSON_IMPORT_DRAFT_KEY, JSON.stringify(lessonSource, null, 2));
       navigate("/fydor-exchange/import");
     } catch (cause) {

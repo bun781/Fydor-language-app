@@ -118,11 +118,9 @@ export function CommunityWorkspace() {
 
   function openTab(tab: CommunityTab) {
     setActiveTab(tab);
-    setParams((current) => {
-      const next = new URLSearchParams(current);
-      next.set("tab", tab);
-      return next;
-    }, { replace: true });
+    const next = new URLSearchParams(params);
+    next.set("tab", tab);
+    setParams(next, { replace: true });
   }
 
   const pageTitle = activeTab === "moderate" ? "Moderation" : activeTab === "admin" ? "Administration" : "Contribute a lesson";
