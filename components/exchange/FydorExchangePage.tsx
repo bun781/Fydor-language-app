@@ -13,9 +13,11 @@ import {
 } from "@/lib/fydor-pack";
 import type { StudyLessonMeta } from "@/lib/imported-content/types";
 import type { LessonImportInput } from "@/lib/language/types";
+import { publishFydorPack } from "@/lib/public-library";
 import { readLocal, readSessionProgress, writeLocal, writeSessionProgress } from "@/lib/storage";
 import { z } from "zod";
 import { InstallPackSection, MyPacksSection, SharePackSection } from "./ExchangeSections";
+import { PublicLessonLibrary } from "./PublicLessonLibrary";
 
 export type DuplicateMode = "skip" | "replace" | "keep";
 
@@ -108,6 +110,7 @@ export function FydorExchangePage() {
     new Set(savedProgress?.selectedLessonIds ?? [])
   ));
   const [exporting, setExporting] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [exportPreview, setExportPreview] = useState<FydorPack | null>(null);
   const [metadata, setMetadata] = useState<ExchangePackMetadata>(savedProgress?.metadata ?? {
     title: "My Fydor Pack",
@@ -402,6 +405,22 @@ export function FydorExchangePage() {
     setStatus(`Exported ${pack.title}.`);
   }
 
+  async function publishSelectedPack(ids = selectedLessonIds) {
+    const pack = exportPreview && ids === selectedLessonIds ? exportPreview : await buildExportPreview(ids);
+    if (!pack) return;
+    setPublishing(true);
+    setErrors([]);
+    setStatus("");
+    try {
+      const result = await publishFydorPack(pack);
+      setStatus(`Published ${result.pack.title} to ${result.bucket}/${result.path}.`);
+    } catch (error) {
+      setErrors([errorMessage(error, "Unable to publish this pack.")]);
+    } finally {
+      setPublishing(false);
+    }
+  }
+
   return (
     <AppShell>
       <div className="topbar">
@@ -428,6 +447,7 @@ export function FydorExchangePage() {
       ) : null}
 
       <div className="exchange-grid">
+        <PublicLessonLibrary onInstalled={refreshLessons} />
         <InstallPackSection
           packSource={packSource}
           packPreview={packPreview}
@@ -449,6 +469,7 @@ export function FydorExchangePage() {
           selectedLessonIds={selectedLessonIds}
           metadata={metadata}
           exporting={exporting}
+          publishing={publishing}
           exportPreview={exportPreview}
           onSelectAll={selectAllLessons}
           onClearSelection={clearSelectedLessons}
@@ -457,6 +478,7 @@ export function FydorExchangePage() {
           onBuildPreview={() => void buildExportPreview()}
           onExportSelected={() => void exportSelectedPack()}
           onExportAll={() => void exportSelectedPack(new Set(lessons.map((lesson) => lesson.id)))}
+          onPublishSelected={() => void publishSelectedPack()}
         />
         <MyPacksSection
           installedPacks={installedPacks}

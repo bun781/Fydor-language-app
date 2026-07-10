@@ -79,3 +79,29 @@ export async function getReviewProgress(): Promise<ReviewProgressSnapshot> {
 export async function getReadingInputs(): Promise<ReadingInputs> {
   return invoke("get_reading_inputs");
 }
+
+export interface PublishedLessonInstallResult {
+  status: "installed" | "updated" | "already_installed";
+  lessonId: string;
+  lessonVersion: string;
+  progressPreserved: boolean;
+  warning?: string;
+  summary: LessonImportSummary;
+}
+
+export async function installPublishedLesson(input: {
+  stableLessonId: string;
+  lessonVersion: string;
+  checksum: string;
+  source: string;
+}): Promise<PublishedLessonInstallResult> {
+  invalidateLessonCache();
+  return invoke("install_published_lesson", input);
+}
+
+export async function openGenerationDestination(
+  destination: "chatgpt" | "claude" | "contributor",
+  sourceLessonId?: string
+): Promise<void> {
+  return invoke("open_generation_destination", { destination, ...(sourceLessonId ? { sourceLessonId } : {}) });
+}

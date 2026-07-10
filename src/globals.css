@@ -16,6 +16,17 @@
   --chunk-bg: rgba(16, 185, 129, 0.11);
 }
 
+/* Community contributor, moderation, and administration workspaces. */
+.community-shell { max-width: 980px; }
+.community-auth { max-width: 460px; }
+.community-auth label, .community-shell label { display: grid; gap: 6px; }
+.community-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; min-height: 280px; resize: vertical; width: 100%; }
+.community-sentence { border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+.community-sentence p { margin: 8px 0 0; }
+.community-queue-item { align-items: flex-start; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: inherit; cursor: pointer; display: grid; gap: 4px; padding: 14px; text-align: left; width: 100%; }
+.community-queue-item:hover { border-color: var(--accent); }
+.community-queue-item span { color: var(--muted); font-size: 13px; }
+
 * {
   box-sizing: border-box;
 }
@@ -2522,6 +2533,39 @@ textarea.input {
   grid-column: 1 / -1;
 }
 
+.exchange-public-library {
+  grid-column: 1 / -1;
+}
+
+.public-lesson-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.public-library-filter {
+  border: 0;
+  min-height: 34px;
+}
+
+.published-checksum {
+  color: var(--muted);
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sr-only {
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  width: 1px;
+}
+
 .exchange-section-heading {
   align-items: flex-start;
   display: flex;
@@ -3579,11 +3623,13 @@ textarea.input {
   }
 
   .exchange-grid,
-  .exchange-meta-grid {
+  .exchange-meta-grid,
+  .public-lesson-grid {
     grid-template-columns: 1fr;
   }
 
   .exchange-my-packs,
+  .exchange-public-library,
   .exchange-wide-field {
     grid-column: auto;
   }

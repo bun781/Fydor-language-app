@@ -112,6 +112,7 @@ export function SharePackSection({
   selectedLessonIds,
   metadata,
   exporting,
+  publishing,
   exportPreview,
   onSelectAll,
   onClearSelection,
@@ -119,13 +120,15 @@ export function SharePackSection({
   onMetadataChange,
   onBuildPreview,
   onExportSelected,
-  onExportAll
+  onExportAll,
+  onPublishSelected
 }: {
   lessons: StudyLessonMeta[];
   lessonsLoading: boolean;
   selectedLessonIds: Set<string>;
   metadata: ExchangePackMetadata;
   exporting: boolean;
+  publishing: boolean;
   exportPreview: FydorPack | null;
   onSelectAll: () => void;
   onClearSelection: () => void;
@@ -134,6 +137,7 @@ export function SharePackSection({
   onBuildPreview: () => void;
   onExportSelected: () => void;
   onExportAll: () => void;
+  onPublishSelected: () => void;
 }) {
   return (
     <section className="card stack exchange-section" data-tour="exchange-share">
@@ -200,16 +204,20 @@ export function SharePackSection({
       </div>
 
       <div className="exchange-actions">
-        <button className="button secondary" type="button" disabled={exporting || selectedLessonIds.size === 0} onClick={onBuildPreview}>
+        <button className="button secondary" type="button" disabled={exporting || publishing || selectedLessonIds.size === 0} onClick={onBuildPreview}>
           <PackageCheck size={18} />
           {exporting ? "Building..." : "Show preview"}
         </button>
-        <button className="button" type="button" disabled={exporting || selectedLessonIds.size === 0} onClick={onExportSelected}>
+        <button className="button" type="button" disabled={exporting || publishing || selectedLessonIds.size === 0} onClick={onExportSelected}>
           <Download size={18} />
           Export selected
         </button>
-        <button className="button secondary" type="button" disabled={exporting || lessons.length === 0} onClick={onExportAll}>
+        <button className="button secondary" type="button" disabled={exporting || publishing || lessons.length === 0} onClick={onExportAll}>
           Export all
+        </button>
+        <button className="button secondary" type="button" disabled={exporting || publishing || selectedLessonIds.size === 0} onClick={onPublishSelected}>
+          <Upload size={18} />
+          {publishing ? "Publishing..." : "Publish selected"}
         </button>
       </div>
 

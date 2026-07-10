@@ -335,6 +335,25 @@ pub(crate) fn migrate(conn: &Connection) -> Result<()> {
         )?;
     }
 
+    if current < 6 {
+        // Public-library provenance is kept beside the local personal copy. The
+        // desktop never stores contributor drafts or moderation state in study tables.
+        conn.execute_batch(
+            r#"
+            ALTER TABLE lessons ADD COLUMN purpose TEXT NOT NULL DEFAULT 'personal'
+              CHECK (purpose IN ('personal', 'contributor'));
+            ALTER TABLE lessons ADD COLUMN published_stable_id TEXT;
+            ALTER TABLE lessons ADD COLUMN published_version TEXT;
+            ALTER TABLE lessons ADD COLUMN published_checksum TEXT;
+            ALTER TABLE lessons ADD COLUMN published_installed_at TEXT;
+            CREATE UNIQUE INDEX lessons_published_stable_id_idx
+              ON lessons(published_stable_id) WHERE published_stable_id IS NOT NULL;
+
+            INSERT INTO schema_migrations(version, applied_at) VALUES (6, datetime('now'));
+            "#,
+        )?;
+    }
+
     Ok(())
 }
 

@@ -1,4 +1,5 @@
 export type LearningItemType = "word" | "grammar" | "chunk";
+export type LessonPurpose = "personal" | "contributor";
 
 export interface LessonWordInput {
   surface: string;

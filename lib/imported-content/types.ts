@@ -7,6 +7,9 @@ export interface StudyLessonMeta {
   level: string | null;
   tags: string[];
   sentenceCount: number;
+  purpose?: "personal" | "contributor";
+  publishedStableId?: string | null;
+  publishedVersion?: string | null;
 }
 
 export interface StudyWord {

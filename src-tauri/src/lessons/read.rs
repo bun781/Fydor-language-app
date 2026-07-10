@@ -8,7 +8,7 @@ pub(crate) fn get_lessons_inner(conn: &Connection) -> Result<Vec<StudyLessonMeta
     let mut stmt = conn.prepare(
         r#"
         SELECT l.id, l.target_language, l.base_language, l.title, l.description, l.level, l.tags,
-               COUNT(ls.sentence_id) AS sentence_count
+               COUNT(ls.sentence_id) AS sentence_count, l.purpose, l.published_stable_id, l.published_version
         FROM lessons l
         LEFT JOIN lesson_sentences ls ON ls.lesson_id = l.id
         GROUP BY l.id
@@ -26,10 +26,14 @@ pub(crate) fn get_lessons_inner(conn: &Connection) -> Result<Vec<StudyLessonMeta
             level: row.get(5)?,
             tags: db::parse_json_array(row.get(6)?),
             sentence_count: row.get(7)?,
+            purpose: row.get(8)?,
+            published_stable_id: row.get(9)?,
+            published_version: row.get(10)?,
         })
     })?;
 
-    rows.collect::<rusqlite::Result<Vec<_>>>().map_err(Into::into)
+    rows.collect::<rusqlite::Result<Vec<_>>>()
+        .map_err(Into::into)
 }
 
 pub(crate) fn get_lesson_inner(conn: &Connection, lesson_id: &str) -> Result<Option<StudyLesson>> {

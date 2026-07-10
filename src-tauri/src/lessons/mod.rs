@@ -5,7 +5,7 @@ mod import;
 mod read;
 
 use crate::{db, models::*};
-use import::*;
+pub(crate) use import::*;
 use read::*;
 use tauri::State;
 
@@ -85,7 +85,12 @@ mod tests {
               tags TEXT NOT NULL DEFAULT '[]',
               imported_at TEXT NOT NULL,
               created_at TEXT NOT NULL,
-              updated_at TEXT NOT NULL
+              updated_at TEXT NOT NULL,
+              purpose TEXT NOT NULL DEFAULT 'personal',
+              published_stable_id TEXT,
+              published_version TEXT,
+              published_checksum TEXT,
+              published_installed_at TEXT
             );
 
             CREATE TABLE learning_items (
@@ -209,36 +214,99 @@ mod tests {
         }
     }
 
-    fn import_test_lesson(conn: &mut Connection, lesson: LessonImportInput, lesson_id: Option<&str>) -> LessonImportSummary {
+    fn import_test_lesson(
+        conn: &mut Connection,
+        lesson: LessonImportInput,
+        lesson_id: Option<&str>,
+    ) -> LessonImportSummary {
         let raw_value = serde_json::to_value(&lesson).expect("serialize lesson");
-        let plan = build_import_plan(conn, lesson, raw_value, lesson_id).expect("build import plan");
+        let plan =
+            build_import_plan(conn, lesson, raw_value, lesson_id).expect("build import plan");
         import_plan(conn, plan).expect("import lesson")
     }
 
     fn scalar_count(conn: &Connection, sql: &str, value: &str) -> i64 {
-        conn.query_row(sql, [value], |row| row.get(0)).expect("count rows")
+        conn.query_row(sql, [value], |row| row.get(0))
+            .expect("count rows")
+    }
+
+    #[test]
+    fn strict_import_parser_accepts_fenced_json_and_rejects_hostile_payloads() {
+        let source =
+            serde_json::to_string(&lesson("Safe", "안녕하세요")).expect("serialize lesson");
+        assert!(parse_lesson_json(&format!("```json\n{source}\n```")).is_ok());
+
+        let duplicate = r#"{"language":"ko","language":"en","baseLanguage":"en","title":"x","sentences":[{"text":"안녕"}]}"#;
+        assert!(parse_lesson_json(duplicate)
+            .unwrap_err()
+            .join("\n")
+            .contains("duplicate object key"));
+
+        let polluted = r#"{"language":"ko","baseLanguage":"en","title":"x","__proto__":{},"sentences":[{"text":"안녕"}]}"#;
+        assert!(parse_lesson_json(polluted)
+            .unwrap_err()
+            .join("\n")
+            .contains("dangerous object key"));
+
+        let html = r#"{"language":"ko","baseLanguage":"en","title":"<script>alert(1)</script>","sentences":[{"text":"안녕"}]}"#;
+        assert!(parse_lesson_json(html)
+            .unwrap_err()
+            .join("\n")
+            .contains("unsafe HTML"));
     }
 
     #[test]
     fn delete_lesson_removes_owned_sentences_and_links() {
         let mut conn = test_conn();
         let summary = import_test_lesson(&mut conn, lesson("Lesson A", "안녕하세요"), None);
-        let lesson_id = get_lessons_inner(&conn).expect("load lessons")[0].id.clone();
+        let lesson_id = get_lessons_inner(&conn).expect("load lessons")[0]
+            .id
+            .clone();
         assert_eq!(summary.sentences_imported, 1);
 
         delete_lesson_inner(&mut conn, &lesson_id).expect("delete lesson");
 
-        assert_eq!(scalar_count(&conn, "SELECT COUNT(*) FROM lessons WHERE id = ?1", &lesson_id), 0);
-        assert_eq!(scalar_count(&conn, "SELECT COUNT(*) FROM lesson_sentences WHERE lesson_id = ?1", &lesson_id), 0);
-        assert_eq!(scalar_count(&conn, "SELECT COUNT(*) FROM review_items WHERE lesson_id = ?1 OR import_id = ?1", &lesson_id), 0);
-        assert_eq!(scalar_count(&conn, "SELECT COUNT(*) FROM sentence_vocabulary_links WHERE surface_text = ?1", "안녕하세요"), 0);
+        assert_eq!(
+            scalar_count(
+                &conn,
+                "SELECT COUNT(*) FROM lessons WHERE id = ?1",
+                &lesson_id
+            ),
+            0
+        );
+        assert_eq!(
+            scalar_count(
+                &conn,
+                "SELECT COUNT(*) FROM lesson_sentences WHERE lesson_id = ?1",
+                &lesson_id
+            ),
+            0
+        );
+        assert_eq!(
+            scalar_count(
+                &conn,
+                "SELECT COUNT(*) FROM review_items WHERE lesson_id = ?1 OR import_id = ?1",
+                &lesson_id
+            ),
+            0
+        );
+        assert_eq!(
+            scalar_count(
+                &conn,
+                "SELECT COUNT(*) FROM sentence_vocabulary_links WHERE surface_text = ?1",
+                "안녕하세요"
+            ),
+            0
+        );
     }
 
     #[test]
     fn delete_lesson_keeps_shared_sentence_under_remaining_lesson() {
         let mut conn = test_conn();
         import_test_lesson(&mut conn, lesson("Lesson A", "공부해요"), None);
-        let lesson_a_id = get_lessons_inner(&conn).expect("load lessons")[0].id.clone();
+        let lesson_a_id = get_lessons_inner(&conn).expect("load lessons")[0]
+            .id
+            .clone();
         import_test_lesson(&mut conn, lesson("Lesson B", "공부해요"), None);
 
         let lesson_b_id = get_lessons_inner(&conn)

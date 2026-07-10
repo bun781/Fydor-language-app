@@ -1,8 +1,29 @@
 # UPDATE_PLAN_FOR_LLM.md — Canonical LLM Session Handoff
 
-Last updated: 2026-07-08 (architecture cleanup session; previous: Vite migration + Reading Mode).
+Last updated: 2026-07-10 (contributor pipeline; previous: architecture cleanup + Vite migration).
 Read `AGENTS.md` first — it is the authoritative architecture guide. This file
 tracks session-to-session status, decisions, and next tasks.
+
+## Contributor pipeline implementation (2026-07-10)
+
+- Added the standalone website's Supabase/Vercel contributor, sentence-review,
+  immutable submission, language moderation, administration, notification, and
+  publication architecture under `fydor-website/`.
+- Supabase server access now includes Drizzle ORM over the shared transaction-mode
+  pooler (`prepare: false`), a typed schema mirror, and Drizzle Kit tooling. The
+  public library uses that connection; protected Supabase Auth/RPC operations
+  remain on the service-role REST boundary so database role claims are preserved.
+- Generation is intentionally manual chat handoff only: versioned prompt + copy
+  + allowlisted ChatGPT/Claude website. There is no provider API or BYOK key.
+- Added canonical hostile-JSON validation, database-backed roles and transition
+  functions, public library API/UI, secure ignored bootstrap runbook and CLI.
+- Desktop SQLite migration 6 marks existing lessons personal and records
+  published-install provenance. Exchange now downloads published versions,
+  verifies SHA-256 in Rust, revalidates, detects updates, and preserves unchanged
+  study progress. External URLs use the official Tauri opener through a narrow
+  allowlisted Rust command.
+- See `docs/contributor-pipeline.md` and
+  `fydor-website/docs/contributor-pipeline.md` for boundaries and deployment.
 
 ## Architecture Cleanup (2026-07-08, later session)
 

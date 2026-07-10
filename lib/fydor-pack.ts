@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { LessonImportInput } from "@/lib/language/types";
+import { parseStrictJson } from "@/lib/safeJson";
 
 const FYDOR_PACK_TYPE = "fydor_pack";
 const FYDOR_PACK_SCHEMA_VERSION = 1;
@@ -83,7 +84,9 @@ const lessonImportSchema = z.object({
 const authorSchema = z.object({
   name: z.string().trim().optional(),
   organization: z.string().trim().optional(),
-  url: z.string().trim().optional()
+  url: z.string().trim().url().refine((value) => {
+    try { return ["http:", "https:"].includes(new URL(value).protocol); } catch { return false; }
+  }, "Author URL must use HTTP or HTTPS.").optional()
 }).strict();
 
 const packSchema = z.object({
@@ -107,9 +110,9 @@ const packSchema = z.object({
 export function parseFydorPack(source: string): FydorPackValidation {
   let parsed: unknown;
   try {
-    parsed = JSON.parse(source);
-  } catch {
-    return emptyValidation(["This is not a readable Fydor Pack."]);
+    parsed = parseStrictJson(source, { maxBytes: 5_000_000, maxDepth: 24 });
+  } catch (error) {
+    return emptyValidation([error instanceof Error ? error.message : "This is not a readable Fydor Pack."]);
   }
 
   const packResult = packSchema.safeParse(parsed);

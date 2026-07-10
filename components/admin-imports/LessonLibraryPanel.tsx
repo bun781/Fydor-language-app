@@ -1,4 +1,4 @@
-import { BookOpen, Download, Plus, Trash2 } from "lucide-react";
+import { BookOpen, Download, Plus, Send, Trash2 } from "lucide-react";
 import { formatLanguageLabel } from "@/lib/language/importResources";
 import type { StudyLessonMeta } from "@/lib/imported-content/types";
 
@@ -11,6 +11,7 @@ interface LessonLibraryPanelProps {
   onEditLesson: (lessonId: string) => void;
   onExportLesson: (lessonId: string) => void;
   onDeleteLesson: (lessonId: string) => void;
+  onConvertLesson: (lessonId: string) => void;
 }
 
 export function LessonLibraryPanel({
@@ -21,7 +22,8 @@ export function LessonLibraryPanel({
   onNewLesson,
   onEditLesson,
   onExportLesson,
-  onDeleteLesson
+  onDeleteLesson,
+  onConvertLesson
 }: LessonLibraryPanelProps) {
   const selectedLesson = lessons.find((lesson) => lesson.id === selectedLessonId) ?? null;
 
@@ -62,6 +64,7 @@ export function LessonLibraryPanel({
                   <strong>{lesson.title}</strong>
                   <span className="pill">{lesson.sentenceCount} sentences</span>
                 </div>
+                <span className="pill pill-accent">{lesson.publishedStableId ? `Published install · v${lesson.publishedVersion}` : "Private personal lesson"}</span>
                 <p className="muted">{formatLanguageLabel(lesson.language)} to {formatLanguageLabel(lesson.baseLanguage)}</p>
                 {lesson.level ? <p className="muted">Level: {lesson.level}</p> : null}
               </button>
@@ -82,6 +85,11 @@ export function LessonLibraryPanel({
                 <span className="pill">{selectedLesson.sentenceCount} sentences</span>
               </div>
 
+              <div className="notice">
+                <strong>{selectedLesson.publishedStableId ? "Published lesson installed locally" : "Private personal lesson"}</strong>
+                <p className="muted">Saving here updates only your local study copy. It never submits or publishes content.</p>
+              </div>
+
               {selectedLesson.description ? <p>{selectedLesson.description}</p> : <p className="muted">No description yet.</p>}
               {selectedLesson.level ? <p className="muted">Level: {selectedLesson.level}</p> : null}
               {selectedLesson.tags.length ? <p className="muted">Tags: {selectedLesson.tags.join(", ")}</p> : null}
@@ -94,6 +102,10 @@ export function LessonLibraryPanel({
                 <button className="button secondary" type="button" onClick={() => onExportLesson(selectedLesson.id)}>
                   <Download size={18} />
                   Export JSON
+                </button>
+                <button className="button secondary" type="button" onClick={() => onConvertLesson(selectedLesson.id)}>
+                  <Send size={18} />
+                  Convert to contributor draft
                 </button>
                 <button className="button danger lesson-delete-button" type="button" onClick={() => onDeleteLesson(selectedLesson.id)}>
                   <Trash2 size={18} />

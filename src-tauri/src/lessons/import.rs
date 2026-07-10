@@ -2,8 +2,13 @@
 use crate::{db, models::*, normalize};
 use anyhow::Result;
 use rusqlite::{params, Connection, OptionalExtension, Transaction};
+use serde::{
+    de::{self, MapAccess, SeqAccess, Visitor},
+    Deserialize, Deserializer,
+};
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
+use std::fmt;
 
 // Chunk: import-planning state
 #[derive(Clone)]
@@ -43,7 +48,16 @@ pub(crate) struct TargetLesson {
 }
 
 pub(crate) fn parse_lesson_json(source: &str) -> Result<(LessonImportInput, Value), Vec<String>> {
-    let raw_value: Value = serde_json::from_str(source).map_err(|_| vec!["Invalid JSON.".to_string()])?;
+    const MAX_IMPORT_BYTES: usize = 1_000_000;
+    let source = extract_json_source(source).map_err(|error| vec![error])?;
+    if source.len() > MAX_IMPORT_BYTES {
+        return Err(vec![format!(
+            "Lesson JSON exceeds the {MAX_IMPORT_BYTES} byte limit."
+        )]);
+    }
+    let raw_value =
+        parse_strict_json(source).map_err(|error| vec![format!("Invalid JSON: {error}")])?;
+    validate_untrusted_json(&raw_value, "$", 0).map_err(|errors| errors)?;
     let mut lesson: LessonImportInput = serde_json::from_value(raw_value.clone())
         .map_err(|err| vec![format!("Invalid lesson shape: {err}")])?;
     trim_lesson(&mut lesson);
@@ -52,36 +66,69 @@ pub(crate) fn parse_lesson_json(source: &str) -> Result<(LessonImportInput, Valu
     required("language", &lesson.language, &mut errors);
     required("baseLanguage", &lesson.base_language, &mut errors);
     required("title", &lesson.title, &mut errors);
+    if !supported_language(&lesson.language) {
+        errors.push("language: unsupported language code.".to_string());
+    }
+    if !supported_language(&lesson.base_language) {
+        errors.push("baseLanguage: unsupported language code.".to_string());
+    }
     if lesson.sentences.is_empty() {
         errors.push("At least one sentence is required.".to_string());
+    } else if lesson.sentences.len() > 100 {
+        errors.push("sentences: at most 100 sentences are allowed.".to_string());
     }
 
     let mut sentence_texts = HashSet::new();
     for (index, sentence) in lesson.sentences.iter().enumerate() {
-        required("sentence text", &sentence.text, &mut errors);
+        required(
+            &format!("sentences[{index}].text"),
+            &sentence.text,
+            &mut errors,
+        );
         let normalized = normalize::normalize_sentence_text(&sentence.text);
         if !sentence_texts.insert(normalized) {
-            errors.push(format!("Duplicate sentence text at sentence {}.", index + 1));
+            errors.push(format!(
+                "Duplicate sentence text at sentence {}.",
+                index + 1
+            ));
         }
 
         for word in sentence.words.as_deref().unwrap_or(&[]) {
-            required("word surface", &word.surface, &mut errors);
+            required(
+                &format!("sentences[{index}].words.surface"),
+                &word.surface,
+                &mut errors,
+            );
             if !contains_surface(&sentence.text, &word.surface) {
-                errors.push(format!("Sentence {}: word surface \"{}\" does not appear in the sentence.", index + 1, word.surface));
+                errors.push(format!(
+                    "sentences[{index}].words.surface: \"{}\" does not appear in the sentence.",
+                    word.surface
+                ));
             }
         }
         for grammar in sentence.grammar.as_deref().unwrap_or(&[]) {
-            required("grammar pattern", &grammar.pattern, &mut errors);
+            required(
+                &format!("sentences[{index}].grammar.pattern"),
+                &grammar.pattern,
+                &mut errors,
+            );
             if let Some(surface) = &grammar.surface {
                 if !contains_surface(&sentence.text, surface) {
-                    errors.push(format!("Sentence {}: grammar surface \"{}\" does not appear in the sentence.", index + 1, surface));
+                    errors.push(format!("sentences[{index}].grammar.surface: \"{surface}\" does not appear in the sentence."));
                 }
             }
         }
         for chunk in sentence.chunks.as_deref().unwrap_or(&[]) {
-            required("chunk surface", &chunk.surface, &mut errors);
+            required(
+                &format!("sentences[{index}].chunks.surface"),
+                &chunk.surface,
+                &mut errors,
+            );
             if !contains_surface(&sentence.text, &chunk.surface) {
-                errors.push(format!("Sentence {}: chunk surface \"{}\" does not appear in the sentence.", index + 1, chunk.surface));
+                errors.push(format!(
+                    "sentences[{index}].chunks.surface: \"{}\" does not appear in the sentence.",
+                    chunk.surface
+                ));
             }
         }
     }
@@ -93,8 +140,220 @@ pub(crate) fn parse_lesson_json(source: &str) -> Result<(LessonImportInput, Valu
     }
 }
 
+struct CheckedJson(Value);
+
+pub(crate) fn parse_strict_json(source: &str) -> Result<Value, String> {
+    serde_json::from_str::<CheckedJson>(source)
+        .map(|checked| checked.0)
+        .map_err(|error| error.to_string())
+}
+
+impl<'de> Deserialize<'de> for CheckedJson {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_any(CheckedJsonVisitor)
+    }
+}
+
+struct CheckedJsonVisitor;
+
+impl<'de> Visitor<'de> for CheckedJsonVisitor {
+    type Value = CheckedJson;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str("strict JSON data")
+    }
+    fn visit_bool<E: de::Error>(self, value: bool) -> Result<Self::Value, E> {
+        Ok(CheckedJson(Value::Bool(value)))
+    }
+    fn visit_i64<E: de::Error>(self, value: i64) -> Result<Self::Value, E> {
+        Ok(CheckedJson(Value::Number(value.into())))
+    }
+    fn visit_u64<E: de::Error>(self, value: u64) -> Result<Self::Value, E> {
+        Ok(CheckedJson(Value::Number(value.into())))
+    }
+    fn visit_f64<E: de::Error>(self, value: f64) -> Result<Self::Value, E> {
+        serde_json::Number::from_f64(value)
+            .map(|number| CheckedJson(Value::Number(number)))
+            .ok_or_else(|| E::custom("non-finite number"))
+    }
+    fn visit_str<E: de::Error>(self, value: &str) -> Result<Self::Value, E> {
+        Ok(CheckedJson(Value::String(value.to_string())))
+    }
+    fn visit_string<E: de::Error>(self, value: String) -> Result<Self::Value, E> {
+        Ok(CheckedJson(Value::String(value)))
+    }
+    fn visit_none<E: de::Error>(self) -> Result<Self::Value, E> {
+        Ok(CheckedJson(Value::Null))
+    }
+    fn visit_unit<E: de::Error>(self) -> Result<Self::Value, E> {
+        Ok(CheckedJson(Value::Null))
+    }
+    fn visit_seq<A: SeqAccess<'de>>(self, mut sequence: A) -> Result<Self::Value, A::Error> {
+        let mut values = Vec::new();
+        while let Some(value) = sequence.next_element::<CheckedJson>()? {
+            values.push(value.0);
+        }
+        Ok(CheckedJson(Value::Array(values)))
+    }
+    fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Self::Value, A::Error> {
+        let mut values = serde_json::Map::new();
+        while let Some(key) = map.next_key::<String>()? {
+            if matches!(key.as_str(), "__proto__" | "prototype" | "constructor") {
+                return Err(<A::Error as de::Error>::custom(format!("dangerous object key: {key}")));
+            }
+            if values.contains_key(&key) {
+                return Err(<A::Error as de::Error>::custom(format!("duplicate object key: {key}")));
+            }
+            values.insert(key, map.next_value::<CheckedJson>()?.0);
+        }
+        Ok(CheckedJson(Value::Object(values)))
+    }
+}
+
+fn extract_json_source(source: &str) -> Result<&str, String> {
+    let trimmed = source.trim();
+    if !trimmed.starts_with("```") {
+        return Ok(trimmed);
+    }
+    let after_open = trimmed
+        .strip_prefix("```json")
+        .or_else(|| trimmed.strip_prefix("```JSON"))
+        .or_else(|| trimmed.strip_prefix("```"))
+        .ok_or_else(|| "Invalid fenced JSON block.".to_string())?;
+    let inner = after_open
+        .strip_suffix("```")
+        .ok_or_else(|| "Invalid fenced JSON block.".to_string())?;
+    if inner.contains("```") {
+        return Err("Mixed content is not valid lesson JSON.".to_string());
+    }
+    Ok(inner.trim())
+}
+
+fn validate_untrusted_json(value: &Value, path: &str, depth: usize) -> Result<(), Vec<String>> {
+    let mut errors = Vec::new();
+    if depth > 24 {
+        errors.push(format!("{path}: JSON nesting exceeds 24 levels."));
+        return Err(errors);
+    }
+    match value {
+        Value::Object(object) => {
+            for (key, item) in object {
+                let child_path = if path == "$" {
+                    key.clone()
+                } else {
+                    format!("{path}.{key}")
+                };
+                if matches!(key.as_str(), "__proto__" | "prototype" | "constructor") {
+                    errors.push(format!("{child_path}: dangerous object key."));
+                }
+                if let Err(mut child_errors) = validate_untrusted_json(item, &child_path, depth + 1)
+                {
+                    errors.append(&mut child_errors);
+                }
+            }
+        }
+        Value::Array(items) => {
+            if items.len() > 10_000 {
+                errors.push(format!("{path}: array is too large."));
+            }
+            for (index, item) in items.iter().enumerate() {
+                if let Err(mut child_errors) =
+                    validate_untrusted_json(item, &format!("{path}[{index}]"), depth + 1)
+                {
+                    errors.append(&mut child_errors);
+                }
+            }
+        }
+        Value::String(text) => {
+            if text.chars().count() > 20_000 {
+                errors.push(format!("{path}: string exceeds 20,000 characters."));
+            }
+            if unsafe_text(text) {
+                errors.push(format!(
+                    "{path}: contains unsafe HTML, controls, or bidirectional characters."
+                ));
+            }
+        }
+        Value::Number(number) => {
+            if number.as_f64().is_some_and(|value| !value.is_finite()) {
+                errors.push(format!("{path}: numeric value is not finite."));
+            }
+        }
+        _ => {}
+    }
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
+}
+
+fn unsafe_text(value: &str) -> bool {
+    let lower = value.to_lowercase();
+    value.chars().any(|ch| {
+        ch == '\u{7f}'
+            || (ch < ' ' && !matches!(ch, '\n' | '\r' | '\t'))
+            || matches!(ch, '\u{00ad}' | '\u{200b}'..='\u{200f}' | '\u{202a}'..='\u{202e}' | '\u{2060}' | '\u{2066}'..='\u{2069}' | '\u{feff}')
+    }) || lower.contains("<script")
+        || lower.contains("<style")
+        || lower.contains("<iframe")
+        || lower.contains("<svg")
+        || lower.contains("javascript:")
+        || lower.contains(" onerror=")
+        || lower.contains(" onload=")
+}
+
+fn supported_language(value: &str) -> bool {
+    matches!(
+        value,
+        "ar" | "bn"
+            | "cs"
+            | "da"
+            | "de"
+            | "el"
+            | "en"
+            | "es"
+            | "fa"
+            | "fi"
+            | "fil"
+            | "fr"
+            | "he"
+            | "hi"
+            | "hu"
+            | "id"
+            | "it"
+            | "ja"
+            | "ko"
+            | "ms"
+            | "nl"
+            | "no"
+            | "pl"
+            | "pt"
+            | "ro"
+            | "ru"
+            | "sv"
+            | "sw"
+            | "ta"
+            | "th"
+            | "tr"
+            | "uk"
+            | "ur"
+            | "vi"
+            | "yue"
+            | "zh"
+    )
+}
+
 // Chunk: import planning and preview
-pub(crate) fn build_import_plan(conn: &Connection, lesson: LessonImportInput, raw_value: Value, target_lesson_id: Option<&str>) -> Result<ImportPlan> {
+pub(crate) fn build_import_plan(
+    conn: &Connection,
+    lesson: LessonImportInput,
+    raw_value: Value,
+    target_lesson_id: Option<&str>,
+) -> Result<ImportPlan> {
     let source_hash = normalize::hash_json_value(&raw_value);
     let target_lesson = if let Some(target_lesson_id) = target_lesson_id {
         Some(load_target_lesson(conn, target_lesson_id, &lesson)?)

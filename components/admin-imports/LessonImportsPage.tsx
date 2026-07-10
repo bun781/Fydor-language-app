@@ -10,6 +10,7 @@ import {
   Upload
 } from "lucide-react";
 import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import { AppShell } from "@/components/AppShell";
 import { LessonBuilderEditor, type ActiveAnnotation } from "@/components/admin-imports/LessonBuilderEditor";
 import { LessonLibraryPanel } from "@/components/admin-imports/LessonLibraryPanel";
@@ -67,6 +68,7 @@ const LESSON_MANAGER_PROGRESS_KEY = "lesson-manager.workspace";
 
 // Chunk: editor state and data loading
 export default function LessonImportsPage({ initialMode = "builder" }: LessonImportsPageProps) {
+  const navigate = useNavigate();
   const [savedProgress] = useState(() => readSessionProgress(LESSON_MANAGER_PROGRESS_KEY, lessonManagerProgressSchema));
   const initialEditorLesson = savedProgress?.lesson ?? initialLesson;
   const [mode, setMode] = useState<WorkspaceMode>(savedProgress?.mode ?? initialMode);
@@ -519,6 +521,28 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
     }
   }
 
+  async function convertToContributorDraft(lessonId: string) {
+    try {
+      const personalLesson = await exportLessonApi(lessonId);
+      const contributorLesson = {
+        schemaVersion: 1 as const,
+        ...personalLesson,
+        description: personalLesson.description ?? "",
+        level: personalLesson.level ?? "",
+        tags: personalLesson.tags ?? [],
+        sentences: personalLesson.sentences.map((sentence) => ({
+          ...sentence,
+          translation: sentence.translation ?? ""
+        }))
+      };
+      await navigator.clipboard.writeText(JSON.stringify(contributorLesson, null, 2));
+      navigate(`/community/contribute?sourceLessonId=${encodeURIComponent(lessonId)}`);
+      setStatus("Personal lesson copied. Continue in Fydor's contributor workspace; the original remains private and unchanged.");
+    } catch (error) {
+      setErrors([errorMessage(error, "Unable to prepare this contributor draft.")]);
+    }
+  }
+
   function requestDeleteLesson(lessonId: string) {
     setPendingDeleteLessonId(lessonId);
   }
@@ -692,6 +716,7 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
           onEditLesson={(lessonId) => confirmDraftReplace(() => void openLessonInEditor(lessonId))}
           onExportLesson={exportLessonToFile}
           onDeleteLesson={requestDeleteLesson}
+          onConvertLesson={(lessonId) => void convertToContributorDraft(lessonId)}
         />
       ) : mode === "builder" ? (
         <LessonBuilderEditor

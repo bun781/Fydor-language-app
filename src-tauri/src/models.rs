@@ -84,6 +84,9 @@ pub struct StudyLessonMeta {
     pub level: Option<String>,
     pub tags: Vec<String>,
     pub sentence_count: i64,
+    pub purpose: String,
+    pub published_stable_id: Option<String>,
+    pub published_version: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -345,4 +348,16 @@ pub struct LessonImportSummary {
     pub chunks_reused: i64,
     pub links_created: i64,
     pub errors: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PublishedLessonInstallResult {
+    pub status: String,
+    pub lesson_id: String,
+    pub lesson_version: String,
+    pub progress_preserved: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub warning: Option<String>,
+    pub summary: LessonImportSummary,
 }

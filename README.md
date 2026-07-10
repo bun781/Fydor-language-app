@@ -30,7 +30,7 @@ The repository name is `Habitz`, but the app itself is branded as Fydor.
 
 ## Tech Stack
 
-- Next.js App Router
+- Vite 7 + React 19 SPA with hash routing
 - React 19
 - TypeScript
 - Zod for pack validation
@@ -52,7 +52,7 @@ The repository name is `Habitz`, but the app itself is branded as Fydor.
    npm run dev
    ```
 
-3. Open the app in your browser at the local dev URL printed by Next.js.
+3. Open the app in your browser at the local Vite URL (normally `http://127.0.0.1:3001`).
 
 The database is created automatically on first run. By default, Fydor stores local data in the app data directory for your platform.
 
@@ -75,7 +75,7 @@ npm run tauri:build
 
 ## Project Layout
 
-- `app/` - routes and page entry points
+- `src/` - Vite entry point, route table, global styles, and page shells
 - `components/` - UI and feature components
 - `src-tauri/` - Rust desktop backend (SQLite schema, Tauri commands)
 - `lib/` - shared logic for import, study, review, speech, and desktop helpers

@@ -9,7 +9,10 @@ import {
   Library,
   Menu,
   PencilRuler,
-  RectangleEllipsis
+  RectangleEllipsis,
+  Send,
+  ShieldCheck,
+  Settings
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
@@ -32,7 +35,10 @@ const navSections: Array<{
     links: [
       { href: "/admin/imports", label: "Builder", icon: PencilRuler },
       { href: "/lessons/manage", label: "Lessons", icon: Library },
-      { href: "/fydor-exchange", label: "Fydor Exchange", icon: Boxes }
+      { href: "/fydor-exchange", label: "Fydor Exchange", icon: Boxes },
+      { href: "/community/contribute", label: "Contribute", icon: Send },
+      { href: "/community/moderate", label: "Moderate", icon: ShieldCheck },
+      { href: "/community/admin", label: "Admin", icon: Settings }
     ]
   },
   {
@@ -58,6 +64,9 @@ const routeTitles: Record<string, string> = {
   "/admin/imports": "Builder",
   "/lessons/manage": "Lessons",
   "/fydor-exchange": "Fydor Exchange",
+  "/community/contribute": "Contribute",
+  "/community/moderate": "Moderate",
+  "/community/admin": "Administration",
   "/review": "Review",
   "/reading": "Reading",
   "/study/imported-content": "Flashcards",

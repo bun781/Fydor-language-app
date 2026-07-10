@@ -1,8 +1,9 @@
-import { Check, Copy, HelpCircle } from "lucide-react";
+import { Check, Copy, ExternalLink, HelpCircle } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { importGuideSections, importPromptTemplates } from "@/lib/language/importResources";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { createTourScope, replayGuidedTour } from "@/components/system/GuidedTour";
+import { openGenerationDestination } from "@/lib/desktopApi";
 
 type HelpTab = "guide" | "prompts";
 
@@ -35,6 +36,16 @@ export function ImportHelpPanel() {
   async function copyPrompt(prompt: string, id: string) {
     try {
       await navigator.clipboard.writeText(prompt);
+      setCopiedPromptId(id);
+    } catch {
+      setCopiedPromptId(null);
+    }
+  }
+
+  async function copyAndOpen(prompt: string, id: string, provider: "chatgpt" | "claude") {
+    try {
+      await navigator.clipboard.writeText(prompt);
+      await openGenerationDestination(provider);
       setCopiedPromptId(id);
     } catch {
       setCopiedPromptId(null);
@@ -124,12 +135,22 @@ export function ImportHelpPanel() {
                       <h3>{template.title}</h3>
                       <p className="muted">{template.description}</p>
                     </div>
-                    <Tooltip content="Copy this prompt template.">
-                      <button className="button secondary" type="button" onClick={() => void copyPrompt(template.prompt, template.id)}>
-                        {copiedPromptId === template.id ? <Check size={16} /> : <Copy size={16} />}
-                        {copiedPromptId === template.id ? "Copied" : "Copy"}
+                    <div className="row compact-row">
+                      <Tooltip content="Copy this prompt template.">
+                        <button className="button secondary" type="button" onClick={() => void copyPrompt(template.prompt, template.id)}>
+                          {copiedPromptId === template.id ? <Check size={16} /> : <Copy size={16} />}
+                          {copiedPromptId === template.id ? "Copied" : "Copy"}
+                        </button>
+                      </Tooltip>
+                      <button className="button secondary" type="button" onClick={() => void copyAndOpen(template.prompt, template.id, "chatgpt")}>
+                        <ExternalLink size={16} />
+                        Copy + ChatGPT
                       </button>
-                    </Tooltip>
+                      <button className="button secondary" type="button" onClick={() => void copyAndOpen(template.prompt, template.id, "claude")}>
+                        <ExternalLink size={16} />
+                        Copy + Claude
+                      </button>
+                    </div>
                   </div>
                   <pre className="summary-json help-code">{template.prompt}</pre>
                 </article>

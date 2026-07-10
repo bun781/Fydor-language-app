@@ -4,6 +4,7 @@ import LessonImportsPage from "@/components/admin-imports/LessonImportsPage";
 import { FydorExchangePage } from "@/components/exchange/FydorExchangePage";
 import { ImportedContentWorkspace } from "@/components/imported-content/ImportedContentWorkspace";
 import { ReadingWorkspace } from "@/components/reading/ReadingWorkspace";
+import { CommunityWorkspace } from "@/components/community/CommunityWorkspace";
 import { ErrorBoundary } from "./ErrorBoundary";
 import LearningSciencePage from "./pages/LearningSciencePage";
 import ReviewPage from "./pages/ReviewPage";
@@ -19,6 +20,9 @@ export function App() {
           <Route path="/lessons/manage" element={<LessonImportsPage initialMode="lessons" />} />
           <Route path="/admin/imports" element={<LessonImportsPage />} />
           <Route path="/fydor-exchange" element={<FydorExchangePage />} />
+          <Route path="/community/contribute" element={<CommunityWorkspace view="contribute" />} />
+          <Route path="/community/moderate" element={<CommunityWorkspace view="moderate" />} />
+          <Route path="/community/admin" element={<CommunityWorkspace view="admin" />} />
           <Route path="/review" element={<ReviewPage />} />
           <Route path="/reading" element={<AppShell><ReadingWorkspace /></AppShell>} />
           <Route path="/study/imported-content" element={<AppShell><ImportedContentWorkspace /></AppShell>} />
