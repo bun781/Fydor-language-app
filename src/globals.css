@@ -23,6 +23,13 @@
 .community-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; min-height: 280px; resize: vertical; width: 100%; }
 .community-sentence { border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
 .community-sentence p { margin: 8px 0 0; }
+.community-stepper { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; list-style: none; margin: 0; padding: 0; }
+.community-stepper li { align-items: center; color: var(--muted); display: flex; font-size: 12px; gap: 8px; }
+.community-stepper li span { align-items: center; border: 1px solid var(--line); border-radius: 50%; display: inline-flex; height: 26px; justify-content: center; width: 26px; }
+.community-stepper li.active, .community-stepper li.complete { color: var(--ink); }
+.community-stepper li.active span { background: var(--ink); border-color: var(--ink); color: var(--surface); }
+.community-stepper li.complete span { background: var(--surface-muted); border-color: var(--accent); }
+.community-step-actions { align-items: center; display: flex; gap: 10px; justify-content: space-between; margin-top: 8px; }
 .community-queue-item { align-items: flex-start; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: inherit; cursor: pointer; display: grid; gap: 4px; padding: 14px; text-align: left; width: 100%; }
 .community-queue-item:hover { border-color: var(--accent); }
 .community-queue-item span { color: var(--muted); font-size: 13px; }
@@ -301,6 +308,10 @@ button, input, textarea, select {
 
 .grid-3 {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.grid-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .card {
@@ -2072,6 +2083,7 @@ textarea.input {
 }
 
 .mode-tabs button,
+.mode-tabs a,
 .annotation-types button {
   align-items: center;
   background: transparent;
@@ -2090,16 +2102,19 @@ textarea.input {
 }
 
 .mode-tabs button:hover,
+.mode-tabs a:hover,
 .annotation-types button:hover {
   transform: translateY(-1px);
 }
 
 .mode-tabs button:active,
+.mode-tabs a:active,
 .annotation-types button:active {
   transform: scale(0.94);
 }
 
-.mode-tabs button.active {
+.mode-tabs button.active,
+.mode-tabs a.active {
   background: var(--surface);
   box-shadow: 0 1px 3px rgba(28, 25, 23, 0.07);
   color: var(--ink);
@@ -2457,6 +2472,7 @@ textarea.input {
 
 .exchange-hub-grid {
   align-items: stretch;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
 .exchange-hub-card {
@@ -2473,6 +2489,10 @@ textarea.input {
   display: grid;
   gap: 16px;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.exchange-grid-single {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .exchange-section {
@@ -2599,7 +2619,7 @@ textarea.input {
 .exchange-pack-list {
   display: grid;
   gap: 8px;
-  max-height: 360px;
+  max-height: min(42vh, 420px);
   overflow: auto;
   padding-right: 2px;
 }
@@ -2645,6 +2665,10 @@ textarea.input {
   display: grid;
   gap: 12px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.share-pack-section {
+  min-width: 0;
 }
 
 .exchange-wide-field {
@@ -3547,6 +3571,10 @@ textarea.input {
   }
 
   .grid-3 {
+    grid-template-columns: 1fr;
+  }
+
+  .grid-4 {
     grid-template-columns: 1fr;
   }
 

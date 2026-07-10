@@ -3,6 +3,7 @@ import { AppShell } from "@/components/AppShell";
 import LessonImportsPage from "@/components/admin-imports/LessonImportsPage";
 import { ExchangeHubPage } from "@/components/exchange/ExchangeHubPage";
 import { FydorExchangePage } from "@/components/exchange/FydorExchangePage";
+import { PublicLibraryPage } from "@/components/exchange/PublicLibraryPage";
 import { ImportedContentWorkspace } from "@/components/imported-content/ImportedContentWorkspace";
 import { ReadingWorkspace } from "@/components/reading/ReadingWorkspace";
 import { CommunityWorkspace } from "@/components/community/CommunityWorkspace";
@@ -18,13 +19,14 @@ export function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/lessons/manage" replace />} />
           <Route path="/lessons/manage" element={<LessonImportsPage initialMode="lessons" />} />
+          <Route path="/library" element={<PublicLibraryPage />} />
           <Route path="/admin/imports" element={<LessonImportsPage />} />
           <Route path="/fydor-exchange" element={<ExchangeHubPage />} />
           <Route path="/fydor-exchange/import" element={<FydorExchangePage />} />
           <Route path="/fydor-exchange/export" element={<FydorExchangePage />} />
-          <Route path="/community/contribute" element={<CommunityWorkspace />} />
-          <Route path="/community/moderate" element={<Navigate to="/community/contribute?tab=moderate" replace />} />
-          <Route path="/community/admin" element={<Navigate to="/community/contribute?tab=admin" replace />} />
+          <Route path="/community/contribute" element={<CommunityWorkspace initialTab="contribute" />} />
+          <Route path="/community/moderate" element={<CommunityWorkspace initialTab="moderate" />} />
+          <Route path="/community/admin" element={<CommunityWorkspace initialTab="admin" />} />
           <Route path="/review" element={<ReviewPage />} />
           <Route path="/reading" element={<AppShell><ReadingWorkspace /></AppShell>} />
           <Route path="/study/imported-content" element={<AppShell><ImportedContentWorkspace /></AppShell>} />

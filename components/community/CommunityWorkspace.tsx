@@ -13,6 +13,7 @@ import {
   type CommunitySession
 } from "@/lib/communityApi";
 import { errorMessage } from "@/lib/errors";
+import { importPromptTemplates } from "@/lib/language/importResources";
 
 type CommunityTab = "contribute" | "moderate" | "admin";
 type Draft = {
@@ -39,6 +40,7 @@ type Submission = {
   base_language: string;
   moderation_assignments?: Array<{ state: string }>;
 };
+type ContributorPhase = 1 | 2 | 3 | 4;
 
 const TAB_LABELS: Record<CommunityTab, string> = {
   contribute: "Contribute",
@@ -58,11 +60,12 @@ function getCommunityTabs(privileges: CommunityPrivileges): CommunityTab[] {
   return tabs;
 }
 
-export function CommunityWorkspace() {
-  const [params, setParams] = useSearchParams();
+export function CommunityWorkspace({ initialTab = "contribute" }: { initialTab?: CommunityTab } = {}) {
+  const [params] = useSearchParams();
   const requestedTab = normalizeCommunityTab(params.get("tab"));
   const [session, setSession] = useState<CommunitySession | null>(null);
   const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState("");
   const [privileges, setPrivileges] = useState<CommunityPrivileges>({
@@ -70,7 +73,7 @@ export function CommunityWorkspace() {
     canModerate: false,
     canAdmin: false
   });
-  const [activeTab, setActiveTab] = useState<CommunityTab>(requestedTab ?? "contribute");
+  const [activeTab, setActiveTab] = useState<CommunityTab>(requestedTab ?? initialTab);
 
   const availableTabs = useMemo(() => getCommunityTabs(privileges), [privileges]);
 
@@ -95,32 +98,26 @@ export function CommunityWorkspace() {
   }, [session]);
 
   useEffect(() => {
-    if (requestedTab && availableTabs.includes(requestedTab)) {
-      setActiveTab(requestedTab);
+    const targetTab = requestedTab ?? initialTab;
+    if (availableTabs.includes(targetTab)) {
+      setActiveTab(targetTab);
       return;
     }
 
     if (!availableTabs.includes(activeTab)) {
       setActiveTab("contribute");
     }
-  }, [activeTab, availableTabs, requestedTab]);
+  }, [activeTab, availableTabs, initialTab, requestedTab]);
 
   async function authenticate(create = false) {
     try {
       setStatus(create ? "Creating account…" : "Signing in…");
-      const nextSession = create ? await signUpCommunity(email, password) : await signInCommunity(email, password);
+      const nextSession = create ? await signUpCommunity(email, password, username) : await signInCommunity(email, password);
       setSession(nextSession);
       setStatus("");
     } catch (error) {
       setStatus(errorMessage(error, "Unable to sign in."));
     }
-  }
-
-  function openTab(tab: CommunityTab) {
-    setActiveTab(tab);
-    const next = new URLSearchParams(params);
-    next.set("tab", tab);
-    setParams(next, { replace: true });
   }
 
   const pageTitle = activeTab === "moderate" ? "Moderation" : activeTab === "admin" ? "Administration" : "Contribute a lesson";
@@ -150,6 +147,10 @@ export function CommunityWorkspace() {
               <input className="input" value={email} onChange={(e) => setEmail(e.target.value)} type="email" autoComplete="email" />
             </label>
             <label>
+              Username <span className="muted">(required for new accounts)</span>
+              <input className="input" value={username} onChange={(e) => setUsername(e.target.value)} type="text" autoComplete="username" />
+            </label>
+            <label>
               Password
               <input className="input" value={password} onChange={(e) => setPassword(e.target.value)} type="password" autoComplete="current-password" minLength={8} />
             </label>
@@ -163,21 +164,21 @@ export function CommunityWorkspace() {
           <>
             <section className="card stack">
               <div className="mode-tabs" role="tablist" aria-label="Community workspace sections">
-                <button type="button" role="tab" aria-selected={activeTab === "contribute"} className={activeTab === "contribute" ? "active" : ""} onClick={() => openTab("contribute")}>
+                <Link role="tab" aria-selected={activeTab === "contribute"} className={activeTab === "contribute" ? "active" : ""} to="/community/contribute">
                   <Send size={16} />
                   Contribute
-                </button>
+                </Link>
                 {availableTabs.includes("moderate") ? (
-                  <button type="button" role="tab" aria-selected={activeTab === "moderate"} className={activeTab === "moderate" ? "active" : ""} onClick={() => openTab("moderate")}>
+                  <Link role="tab" aria-selected={activeTab === "moderate"} className={activeTab === "moderate" ? "active" : ""} to="/community/moderate">
                     <ShieldCheck size={16} />
                     Moderate
-                  </button>
+                  </Link>
                 ) : null}
                 {availableTabs.includes("admin") ? (
-                  <button type="button" role="tab" aria-selected={activeTab === "admin"} className={activeTab === "admin" ? "active" : ""} onClick={() => openTab("admin")}>
+                  <Link role="tab" aria-selected={activeTab === "admin"} className={activeTab === "admin" ? "active" : ""} to="/community/admin">
                     <Settings size={16} />
                     Admin
-                  </button>
+                  </Link>
                 ) : null}
               </div>
               <div className="exchange-stat-row">
@@ -211,6 +212,11 @@ function Contributor({ session }: { session: CommunitySession }) {
   const [status, setStatus] = useState("");
   const [index, setIndex] = useState(0);
   const [confirmed, setConfirmed] = useState(false);
+  const [phase, setPhase] = useState<ContributorPhase>(1);
+  const promptTemplate = importPromptTemplates.find((template) => template.id === "beginner")?.prompt ?? "";
+  const contributorPrompt = source.trim()
+    ? `${promptTemplate}\n\nUse the following existing lesson as a starting point. Return a complete replacement lesson JSON object that follows the rules above:\n\n${source}`
+    : promptTemplate;
 
   useEffect(() => {
     const id = params.get("sourceLessonId");
@@ -234,7 +240,7 @@ function Contributor({ session }: { session: CommunitySession }) {
     [draft]
   );
 
-  async function save() {
+  async function save(): Promise<boolean> {
     try {
       const sourceLessonId = params.get("sourceLessonId");
       const action = draft ? "save_draft" : sourceLessonId ? "convert_personal" : "save_draft";
@@ -251,8 +257,10 @@ function Contributor({ session }: { session: CommunitySession }) {
       setDraft(result.draft);
       setIndex(0);
       setStatus("Draft saved. Review every sentence before submitting.");
+      return true;
     } catch (error) {
       setStatus(errorMessage(error, "Unable to save the contributor draft."));
+      return false;
     }
   }
 
@@ -295,30 +303,72 @@ function Contributor({ session }: { session: CommunitySession }) {
 
   async function copyAndOpen(provider: "chatgpt" | "claude") {
     try {
-      await navigator.clipboard.writeText(source);
+      await navigator.clipboard.writeText(contributorPrompt);
       await openGenerationDestination(provider);
-      setStatus(`Lesson JSON copied; ${provider === "chatgpt" ? "ChatGPT" : "Claude"} opened.`);
-    } catch {
-      setStatus("Unable to copy the lesson JSON.");
+      setStatus(`Contributor prompt copied; ${provider === "chatgpt" ? "ChatGPT" : "Claude"} opened.`);
+    } catch (error) {
+      setStatus(errorMessage(error, "Unable to copy the contributor prompt."));
     }
+  }
+
+  async function nextPhase() {
+    if (phase === 1) {
+      setPhase(2);
+      return;
+    }
+
+    if (phase === 2) {
+      if (draft || await save()) setPhase(3);
+      return;
+    }
+
+    if (phase === 3) {
+      if (!lesson || reviewed.size !== lesson.sentences.length) {
+        setStatus("Review every sentence before continuing to submission.");
+        return;
+      }
+      setPhase(4);
+    }
+  }
+
+  function previousPhase() {
+    setPhase((current) => Math.max(1, current - 1) as ContributorPhase);
   }
 
   return (
     <div className="stack">
-      <section className="card stack">
-        <h2>1. Generate with an LLM website</h2>
-        <p className="muted">Fydor does not use a provider API. It copies your current JSON and opens the normal chat website.</p>
-        <div className="row">
-          <button className="button secondary" onClick={() => void copyAndOpen("chatgpt")}><ExternalLink size={16} />Copy + ChatGPT</button>
-          <button className="button secondary" onClick={() => void copyAndOpen("claude")}><ExternalLink size={16} />Copy + Claude</button>
-        </div>
-      </section>
-      <section className="card stack">
-        <h2>2. Paste or edit lesson JSON</h2>
-        <textarea className="input community-code" value={source} onChange={(e) => setSource(e.target.value)} placeholder="Paste the LLM's strict Fydor lesson JSON here." />
-        <button className="button" onClick={() => void save()}>Save contributor draft</button>
-      </section>
-      {lesson ? (
+      <ol className="community-stepper" aria-label="Contributor steps">
+        {["Generate", "Prepare", "Review", "Submit"].map((label, step) => (
+          <li key={label} className={phase === step + 1 ? "active" : phase > step + 1 ? "complete" : ""} aria-current={phase === step + 1 ? "step" : undefined}>
+            <span>{step + 1}</span>{label}
+          </li>
+        ))}
+      </ol>
+      {phase === 1 ? (
+        <section className="card stack">
+          <h2>1. Generate with an LLM website</h2>
+          <p className="muted">Fydor does not use a provider API. It copies a lesson-generation prompt and opens the normal chat website. Paste the returned JSON in the next phase.</p>
+          <div className="row">
+            <button className="button secondary" onClick={() => void copyAndOpen("chatgpt")}><ExternalLink size={16} />Copy + ChatGPT</button>
+            <button className="button secondary" onClick={() => void copyAndOpen("claude")}><ExternalLink size={16} />Copy + Claude</button>
+          </div>
+          <div className="community-step-actions">
+            <span />
+            <button className="button" onClick={() => void nextPhase()}>Next: Prepare lesson</button>
+          </div>
+        </section>
+      ) : null}
+      {phase === 2 ? (
+        <section className="card stack">
+          <h2>2. Paste or edit lesson JSON</h2>
+          <textarea className="input community-code" value={source} onChange={(e) => setSource(e.target.value)} placeholder="Paste the LLM's strict Fydor lesson JSON here." />
+          <div className="community-step-actions">
+            <button className="button secondary" onClick={previousPhase}>Back</button>
+            <button className="button" onClick={() => void nextPhase()}>Save draft &amp; continue</button>
+          </div>
+        </section>
+      ) : null}
+      {phase === 3 && lesson ? (
         <section className="card stack">
           <h2>3. Review every sentence ({reviewed.size}/{lesson.sentences.length})</h2>
           <article className="community-sentence">
@@ -327,14 +377,27 @@ function Contributor({ session }: { session: CommunitySession }) {
             <p className="muted">{lesson.sentences[index]?.translation}</p>
           </article>
           <div className="row">
-            <button className="button secondary" disabled={index === 0} onClick={() => setIndex(index - 1)}>Previous</button>
+            <button className="button secondary" disabled={index === 0} onClick={() => setIndex(index - 1)}>Previous sentence</button>
             <button className="button" onClick={() => void review()}>{reviewed.has(index) ? "Reviewed" : "Mark reviewed"}</button>
-            <button className="button secondary" disabled={index >= lesson.sentences.length - 1} onClick={() => setIndex(index + 1)}>Next</button>
+            <button className="button secondary" disabled={index >= lesson.sentences.length - 1} onClick={() => setIndex(index + 1)}>Next sentence</button>
           </div>
+          <div className="community-step-actions">
+            <button className="button secondary" onClick={previousPhase}>Back</button>
+            <button className="button" onClick={() => void nextPhase()}>Next: Submission</button>
+          </div>
+        </section>
+      ) : null}
+      {phase === 4 && lesson ? (
+        <section className="card stack">
+          <h2>4. Submit your lesson</h2>
+          <p className="muted">Your reviewed lesson will be sent to language moderators as an immutable version.</p>
           <label>
             <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} /> I reviewed every sentence and annotation.
           </label>
-          <button className="button" disabled={reviewed.size !== lesson.sentences.length} onClick={() => void submit()}>Submit immutable version for review</button>
+          <div className="community-step-actions">
+            <button className="button secondary" onClick={previousPhase}>Back</button>
+            <button className="button" disabled={reviewed.size !== lesson.sentences.length} onClick={() => void submit()}>Submit for review</button>
+          </div>
         </section>
       ) : null}
       {status ? <p className="muted">{status}</p> : null}

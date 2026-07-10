@@ -43,7 +43,7 @@ export function InstallPackSection({
   onInstall: () => void;
 }) {
   return (
-    <section className="card stack exchange-section" data-tour="exchange-install">
+    <section className="card stack exchange-section install-pack-section" data-tour="exchange-install">
       <div className="exchange-section-heading">
         <FileUp size={20} />
         <div>
@@ -140,7 +140,7 @@ export function SharePackSection({
   onPublishSelected: () => void;
 }) {
   return (
-    <section className="card stack exchange-section" data-tour="exchange-share">
+    <section className="card stack exchange-section share-pack-section" data-tour="exchange-share">
       <div className="exchange-section-heading">
         <Download size={20} />
         <div>

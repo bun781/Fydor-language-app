@@ -23,6 +23,7 @@ const navSections: Array<{
     links: [
       { href: "/admin/imports", label: "Builder", icon: PencilRuler },
       { href: "/lessons/manage", label: "Lessons", icon: Library },
+      { href: "/library", label: "Public Library", icon: Library },
       { href: "/fydor-exchange", label: "Fydor Exchange", icon: Boxes }
     ]
   },
@@ -42,10 +43,13 @@ const routeTitles: Record<string, string> = {
   "/": "Fydor",
   "/admin/imports": "Builder",
   "/lessons/manage": "Lessons",
+  "/library": "Public Library",
   "/fydor-exchange": "Fydor Exchange",
   "/fydor-exchange/import": "Install Pack",
   "/fydor-exchange/export": "Export Pack",
   "/community/contribute": "Contribute",
+  "/community/moderate": "Moderate",
+  "/community/admin": "Admin",
   "/review": "Review",
   "/reading": "Reading",
   "/study/imported-content": "Flashcards",

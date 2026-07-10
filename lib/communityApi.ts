@@ -34,14 +34,15 @@ export async function signInCommunity(email: string, password: string): Promise<
   return { accessToken: data.access_token, email: data.user?.email || normalizedEmail };
 }
 
-export async function signUpCommunity(email: string, password: string): Promise<CommunitySession> {
+export async function signUpCommunity(email: string, password: string, username: string): Promise<CommunitySession> {
   const client = await config();
   const normalizedEmail = normalizeEmail(email);
+  const normalizedUsername = normalizeUsername(username);
   if (password.length < 8) throw new Error("Password must be at least 8 characters.");
   const response = await fetch(`${client.supabaseUrl}/auth/v1/signup`, {
     method: "POST",
     headers: { apikey: client.supabaseAnonKey, "Content-Type": "application/json" },
-    body: JSON.stringify({ email: normalizedEmail, password })
+    body: JSON.stringify({ email: normalizedEmail, password, data: { username: normalizedUsername } })
   });
   const data = await response.json().catch(() => null) as ({ access_token?: string; user?: { email?: string } } & ApiErrorBody) | null;
   if (!response.ok) throw new Error(apiErrorMessage(data, "Unable to create the account."));
@@ -85,6 +86,12 @@ async function request<T>(url: string, init: RequestInit = {}): Promise<T> {
 function normalizeEmail(email: string): string {
   const normalized = email.trim();
   if (!normalized) throw new Error("Email is required.");
+  return normalized;
+}
+
+function normalizeUsername(username: string): string {
+  const normalized = username.trim();
+  if (!normalized) throw new Error("Username is required to create an account.");
   return normalized;
 }
 

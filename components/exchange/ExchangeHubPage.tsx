@@ -1,7 +1,6 @@
-import { Boxes, Download, Send, Upload } from "lucide-react";
+import { Boxes, Download, Globe2, Send, Upload } from "lucide-react";
 import { Link } from "react-router-dom";
 import { AppShell } from "@/components/AppShell";
-import { PublicLessonLibrary } from "./PublicLessonLibrary";
 
 export function ExchangeHubPage() {
   return (
@@ -11,19 +10,32 @@ export function ExchangeHubPage() {
           <div>
             <span className="pill pill-accent">Fydor Exchange</span>
             <h1>Move lessons between create, share, and contribute</h1>
-            <p className="muted">Pick the path you need. Import published lessons, export your own pack, or jump into the community contributor workflow.</p>
+            <p className="muted">Pick the path you need. Browse published lessons, install or share packs, or contribute a lesson to the community.</p>
           </div>
         </header>
 
         <div className="exchange-actions">
           <Link className="button secondary" to="/fydor-exchange/import">Install pack</Link>
-          <Link className="button secondary" to="/fydor-exchange/export">Export back</Link>
+          <Link className="button secondary" to="/fydor-exchange/export">Share pack</Link>
+          <Link className="button secondary" to="/library">Public library</Link>
           <Link className="button secondary" to="/community/contribute">Contribute</Link>
         </div>
 
-        <PublicLessonLibrary />
+        <section className="grid grid-4 exchange-hub-grid">
+          <article className="card stack exchange-hub-card">
+            <div className="exchange-section-heading">
+              <Globe2 size={20} />
+              <div>
+                <h2>Public Library</h2>
+                <p className="muted">Browse published lessons and send one directly to the install screen.</p>
+              </div>
+            </div>
+            <Link className="button" to="/library">
+              <Globe2 size={18} />
+              Browse library
+            </Link>
+          </article>
 
-        <section className="grid grid-3 exchange-hub-grid">
           <article className="card stack exchange-hub-card">
             <div className="exchange-section-heading">
               <Upload size={20} />
@@ -42,7 +54,7 @@ export function ExchangeHubPage() {
             <div className="exchange-section-heading">
               <Boxes size={20} />
               <div>
-                <h2>Export Pack</h2>
+                <h2>Share Pack</h2>
                 <p className="muted">Build a Fydor Pack from your lessons, preview it, and publish or download it.</p>
               </div>
             </div>

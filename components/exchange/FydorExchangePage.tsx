@@ -453,7 +453,7 @@ export function FydorExchangePage() {
         </section>
       ) : null}
 
-      <div className="exchange-grid">
+      <div className={`exchange-grid${isInstallRoute || isExportRoute ? " exchange-grid-single" : ""}`}>
         {!isExportRoute ? (
           <InstallPackSection
             packSource={packSource}
