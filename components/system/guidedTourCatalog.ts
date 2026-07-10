@@ -328,11 +328,12 @@ const tourCatalog: Record<string, TourStep[]> = {
 };
 
 const scopeAliases: Record<string, string> = {
-  "/": "/lessons/manage"
+  "/": "/lessons/manage",
+  "/admin/imports": "/lessons/manage::builder"
 };
 
 const defaultScopes: Record<string, string> = {
-  "/lessons/manage": "/lessons/manage::builder",
+  "/lessons/manage": "/lessons/manage::lessons",
   "/review": "/review::start",
   "/fydor-exchange": "/fydor-exchange",
   "/fydor-exchange/import": "/fydor-exchange",
