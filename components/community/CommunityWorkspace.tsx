@@ -1,5 +1,5 @@
-import { ExternalLink, RefreshCw, Send, Settings, ShieldCheck } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { ExternalLink, FolderOpen, RefreshCw, Send, Settings, ShieldCheck, Sparkles } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { AppShell } from "@/components/AppShell";
 import { exportLesson, openGenerationDestination } from "@/lib/desktopApi";
@@ -13,6 +13,7 @@ import {
   type CommunitySession
 } from "@/lib/communityApi";
 import { errorMessage } from "@/lib/errors";
+import { parseFydorPack, type FydorPack, type FydorPackValidation } from "@/lib/fydor-pack";
 import { importPromptTemplates } from "@/lib/language/importResources";
 
 type CommunityTab = "contribute" | "moderate" | "admin";
@@ -20,7 +21,7 @@ type Draft = {
   id: string;
   revision: number;
   state: string;
-  canonical_json: Lesson;
+  canonical_json: Lesson | FydorPack;
   sentence_review_progress?: Array<{ sentence_index: number; status: string }>;
 };
 type Lesson = {
@@ -30,6 +31,7 @@ type Lesson = {
   level: string;
   sentences: Array<{ text: string; translation: string }>;
 };
+type ContributionMethod = "ai" | "existing";
 type Submission = {
   id: string;
   title: string;
@@ -120,12 +122,12 @@ export function CommunityWorkspace({ initialTab = "contribute" }: { initialTab?:
     }
   }
 
-  const pageTitle = activeTab === "moderate" ? "Moderation" : activeTab === "admin" ? "Administration" : "Contribute a lesson";
+  const pageTitle = activeTab === "moderate" ? "Moderation" : activeTab === "admin" ? "Administration" : "Contribute to Fydor";
   const pageDescription = activeTab === "moderate"
     ? "Review submitted lessons and approve their language quality."
     : activeTab === "admin"
       ? "Manage user access and moderation roles."
-      : "Build a lesson, review every sentence, and submit an immutable version.";
+      : "Generate a new pack with AI or choose an existing pack to submit for review.";
 
   return (
     <AppShell>
@@ -207,7 +209,11 @@ export function CommunityWorkspace({ initialTab = "contribute" }: { initialTab?:
 
 function Contributor({ session }: { session: CommunitySession }) {
   const [params] = useSearchParams();
+  const [method, setMethod] = useState<ContributionMethod>("ai");
   const [source, setSource] = useState("");
+  const [existingPack, setExistingPack] = useState<FydorPack | null>(null);
+  const [existingPackFile, setExistingPackFile] = useState("");
+  const packInputRef = useRef<HTMLInputElement>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [status, setStatus] = useState("");
   const [index, setIndex] = useState(0);
@@ -234,7 +240,8 @@ function Contributor({ session }: { session: CommunitySession }) {
       .catch((error) => setStatus(errorMessage(error, "Unable to load the local lesson.")));
   }, [params]);
 
-  const lesson = draft?.canonical_json;
+  const pack = toContributionPack(draft?.canonical_json ?? (method === "existing" ? existingPack : null));
+  const sentences = pack?.lessons.flatMap((item) => item.sentences) ?? [];
   const reviewed = useMemo(
     () => new Set((draft?.sentence_review_progress ?? []).filter((item) => item.status === "reviewed").map((item) => item.sentence_index)),
     [draft]
@@ -248,7 +255,7 @@ function Contributor({ session }: { session: CommunitySession }) {
         method: "POST",
         body: JSON.stringify({
           action,
-          lesson: source,
+          ...(method === "existing" ? { pack: JSON.stringify(existingPack), creationMethod: "upload" } : { lesson: source, creationMethod: "ai" }),
           state: "reviewing",
           resetReview: true,
           ...(draft ? { draftId: draft.id, expectedRevision: draft.revision } : sourceLessonId ? { personalLessonId: sourceLessonId } : {})
@@ -278,7 +285,7 @@ function Contributor({ session }: { session: CommunitySession }) {
           { sentence_index: index, status: "reviewed" }
         ]
       } : current);
-      if (lesson && index < lesson.sentences.length - 1) setIndex(index + 1);
+      if (sentences.length && index < sentences.length - 1) setIndex(index + 1);
     } catch (error) {
       setStatus(errorMessage(error, "Unable to record the review."));
     }
@@ -323,7 +330,7 @@ function Contributor({ session }: { session: CommunitySession }) {
     }
 
     if (phase === 3) {
-      if (!lesson || reviewed.size !== lesson.sentences.length) {
+      if (!pack || reviewed.size !== sentences.length) {
         setStatus("Review every sentence before continuing to submission.");
         return;
       }
@@ -337,6 +344,27 @@ function Contributor({ session }: { session: CommunitySession }) {
 
   return (
     <div className="stack">
+      <section className="card stack community-method-panel" aria-labelledby="contribution-method-title">
+        <div>
+          <span className="pill">Contribution method</span>
+          <h2 id="contribution-method-title">Choose how to contribute</h2>
+          <p className="muted">Both options use the same validation, review, moderation, and publishing flow.</p>
+        </div>
+        <div className="community-method-grid" role="tablist" aria-label="Contribution method">
+          <button className={`community-method-card${method === "ai" ? " active" : ""}`} type="button" role="tab" aria-selected={method === "ai"} onClick={() => { setMethod("ai"); setPhase(1); }}>
+            <Sparkles size={20} />
+            <strong>Generate with AI</strong>
+            <span>Build a new lesson pack with the guided LLM workflow.</span>
+            <span className="button secondary">Start generating</span>
+          </button>
+          <button className={`community-method-card${method === "existing" ? " active" : ""}`} type="button" role="tab" aria-selected={method === "existing"} onClick={() => { setMethod("existing"); setPhase(1); }}>
+            <FolderOpen size={20} />
+            <strong>Choose from Existing Pack</strong>
+            <span>Select a completed Fydor pack from your computer.</span>
+            <span className="button secondary">Choose pack</span>
+          </button>
+        </div>
+      </section>
       <ol className="community-stepper" aria-label="Contributor steps">
         {["Generate", "Prepare", "Review", "Submit"].map((label, step) => (
           <li key={label} className={phase === step + 1 ? "active" : phase > step + 1 ? "complete" : ""} aria-current={phase === step + 1 ? "step" : undefined}>
@@ -344,7 +372,7 @@ function Contributor({ session }: { session: CommunitySession }) {
           </li>
         ))}
       </ol>
-      {phase === 1 ? (
+      {phase === 1 && method === "ai" ? (
         <section className="card stack">
           <h2>1. Generate with an LLM website</h2>
           <p className="muted">Fydor does not use a provider API. It copies a lesson-generation prompt and opens the normal chat website. Paste the returned JSON in the next phase.</p>
@@ -358,28 +386,38 @@ function Contributor({ session }: { session: CommunitySession }) {
           </div>
         </section>
       ) : null}
+      {phase === 1 && method === "existing" ? (
+        <section className="card stack">
+          <h2>1. Choose an existing Fydor pack</h2>
+          <p className="muted">Select a completed `.json` or `.fydorpack` file. Fydor will validate it before saving it as a contributor draft.</p>
+          <input ref={packInputRef} className="community-hidden-file" type="file" accept=".json,.fydorpack,application/json" aria-label="Choose an existing Fydor pack" onChange={(event) => void readExistingPack(event.target.files?.[0], setExistingPack, setExistingPackFile, setStatus)} />
+          <button className="button secondary community-pack-picker" type="button" onClick={() => packInputRef.current?.click()}><FolderOpen size={16} />{existingPackFile || "Choose pack file"}</button>
+          {existingPack ? <PackSummary validation={{ pack: existingPack, errors: [], warnings: [], lessonErrors: [], lessonCount: existingPack.lessons.length, sentenceCount: countPackSentences(existingPack) }} /> : <p className="muted">No pack selected yet.</p>}
+          <div className="community-step-actions"><span /><button className="button" disabled={!existingPack} onClick={() => setPhase(2)}>Continue with this pack</button></div>
+        </section>
+      ) : null}
       {phase === 2 ? (
         <section className="card stack">
-          <h2>2. Paste or edit lesson JSON</h2>
-          <textarea className="input community-code" value={source} onChange={(e) => setSource(e.target.value)} placeholder="Paste the LLM's strict Fydor lesson JSON here." />
+          <h2>{method === "existing" ? "2. Confirm existing pack" : "2. Paste or edit lesson JSON"}</h2>
+          {method === "existing" ? (existingPack ? <PackSummary validation={{ pack: existingPack, errors: [], warnings: [], lessonErrors: [], lessonCount: existingPack.lessons.length, sentenceCount: countPackSentences(existingPack) }} /> : <p className="muted">Choose a pack before continuing.</p>) : <textarea className="input community-code" value={source} onChange={(e) => setSource(e.target.value)} placeholder="Paste the LLM's strict Fydor lesson JSON here." />}
           <div className="community-step-actions">
             <button className="button secondary" onClick={previousPhase}>Back</button>
-            <button className="button" onClick={() => void nextPhase()}>Save draft &amp; continue</button>
+            <button className="button" disabled={method === "existing" && !existingPack} onClick={() => void nextPhase()}>{method === "existing" ? "Save pack & continue" : "Save draft & continue"}</button>
           </div>
         </section>
       ) : null}
-      {phase === 3 && lesson ? (
+      {phase === 3 && pack ? (
         <section className="card stack">
-          <h2>3. Review every sentence ({reviewed.size}/{lesson.sentences.length})</h2>
+          <h2>3. Review every sentence ({reviewed.size}/{sentences.length})</h2>
           <article className="community-sentence">
             <strong>Sentence {index + 1}</strong>
-            <p>{lesson.sentences[index]?.text}</p>
-            <p className="muted">{lesson.sentences[index]?.translation}</p>
+            <p>{sentences[index]?.text}</p>
+            <p className="muted">{sentences[index]?.translation}</p>
           </article>
           <div className="row">
             <button className="button secondary" disabled={index === 0} onClick={() => setIndex(index - 1)}>Previous sentence</button>
             <button className="button" onClick={() => void review()}>{reviewed.has(index) ? "Reviewed" : "Mark reviewed"}</button>
-            <button className="button secondary" disabled={index >= lesson.sentences.length - 1} onClick={() => setIndex(index + 1)}>Next sentence</button>
+            <button className="button secondary" disabled={index >= sentences.length - 1} onClick={() => setIndex(index + 1)}>Next sentence</button>
           </div>
           <div className="community-step-actions">
             <button className="button secondary" onClick={previousPhase}>Back</button>
@@ -387,22 +425,94 @@ function Contributor({ session }: { session: CommunitySession }) {
           </div>
         </section>
       ) : null}
-      {phase === 4 && lesson ? (
+      {phase === 4 && pack ? (
         <section className="card stack">
-          <h2>4. Submit your lesson</h2>
-          <p className="muted">Your reviewed lesson will be sent to language moderators as an immutable version.</p>
+          <h2>4. Submit your pack</h2>
+          <p className="muted">Your reviewed pack will be sent to language moderators as an immutable version.</p>
           <label>
             <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} /> I reviewed every sentence and annotation.
           </label>
           <div className="community-step-actions">
             <button className="button secondary" onClick={previousPhase}>Back</button>
-            <button className="button" disabled={reviewed.size !== lesson.sentences.length} onClick={() => void submit()}>Submit for review</button>
+            <button className="button" disabled={reviewed.size !== sentences.length} onClick={() => void submit()}>Submit for review</button>
           </div>
         </section>
       ) : null}
       {status ? <p className="muted">{status}</p> : null}
     </div>
   );
+}
+
+function toContributionPack(value: Lesson | FydorPack | null): FydorPack | null {
+  if (!value) return null;
+  if (isFydorPack(value)) return value;
+  const now = new Date().toISOString();
+  return {
+    type: "fydor_pack",
+    schemaVersion: 1,
+    id: `contributor-${value.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 72) || "pack"}`,
+    title: value.title,
+    version: "1.0.0",
+    language: value.language,
+    baseLanguage: value.baseLanguage,
+    level: value.level,
+    tags: [],
+    createdAt: now,
+    updatedAt: now,
+    lessons: [{ language: value.language, baseLanguage: value.baseLanguage, title: value.title, level: value.level, sentences: value.sentences }]
+  };
+}
+
+function isFydorPack(value: Lesson | FydorPack): value is FydorPack {
+  return "type" in value && value.type === "fydor_pack" && Array.isArray(value.lessons);
+}
+
+function countPackSentences(pack: FydorPack): number {
+  return pack.lessons.reduce((total, lesson) => total + lesson.sentences.length, 0);
+}
+
+function PackSummary({ validation }: { validation: FydorPackValidation }) {
+  const pack = validation.pack;
+  if (!pack) return null;
+  return (
+    <div className="community-pack-summary">
+      <strong>{pack.title}</strong>
+      <span>{pack.language} → {pack.baseLanguage}</span>
+      <span>{pack.lessons.length} lesson{pack.lessons.length === 1 ? "" : "s"} · {validation.sentenceCount} sentences</span>
+      {pack.description ? <p className="muted">{pack.description}</p> : null}
+    </div>
+  );
+}
+
+async function readExistingPack(
+  file: File | undefined,
+  setPack: (pack: FydorPack | null) => void,
+  setFileName: (name: string) => void,
+  setStatus: (message: string) => void
+) {
+  if (!file) return;
+  if (file.size > 5_000_000) {
+    setPack(null);
+    setFileName("");
+    setStatus("This pack is larger than the 5 MB limit.");
+    return;
+  }
+  try {
+    const validation = parseFydorPack(await file.text());
+    if (!validation.pack || validation.errors.length || validation.lessonErrors.length) {
+      setPack(null);
+      setFileName("");
+      setStatus([...validation.errors, ...validation.lessonErrors.flatMap((item) => item.errors)].join(" ") || "This is not a valid Fydor pack.");
+      return;
+    }
+    setPack(validation.pack);
+    setFileName(file.name);
+    setStatus(`Selected ${file.name}. ${validation.sentenceCount} sentences are ready for review.`);
+  } catch (error) {
+    setPack(null);
+    setFileName("");
+    setStatus(errorMessage(error, "Unable to read this Fydor pack."));
+  }
 }
 
 function Moderation({ session }: { session: CommunitySession }) {
