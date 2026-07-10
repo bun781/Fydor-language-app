@@ -15,4 +15,19 @@ describe("guided tour route scopes", () => {
     expect(scope).toBe("/lessons/manage::builder");
     expect(getTourSteps(scope)).not.toBeNull();
   });
+
+  it.each([
+    ["/fydor-exchange", "/fydor-exchange"],
+    ["/fydor-exchange/import", "/fydor-exchange::install"],
+    ["/fydor-exchange/export", "/fydor-exchange::export"],
+    ["/review", "/review::start"],
+    ["/study/imported-content", "/study/imported-content"],
+    ["/study/fill-blank", "/study/fill-blank"],
+    ["/study/multiple-choice", "/study/multiple-choice"]
+  ])("resolves the page guide for %s", (route, expectedScope) => {
+    const scope = resolveTourScope(route);
+
+    expect(scope).toBe(expectedScope);
+    expect(getTourSteps(scope)).not.toBeNull();
+  });
 });

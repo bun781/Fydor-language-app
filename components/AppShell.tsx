@@ -96,7 +96,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           type="button"
           className="icon-button sidebar-help"
           aria-label="Open page guide"
-          onClick={() => replayGuidedTour()}
+          onClick={() => replayGuidedTour(pathname)}
         >
           <HelpCircle size={17} />
         </button>

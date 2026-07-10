@@ -22,7 +22,7 @@ export function ExchangeHubPage() {
         </div>
 
         <section className="grid grid-4 exchange-hub-grid">
-          <article className="card stack exchange-hub-card">
+          <article className="card stack exchange-hub-card" data-tour="exchange-hub-library">
             <div className="exchange-section-heading">
               <Globe2 size={20} />
               <div>
@@ -36,7 +36,7 @@ export function ExchangeHubPage() {
             </Link>
           </article>
 
-          <article className="card stack exchange-hub-card">
+          <article className="card stack exchange-hub-card" data-tour="exchange-hub-install">
             <div className="exchange-section-heading">
               <Upload size={20} />
               <div>
@@ -50,7 +50,7 @@ export function ExchangeHubPage() {
             </Link>
           </article>
 
-          <article className="card stack exchange-hub-card">
+          <article className="card stack exchange-hub-card" data-tour="exchange-hub-share">
             <div className="exchange-section-heading">
               <Boxes size={20} />
               <div>

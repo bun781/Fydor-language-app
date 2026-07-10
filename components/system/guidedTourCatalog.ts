@@ -233,8 +233,47 @@ const tourCatalog: Record<string, TourStep[]> = {
     {
       route: "/fydor-exchange",
       section: "Fydor Exchange",
-      title: "Install shared lesson packs",
-      description: "The Install Pack area is where you preview and import a Fydor Pack from a file or pasted JSON.",
+      title: "Choose an Exchange path",
+      description: "Fydor Exchange keeps the main ways to move lessons between your library and other people in one place.",
+      details: [
+        "Install brings a shared lesson pack into your local library.",
+        "Share turns your own lessons into a portable pack."
+      ],
+      targetSelectors: ['[data-tour="exchange-hub-install"]'],
+      placement: "bottom"
+    },
+    {
+      route: "/fydor-exchange",
+      section: "Fydor Exchange",
+      title: "Browse the public library",
+      description: "The public library is where you can find published lessons before installing them.",
+      details: [
+        "Open a published lesson to inspect its metadata and sentences.",
+        "The library can send a lesson directly to the install screen."
+      ],
+      targetSelectors: ['[data-tour="exchange-hub-library"]'],
+      placement: "bottom"
+    },
+    {
+      route: "/fydor-exchange",
+      section: "Fydor Exchange",
+      title: "Share your own lessons",
+      description: "The Share Pack screen turns selected lessons into a portable pack you can export or publish.",
+      details: [
+        "Pick one or more lessons and fill in the pack metadata.",
+        "Build a preview before exporting or publishing."
+      ],
+      targetSelectors: ['[data-tour="exchange-hub-share"]'],
+      placement: "bottom",
+      primaryLabel: "Finish"
+    }
+  ],
+  "/fydor-exchange::install": [
+    {
+      route: "/fydor-exchange/import",
+      section: "Fydor Exchange",
+      title: "Install a shared lesson pack",
+      description: "Preview and import a Fydor Pack from a file or pasted JSON.",
       details: [
         "Preview checks the pack structure before anything is installed.",
         "Duplicate handling decides whether old lessons are skipped, replaced, or kept."
@@ -243,25 +282,40 @@ const tourCatalog: Record<string, TourStep[]> = {
       placement: "bottom"
     },
     {
-      route: "/fydor-exchange",
+      route: "/fydor-exchange/import",
       section: "Fydor Exchange",
-      title: "Export your own packs",
-      description: "The Share Pack area turns selected lessons into a portable .fydorpack file.",
+      title: "Review installed packs",
+      description: "My Packs keeps track of pack metadata already installed on this device.",
       details: [
-        "Pick one or more lessons, fill in metadata, then build a preview before exporting.",
-        "Export all is handy when you want a pack from every saved lesson."
+        "Search by pack title, author, organization, tags, or included lessons.",
+        "Use this view to see what is already available locally."
+      ],
+      targetSelectors: ['[data-tour="exchange-library"]'],
+      placement: "top",
+      primaryLabel: "Finish"
+    }
+  ],
+  "/fydor-exchange::export": [
+    {
+      route: "/fydor-exchange/export",
+      section: "Fydor Exchange",
+      title: "Build a pack from your lessons",
+      description: "Select lessons and add metadata before you export or publish a Fydor Pack.",
+      details: [
+        "Pick one or more lessons, then fill in the pack title and other metadata.",
+        "Build a preview to check the pack before sharing it."
       ],
       targetSelectors: ['[data-tour="exchange-share"]'],
       placement: "bottom"
     },
     {
-      route: "/fydor-exchange",
+      route: "/fydor-exchange/export",
       section: "Fydor Exchange",
-      title: "Manage installed packs",
-      description: "My Packs keeps track of installed pack metadata so you can search and filter later.",
+      title: "Review installed packs",
+      description: "My Packs keeps track of pack metadata already installed on this device.",
       details: [
         "Search by pack title, author, organization, tags, or included lessons.",
-        "This view helps you inspect what is already installed on the device."
+        "Use this view to see what is already available locally."
       ],
       targetSelectors: ['[data-tour="exchange-library"]'],
       placement: "top",
@@ -328,7 +382,7 @@ const tourCatalog: Record<string, TourStep[]> = {
 };
 
 const scopeAliases: Record<string, string> = {
-  "/": "/lessons/manage",
+  "/": "/lessons/manage::lessons",
   "/admin/imports": "/lessons/manage::builder"
 };
 
@@ -336,7 +390,8 @@ const defaultScopes: Record<string, string> = {
   "/lessons/manage": "/lessons/manage::lessons",
   "/review": "/review::start",
   "/fydor-exchange": "/fydor-exchange",
-  "/fydor-exchange/import": "/fydor-exchange",
+  "/fydor-exchange/import": "/fydor-exchange::install",
+  "/fydor-exchange/export": "/fydor-exchange::export",
   "/study/imported-content": "/study/imported-content",
   "/study/fill-blank": "/study/fill-blank",
   "/study/multiple-choice": "/study/multiple-choice"
