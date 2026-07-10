@@ -7,6 +7,8 @@
 #   FAIL <reason>   (see /Users/user/.codex/skills/fydor-release-publisher/references/fydor-release-troubleshooting.md)
 set -u
 cd "$(dirname "$0")/../.." || exit 1
+. scripts/release/env.sh
+check_release_env
 
 VERSION=$(node -pe "require('./src-tauri/tauri.conf.json').version")
 APP_BUNDLE="src-tauri/target/release/bundle/macos/Fydor.app"

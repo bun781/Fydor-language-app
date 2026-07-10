@@ -1,5 +1,6 @@
 import { CheckCircle2, PackageOpen } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { AppShell } from "@/components/AppShell";
 import { exportLesson, getLessons, importLesson, updateLesson } from "@/lib/desktopApi";
 import { errorMessage } from "@/lib/errors";
@@ -428,7 +429,11 @@ export function FydorExchangePage() {
           <h1>Fydor Exchange</h1>
           <p className="muted">Import, share, and manage lesson packs.</p>
         </div>
-        <span className="pill pill-accent">Fydor Packs</span>
+        <div className="exchange-actions">
+          <Link className="button secondary" to="/fydor-exchange">Exchange home</Link>
+          <Link className="button secondary" to="/fydor-exchange/import">Import pack</Link>
+          <Link className="button secondary" to="/community/contribute">Contribute</Link>
+        </div>
       </div>
 
       {errors.length ? (
@@ -447,7 +452,7 @@ export function FydorExchangePage() {
       ) : null}
 
       <div className="exchange-grid">
-        <PublicLessonLibrary onInstalled={refreshLessons} />
+        <PublicLessonLibrary />
         <InstallPackSection
           packSource={packSource}
           packPreview={packPreview}

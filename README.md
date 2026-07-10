@@ -68,6 +68,20 @@ npm run tauri:dev
 npm run tauri:build
 ```
 
+## Packaging
+
+Packaged desktop builds use only the public website origin:
+
+```bash
+VITE_FYDOR_WEB_ORIGIN=https://fydor.vercel.app
+```
+
+Supabase keys, service-role keys, and `DATABASE_URL` belong only in the
+`fydor-website` server/Vercel environment. Do not add them to the desktop app's
+`.env` files or to any `VITE_*` variable. The release scripts source
+`scripts/release/env.sh`, force the production web origin by default, and fail
+if desktop release env files contain Supabase or database variables.
+
 ## Notes On Data
 
 - Lesson data, review state, and imported content are stored locally in SQLite (see `src-tauri/src/db.rs`).

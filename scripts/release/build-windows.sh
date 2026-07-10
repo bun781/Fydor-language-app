@@ -6,6 +6,8 @@
 set -u
 cd "$(dirname "$0")/../.." || exit 1
 export PATH="/opt/homebrew/opt/llvm/bin:/opt/homebrew/bin:$PATH"
+. scripts/release/env.sh
+check_release_env
 
 TARGET="x86_64-pc-windows-msvc"
 for tool in cargo-xwin llvm-rc makensis; do

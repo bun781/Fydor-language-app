@@ -100,10 +100,6 @@ button, input, textarea, select {
   transition: grid-template-columns 0.18s ease;
 }
 
-.app-shell.sidebar-pinned {
-  grid-template-columns: 236px 1fr;
-}
-
 .app-brand {
   align-items: center;
   color: var(--ink);
@@ -139,8 +135,7 @@ button, input, textarea, select {
 }
 
 .app-brand:hover .app-brand-name,
-.app-brand:focus-visible .app-brand-name,
-.sidebar-pinned .app-brand-name {
+.app-brand:focus-visible .app-brand-name {
   opacity: 1;
   transform: translateX(0);
   width: auto;
@@ -164,44 +159,10 @@ button, input, textarea, select {
 }
 
 .sidebar:hover,
-.sidebar:focus-within,
-.sidebar-pinned .sidebar {
+.sidebar:focus-within {
   box-shadow: 18px 0 48px rgba(28, 25, 23, 0.12);
   padding: 18px 16px;
   width: 236px;
-}
-
-.sidebar-top {
-  align-items: center;
-  border-bottom: 1px solid transparent;
-  display: flex;
-  gap: 10px;
-  justify-content: space-between;
-  min-height: 72px;
-  padding-bottom: 12px;
-  padding-top: 46px;
-}
-
-.sidebar:hover .sidebar-top,
-.sidebar:focus-within .sidebar-top,
-.sidebar-pinned .sidebar-top {
-  border-bottom-color: var(--line);
-  min-height: 72px;
-}
-
-.sidebar-toggle {
-  flex: 0 0 auto;
-  height: 36px;
-  width: 42px;
-}
-
-.sidebar-toggle:hover {
-  transform: none;
-}
-
-.sidebar-toggle[aria-pressed="true"] {
-  background: var(--surface-muted);
-  border-color: var(--ink);
 }
 
 .sidebar-help {
@@ -216,6 +177,7 @@ button, input, textarea, select {
 .sidebar nav {
   display: grid;
   gap: 14px;
+  padding-top: 82px;
 }
 
 .sidebar-section {
@@ -238,8 +200,7 @@ button, input, textarea, select {
 }
 
 .sidebar:hover .sidebar-section-label,
-.sidebar:focus-within .sidebar-section-label,
-.sidebar-pinned .sidebar-section-label {
+.sidebar:focus-within .sidebar-section-label {
   opacity: 1;
 }
 
@@ -272,8 +233,7 @@ button, input, textarea, select {
 }
 
 .sidebar:hover a span,
-.sidebar:focus-within a span,
-.sidebar-pinned .sidebar a span {
+.sidebar:focus-within a span {
   opacity: 1;
   transform: translateX(0);
   width: auto;
@@ -308,8 +268,7 @@ button, input, textarea, select {
 }
 
 .sidebar:hover .sidebar-note,
-.sidebar:focus-within .sidebar-note,
-.sidebar-pinned .sidebar-note {
+.sidebar:focus-within .sidebar-note {
   opacity: 1;
   transform: translateX(0);
 }
@@ -1731,32 +1690,6 @@ button, input, textarea, select {
   filter: none;
 }
 
-.learning-science {
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  display: grid;
-  gap: 12px;
-  padding: 16px;
-}
-
-.learning-science-grid {
-  display: grid;
-  gap: 8px 14px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.learning-science-grid p {
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.learning-science-grid strong {
-  color: var(--ink);
-  font-weight: 600;
-}
-
 /* ── Form inputs ────────────────────────────────────────── */
 
 .input {
@@ -2518,6 +2451,23 @@ textarea.input {
 
 /* ── Fydor Exchange ─────────────────────────────────────── */
 
+.exchange-hub-shell {
+  max-width: 1120px;
+}
+
+.exchange-hub-grid {
+  align-items: stretch;
+}
+
+.exchange-hub-card {
+  min-height: 210px;
+}
+
+.exchange-hub-card .button {
+  margin-top: auto;
+  width: fit-content;
+}
+
 .exchange-grid {
   align-items: start;
   display: grid;
@@ -2612,6 +2562,18 @@ textarea.input {
 
 .exchange-pack-row {
   background: var(--surface);
+}
+
+.exchange-public-card {
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.12s, box-shadow 0.15s;
+}
+
+.exchange-public-card:hover,
+.exchange-public-card:focus-visible {
+  border-color: rgba(28, 25, 23, 0.35);
+  box-shadow: 0 8px 28px rgba(28, 25, 23, 0.08);
+  transform: translateY(-1px);
 }
 
 .exchange-pack-row-top {
@@ -2744,10 +2706,6 @@ textarea.input {
 .exchange-pack-lessons ul {
   margin: 8px 0 0;
   padding-left: 18px;
-}
-
-.learning-science-page {
-  max-width: 900px;
 }
 
 .builder-layout {
@@ -3558,10 +3516,6 @@ textarea.input {
     grid-template-columns: 56px 1fr;
   }
 
-  .app-shell.sidebar-pinned {
-    grid-template-columns: 220px 1fr;
-  }
-
   .sidebar {
     height: 100vh;
     padding: 14px 7px;
@@ -3574,14 +3528,9 @@ textarea.input {
   }
 
   .sidebar:hover,
-  .sidebar:focus-within,
-  .sidebar-pinned .sidebar {
+  .sidebar:focus-within {
     padding: 14px 12px;
     width: 220px;
-  }
-
-  .sidebar-toggle {
-    width: 40px;
   }
 
   .sidebar a {

@@ -324,21 +324,6 @@ const tourCatalog: Record<string, TourStep[]> = {
       placement: "bottom",
       primaryLabel: "Finish"
     }
-  ],
-  "/learning-science": [
-    {
-      route: "/learning-science",
-      section: "Learning Science",
-      title: "The page explains why Fydor works",
-      description: "This page summarizes the memory principles behind the review flow.",
-      details: [
-        "Retrieval practice and spaced repetition are the main ideas behind the review loop.",
-        "The Start Review button takes you back into the practice flow."
-      ],
-      targetSelectors: ['[data-tour="learning-science-start"]', '[data-tour="learning-science-page"]'],
-      placement: "left",
-      primaryLabel: "Finish"
-    }
   ]
 };
 
@@ -352,8 +337,7 @@ const defaultScopes: Record<string, string> = {
   "/fydor-exchange": "/fydor-exchange",
   "/study/imported-content": "/study/imported-content",
   "/study/fill-blank": "/study/fill-blank",
-  "/study/multiple-choice": "/study/multiple-choice",
-  "/learning-science": "/learning-science"
+  "/study/multiple-choice": "/study/multiple-choice"
 };
 
 export function getTourSteps(scope: string) {

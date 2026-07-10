@@ -1,16 +1,20 @@
 import { Download, Globe2, RefreshCw, Search } from "lucide-react";
 import { useEffect, useState } from "react";
-import { installPublishedLesson } from "@/lib/desktopApi";
-import { downloadPublishedLesson, listPublishedLessons, type PublishedLessonSummary } from "@/lib/public-library";
+import type { KeyboardEvent } from "react";
+import { useNavigate } from "react-router-dom";
+import { LESSON_IMPORT_DRAFT_KEY } from "@/components/admin-imports/lesson-import-utils";
 import { errorMessage } from "@/lib/errors";
+import { downloadPublishedLesson, listPublishedLessons, type PublishedLessonSummary } from "@/lib/public-library";
+import { writeLocal } from "@/lib/storage";
 
-export function PublicLessonLibrary({ onInstalled }: { onInstalled: () => Promise<void> }) {
+export function PublicLessonLibrary() {
+  const navigate = useNavigate();
   const [lessons, setLessons] = useState<PublishedLessonSummary[]>([]);
   const [query, setQuery] = useState("");
   const [language, setLanguage] = useState("");
   const [level, setLevel] = useState("");
   const [loading, setLoading] = useState(true);
-  const [installingId, setInstallingId] = useState<string | null>(null);
+  const [openingId, setOpeningId] = useState<string | null>(null);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
 
@@ -22,9 +26,15 @@ export function PublicLessonLibrary({ onInstalled }: { onInstalled: () => Promis
         setLessons(result.lessons);
         setStatus(result.lessons.length ? `${result.lessons.length} published lesson${result.lessons.length === 1 ? "" : "s"}.` : "No published lessons are available yet.");
       })
-      .catch((cause) => { if (!cancelled) setError(errorMessage(cause, "Unable to reach the Fydor lesson library.")); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
+      .catch((cause) => {
+        if (!cancelled) setError(errorMessage(cause, "Unable to reach the Fydor lesson library."));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function load() {
@@ -41,8 +51,8 @@ export function PublicLessonLibrary({ onInstalled }: { onInstalled: () => Promis
     }
   }
 
-  async function install(lesson: PublishedLessonSummary) {
-    setInstallingId(lesson.id);
+  async function openImportScreen(lesson: PublishedLessonSummary) {
+    setOpeningId(lesson.id);
     setError("");
     setStatus("");
     try {
@@ -50,20 +60,25 @@ export function PublicLessonLibrary({ onInstalled }: { onInstalled: () => Promis
       if (envelope.checksum !== lesson.checksum || envelope.manifest.checksum !== lesson.checksum) {
         throw new Error("The lesson metadata changed during download. Refresh the library and try again.");
       }
-      const result = await installPublishedLesson({
-        stableLessonId: lesson.id,
-        lessonVersion: lesson.lessonVersion,
-        checksum: envelope.checksum,
-        source: JSON.stringify(envelope.lesson)
-      });
-      await onInstalled();
-      const label = result.status === "already_installed" ? "Already installed" : result.status === "updated" ? "Lesson updated" : "Lesson installed";
-      setStatus(`${label}: ${lesson.title}.${result.warning ? ` ${result.warning}` : ""}`);
+
+      const { schemaVersion: _schemaVersion, ...lessonSource } = envelope.lesson;
+      writeLocal(LESSON_IMPORT_DRAFT_KEY, JSON.stringify(lessonSource, null, 2));
+      navigate("/fydor-exchange/import");
     } catch (cause) {
-      setError(errorMessage(cause, "Unable to install this published lesson."));
+      setError(errorMessage(cause, "Unable to prepare this published lesson for import."));
     } finally {
-      setInstallingId(null);
+      setOpeningId(null);
     }
+  }
+
+  function openFromCard(lesson: PublishedLessonSummary) {
+    void openImportScreen(lesson);
+  }
+
+  function onCardKeyDown(event: KeyboardEvent<HTMLElement>, lesson: PublishedLessonSummary) {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    void openImportScreen(lesson);
   }
 
   return (
@@ -72,7 +87,7 @@ export function PublicLessonLibrary({ onInstalled }: { onInstalled: () => Promis
         <Globe2 size={20} />
         <div>
           <h2>Published Lesson Library</h2>
-          <p className="muted">Browse administrator-published lessons. Every download is checksum-verified and validated again before local import.</p>
+          <p className="muted">Browse administrator-published lessons. Each card shows the key pack data and can send the lesson straight into the import screen.</p>
         </div>
       </div>
       <div className="exchange-filter-row">
@@ -85,12 +100,38 @@ export function PublicLessonLibrary({ onInstalled }: { onInstalled: () => Promis
       {status ? <p className="muted">{status}</p> : null}
       <div className="public-lesson-grid">
         {lessons.map((lesson) => (
-          <article className="exchange-pack-row" key={lesson.id}>
-            <div className="exchange-pack-row-top"><div><h3>{lesson.title}</h3><p className="muted">{lesson.description}</p></div><span className="pill status-new">Published</span></div>
-            <div className="exchange-stat-row"><span>{lesson.targetLanguage} → {lesson.baseLanguage}</span><span>{lesson.level}</span><span>{lesson.sentenceCount} sentences</span><span>v{lesson.lessonVersion}</span><span>{lesson.license}</span></div>
+          <article
+            className="exchange-pack-row exchange-public-card"
+            key={lesson.id}
+            role="button"
+            tabIndex={0}
+            onClick={() => openFromCard(lesson)}
+            onKeyDown={(event) => onCardKeyDown(event, lesson)}
+          >
+            <div className="exchange-pack-row-top">
+              <div>
+                <h3>{lesson.title}</h3>
+                <p className="muted">{lesson.description}</p>
+              </div>
+              <span className="pill status-new">Published</span>
+            </div>
+            <div className="exchange-stat-row">
+              <span>{lesson.targetLanguage} → {lesson.baseLanguage}</span>
+              <span>{lesson.level}</span>
+              <span>{lesson.sentenceCount} sentences</span>
+              <span>v{lesson.lessonVersion}</span>
+              <span>{lesson.license}</span>
+            </div>
+            <div className="exchange-stat-row">
+              <span>Updated {new Date(lesson.updatedAt).toLocaleDateString()}</span>
+              <span>{lesson.compatibility}</span>
+            </div>
             {lesson.tags.length ? <div className="inline-tags">{lesson.tags.map((tag) => <span className="tag-chip static" key={tag}>{tag}</span>)}</div> : null}
             <p className="published-checksum" title={lesson.checksum}>SHA-256 {lesson.checksum}</p>
-            <button className="button" type="button" disabled={installingId !== null} onClick={() => void install(lesson)}><Download size={17} />{installingId === lesson.id ? "Verifying and installing…" : "Download and install"}</button>
+            <button className="button" type="button" disabled={openingId !== null} onClick={(event) => { event.stopPropagation(); void openImportScreen(lesson); }}>
+              <Download size={17} />
+              {openingId === lesson.id ? "Preparing import…" : "Download and open import"}
+            </button>
           </article>
         ))}
       </div>

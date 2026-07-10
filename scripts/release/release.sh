@@ -9,6 +9,7 @@
 set -u
 cd "$(dirname "$0")/../.." || exit 1
 export PATH="/opt/homebrew/opt/llvm/bin:/opt/homebrew/bin:$PATH"
+. scripts/release/env.sh
 
 DO_MAC=1
 DO_WIN=1
@@ -23,6 +24,8 @@ for arg in "$@"; do
 done
 
 echo "== Checking prerequisites =="
+check_release_env
+echo "desktop release origin: $FYDOR_RELEASE_WEB_ORIGIN"
 MISSING=0
 if [ "$DO_MAC" = 1 ]; then
   for tool in codesign hdiutil; do
