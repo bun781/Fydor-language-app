@@ -1,17 +1,17 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  Archive,
   Download,
   FileUp,
-  Filter,
   PackageCheck,
   PackageOpen,
-  Search,
   Upload
 } from "lucide-react";
 import { countSentences, estimatePackSize, type FydorPack, type FydorPackValidation } from "@/lib/fydor-pack";
 import type { StudyLessonMeta } from "@/lib/imported-content/types";
-import type { DuplicateMode, ExchangePackMetadata, InstalledPackRecord, InstallSummary } from "./FydorExchangePage";
+import type { DuplicateMode, ExchangePackMetadata, InstallSummary } from "./FydorExchangePage";
+
+type ExchangeStep = 1 | 2;
 
 export function InstallPackSection({
   packSource,
@@ -42,6 +42,8 @@ export function InstallPackSection({
   onDuplicateModeChange: (mode: DuplicateMode) => void;
   onInstall: () => void;
 }) {
+  const [step, setStep] = useState<ExchangeStep>(1);
+
   return (
     <section className="card stack exchange-section install-pack-section" data-tour="exchange-install">
       <div className="exchange-section-heading">
@@ -52,55 +54,77 @@ export function InstallPackSection({
         </div>
       </div>
 
-      <div className="exchange-actions">
-        <label className="button secondary">
-          <Upload size={18} />
-          Select file
-          <input className="hidden-input" type="file" accept=".fydorpack,application/json,.json" onChange={(event) => onReadFile(event.target.files?.[0])} />
-        </label>
-        <button className="button secondary" type="button" onClick={onPreviewPack}>
-          <PackageOpen size={18} />
-          Preview pack
-        </button>
-      </div>
+      <StepHeader activeStep={step} labels={["Pack data", "Lessons"]} />
 
-      <label className="field">
-        <span>Advanced pack data</span>
-        <textarea
-          className="input code-input exchange-pack-input"
-          value={packSource}
-          placeholder="Paste Fydor Pack data here."
-          onChange={(event) => onPackSourceChange(event.target.value)}
-        />
-      </label>
+      {step === 1 ? (
+        <div className="exchange-step-panel">
+          <div className="exchange-actions">
+            <label className="button secondary">
+              <Upload size={18} />
+              Select file
+              <input className="hidden-input" type="file" accept=".fydorpack,application/json,.json" onChange={(event) => onReadFile(event.target.files?.[0])} />
+            </label>
+            <button className="button secondary" type="button" onClick={onPreviewPack}>
+              <PackageOpen size={18} />
+              Preview pack
+            </button>
+          </div>
 
-      {packPreview?.pack ? (
-        <PackPreview
-          validation={packPreview}
-          duplicateIndexes={duplicateIndexes}
-          selectedLessons={selectedInstallLessons}
-          duplicateMode={duplicateMode}
-          installing={installing}
-          onToggleLesson={onToggleLesson}
-          onDuplicateModeChange={onDuplicateModeChange}
-          onInstall={onInstall}
-        />
+          <label className="field">
+            <span>Advanced pack data</span>
+            <textarea
+              className="input code-input exchange-pack-input"
+              value={packSource}
+              placeholder="Paste Fydor Pack data here."
+              onChange={(event) => onPackSourceChange(event.target.value)}
+            />
+          </label>
+
+          <div className="community-step-actions">
+            <span />
+            <button className="button" type="button" disabled={!packPreview?.pack} onClick={() => setStep(2)}>
+              Next: Lessons
+            </button>
+          </div>
+        </div>
       ) : null}
 
-      {installSummary ? (
-        <section className="exchange-summary">
-          <h3>Install Summary</h3>
-          <div className="exchange-stat-row">
-            <span><strong>{installSummary.installed}</strong> installed</span>
-            <span><strong>{installSummary.skipped}</strong> skipped</span>
-            <span><strong>{installSummary.replaced}</strong> replaced</span>
-            <span><strong>{installSummary.sentenceCount}</strong> sentences</span>
+      {step === 2 ? (
+        <div className="exchange-step-panel">
+          {packPreview?.pack ? (
+            <PackPreview
+              validation={packPreview}
+              duplicateIndexes={duplicateIndexes}
+              selectedLessons={selectedInstallLessons}
+              duplicateMode={duplicateMode}
+              installing={installing}
+              onToggleLesson={onToggleLesson}
+              onDuplicateModeChange={onDuplicateModeChange}
+              onInstall={onInstall}
+            />
+          ) : null}
+
+          {installSummary ? (
+            <section className="exchange-summary">
+              <h3>Install Summary</h3>
+              <div className="exchange-stat-row">
+                <span><strong>{installSummary.installed}</strong> installed</span>
+                <span><strong>{installSummary.skipped}</strong> skipped</span>
+                <span><strong>{installSummary.replaced}</strong> replaced</span>
+                <span><strong>{installSummary.sentenceCount}</strong> sentences</span>
+              </div>
+              <div className="exchange-actions">
+                <Link className="button secondary" to="/lessons/manage">Go to Lessons</Link>
+                <Link className="button" to="/review">Start Review</Link>
+              </div>
+            </section>
+          ) : null}
+
+          <div className="community-step-actions">
+            <button className="button secondary" type="button" onClick={() => setStep(1)}>Back</button>
+            <span />
           </div>
-          <div className="exchange-actions">
-            <Link className="button secondary" to="/lessons/manage">Go to Lessons</Link>
-            <Link className="button" to="/review">Start Review</Link>
-          </div>
-        </section>
+        </div>
       ) : null}
     </section>
   );
@@ -139,6 +163,8 @@ export function SharePackSection({
   onExportAll: () => void;
   onPublishSelected: () => void;
 }) {
+  const [step, setStep] = useState<ExchangeStep>(1);
+
   return (
     <section className="card stack exchange-section share-pack-section" data-tour="exchange-share">
       <div className="exchange-section-heading">
@@ -149,182 +175,128 @@ export function SharePackSection({
         </div>
       </div>
 
-      <div className="exchange-select-all">
-        <button className="button secondary" type="button" disabled={lessonsLoading || lessons.length === 0} onClick={onSelectAll}>
-          Select all lessons
-        </button>
-        <button className="button secondary" type="button" disabled={selectedLessonIds.size === 0} onClick={onClearSelection}>
-          Clear
-        </button>
-      </div>
+      <StepHeader activeStep={step} labels={["Lessons", "Pack data"]} />
 
-      <div className="exchange-lesson-picker">
-        {lessonsLoading ? <p className="muted">Loading lessons...</p> : null}
-        {!lessonsLoading && lessons.length === 0 ? <p className="muted">No lessons yet. Create or install a lesson before exporting a pack.</p> : null}
-        {lessons.map((lesson) => (
-          <label className="exchange-check-row" key={lesson.id}>
-            <input type="checkbox" checked={selectedLessonIds.has(lesson.id)} onChange={() => onToggleLesson(lesson.id)} />
-            <span>
-              <strong>{lesson.title}</strong>
-              <small>{lesson.sentenceCount} sentences · {lesson.language} to {lesson.baseLanguage}</small>
-            </span>
-          </label>
-        ))}
-      </div>
-
-      <div className="exchange-meta-grid">
-        <label className="field">
-          <span>Pack title</span>
-          <input className="input" value={metadata.title} onChange={(event) => onMetadataChange({ ...metadata, title: event.target.value })} />
-        </label>
-        <label className="field">
-          <span>Version</span>
-          <input className="input" value={metadata.version} onChange={(event) => onMetadataChange({ ...metadata, version: event.target.value })} />
-        </label>
-        <label className="field exchange-wide-field">
-          <span>Description</span>
-          <textarea className="input small-textarea" value={metadata.description} onChange={(event) => onMetadataChange({ ...metadata, description: event.target.value })} />
-        </label>
-        <label className="field">
-          <span>Author</span>
-          <input className="input" value={metadata.author} onChange={(event) => onMetadataChange({ ...metadata, author: event.target.value })} />
-        </label>
-        <label className="field">
-          <span>Organization</span>
-          <input className="input" value={metadata.organization} onChange={(event) => onMetadataChange({ ...metadata, organization: event.target.value })} />
-        </label>
-        <label className="field">
-          <span>License</span>
-          <input className="input" value={metadata.license} onChange={(event) => onMetadataChange({ ...metadata, license: event.target.value })} />
-        </label>
-        <label className="field">
-          <span>Tags</span>
-          <input className="input" value={metadata.tags} placeholder="hsk, beginner" onChange={(event) => onMetadataChange({ ...metadata, tags: event.target.value })} />
-        </label>
-      </div>
-
-      <div className="exchange-actions">
-        <button className="button secondary" type="button" disabled={exporting || publishing || selectedLessonIds.size === 0} onClick={onBuildPreview}>
-          <PackageCheck size={18} />
-          {exporting ? "Building..." : "Show preview"}
-        </button>
-        <button className="button" type="button" disabled={exporting || publishing || selectedLessonIds.size === 0} onClick={onExportSelected}>
-          <Download size={18} />
-          Export selected
-        </button>
-        <button className="button secondary" type="button" disabled={exporting || publishing || lessons.length === 0} onClick={onExportAll}>
-          Export all
-        </button>
-        <button className="button secondary" type="button" disabled={exporting || publishing || selectedLessonIds.size === 0} onClick={onPublishSelected}>
-          <Upload size={18} />
-          {publishing ? "Publishing..." : "Publish selected"}
-        </button>
-      </div>
-
-      {exportPreview ? (
-        <section className="exchange-summary">
-          <h3>Export Preview</h3>
-          <div className="exchange-stat-row">
-            <span><strong>{exportPreview.title}</strong></span>
-            <span>{exportPreview.lessons.length} lessons</span>
-            <span>{countSentences(exportPreview.lessons)} sentences</span>
-            <span>{exportPreview.language} to {exportPreview.baseLanguage}</span>
-            <span>{estimatePackSize(exportPreview)}</span>
+      {step === 1 ? (
+        <div className="exchange-step-panel">
+          <div className="exchange-select-all">
+            <button className="button secondary" type="button" disabled={lessonsLoading || lessons.length === 0} onClick={onSelectAll}>
+              Select all lessons
+            </button>
+            <button className="button secondary" type="button" disabled={selectedLessonIds.size === 0} onClick={onClearSelection}>
+              Clear
+            </button>
           </div>
-        </section>
+
+          <div className="exchange-lesson-picker">
+            {lessonsLoading ? <p className="muted">Loading lessons...</p> : null}
+            {!lessonsLoading && lessons.length === 0 ? <p className="muted">No lessons yet. Create or install a lesson before exporting a pack.</p> : null}
+            {lessons.map((lesson) => (
+              <label className="exchange-check-row" key={lesson.id}>
+                <input type="checkbox" checked={selectedLessonIds.has(lesson.id)} onChange={() => onToggleLesson(lesson.id)} />
+                <span>
+                  <strong>{lesson.title}</strong>
+                  <small>{lesson.sentenceCount} sentences · {lesson.language} to {lesson.baseLanguage}</small>
+                </span>
+              </label>
+            ))}
+          </div>
+
+          <div className="community-step-actions">
+            <span />
+            <button className="button" type="button" disabled={selectedLessonIds.size === 0} onClick={() => setStep(2)}>
+              Next: Pack data
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {step === 2 ? (
+        <div className="exchange-step-panel">
+          <div className="exchange-meta-grid">
+            <label className="field">
+              <span>Pack title</span>
+              <input className="input" value={metadata.title} onChange={(event) => onMetadataChange({ ...metadata, title: event.target.value })} />
+            </label>
+            <label className="field">
+              <span>Version</span>
+              <input className="input" value={metadata.version} onChange={(event) => onMetadataChange({ ...metadata, version: event.target.value })} />
+            </label>
+            <label className="field exchange-wide-field">
+              <span>Description</span>
+              <textarea className="input small-textarea" value={metadata.description} onChange={(event) => onMetadataChange({ ...metadata, description: event.target.value })} />
+            </label>
+            <label className="field">
+              <span>Author</span>
+              <input className="input" value={metadata.author} onChange={(event) => onMetadataChange({ ...metadata, author: event.target.value })} />
+            </label>
+            <label className="field">
+              <span>Organization</span>
+              <input className="input" value={metadata.organization} onChange={(event) => onMetadataChange({ ...metadata, organization: event.target.value })} />
+            </label>
+            <label className="field">
+              <span>License</span>
+              <input className="input" value={metadata.license} onChange={(event) => onMetadataChange({ ...metadata, license: event.target.value })} />
+            </label>
+            <label className="field">
+              <span>Tags</span>
+              <input className="input" value={metadata.tags} placeholder="hsk, beginner" onChange={(event) => onMetadataChange({ ...metadata, tags: event.target.value })} />
+            </label>
+          </div>
+
+          <div className="exchange-actions">
+            <button className="button secondary" type="button" disabled={exporting || publishing || selectedLessonIds.size === 0} onClick={onBuildPreview}>
+              <PackageCheck size={18} />
+              {exporting ? "Building..." : "Show preview"}
+            </button>
+            <button className="button" type="button" disabled={exporting || publishing || selectedLessonIds.size === 0} onClick={onExportSelected}>
+              <Download size={18} />
+              Export selected
+            </button>
+            <button className="button secondary" type="button" disabled={exporting || publishing || lessons.length === 0} onClick={onExportAll}>
+              Export all
+            </button>
+            <button className="button secondary" type="button" disabled={exporting || publishing || selectedLessonIds.size === 0} onClick={onPublishSelected}>
+              <Upload size={18} />
+              {publishing ? "Publishing..." : "Publish selected"}
+            </button>
+          </div>
+
+          {exportPreview ? (
+            <section className="exchange-summary">
+              <h3>Export Preview</h3>
+              <div className="exchange-stat-row">
+                <span><strong>{exportPreview.title}</strong></span>
+                <span>{exportPreview.lessons.length} lessons</span>
+                <span>{countSentences(exportPreview.lessons)} sentences</span>
+                <span>{exportPreview.language} to {exportPreview.baseLanguage}</span>
+                <span>{estimatePackSize(exportPreview)}</span>
+              </div>
+            </section>
+          ) : null}
+
+          <div className="community-step-actions">
+            <button className="button secondary" type="button" onClick={() => setStep(1)}>Back</button>
+            <span />
+          </div>
+        </div>
       ) : null}
     </section>
   );
 }
 
-export function MyPacksSection({
-  installedPacks,
-  filteredInstalledPacks,
-  packLanguages,
-  packLevels,
-  packSearch,
-  packLanguage,
-  packLevel,
-  onSearchChange,
-  onLanguageChange,
-  onLevelChange
-}: {
-  installedPacks: InstalledPackRecord[];
-  filteredInstalledPacks: InstalledPackRecord[];
-  packLanguages: string[];
-  packLevels: string[];
-  packSearch: string;
-  packLanguage: string;
-  packLevel: string;
-  onSearchChange: (value: string) => void;
-  onLanguageChange: (value: string) => void;
-  onLevelChange: (value: string) => void;
-}) {
+function StepHeader({ activeStep, labels }: { activeStep: ExchangeStep; labels: [string, string] }) {
   return (
-    <section className="card stack exchange-section exchange-my-packs" data-tour="exchange-library">
-      <div className="exchange-section-heading">
-        <Archive size={20} />
-        <div>
-          <h2>My Packs</h2>
-          <p className="muted">Manage installed lesson packs.</p>
-        </div>
-      </div>
-
-      <div className="exchange-filter-row">
-        <label className="exchange-search">
-          <Search size={16} />
-          <input value={packSearch} placeholder="Search packs" onChange={(event) => onSearchChange(event.target.value)} />
-        </label>
-        <label className="exchange-select-filter">
-          <Filter size={16} />
-          <select value={packLanguage} onChange={(event) => onLanguageChange(event.target.value)}>
-            <option value="all">All languages</option>
-            {packLanguages.map((language) => <option key={language} value={language}>{language}</option>)}
-          </select>
-        </label>
-        <select className="input exchange-level-select" value={packLevel} onChange={(event) => onLevelChange(event.target.value)}>
-          <option value="all">All levels</option>
-          {packLevels.map((level) => <option key={level} value={level}>{level === "none" ? "No level" : level}</option>)}
-        </select>
-      </div>
-
-      {installedPacks.length === 0 ? (
-        <div className="exchange-empty">
-          <h3>No installed packs yet</h3>
-          <p className="muted">Installed pack metadata will appear here after you preview and install a Fydor Pack.</p>
-        </div>
-      ) : null}
-
-      <div className="exchange-pack-list">
-        {filteredInstalledPacks.map((pack) => (
-          <article className="exchange-pack-row" key={`${pack.id}-${pack.installedAt}`}>
-            <div className="exchange-pack-row-top">
-              <div>
-                <h3>{pack.title}</h3>
-                <p className="muted">
-                  {pack.author || pack.organization ? [pack.author, pack.organization].filter(Boolean).join(", ") : "Unknown author"} · v{pack.version}
-                </p>
-              </div>
-              <span className="pill">{pack.language} to {pack.baseLanguage}</span>
-            </div>
-            {pack.description ? <p>{pack.description}</p> : null}
-            <div className="exchange-stat-row">
-              <span>{pack.lessonTitles.length} lessons</span>
-              <span>{pack.sentenceCount} sentences</span>
-              {pack.level ? <span>{pack.level}</span> : null}
-              {pack.license ? <span>{pack.license}</span> : null}
-            </div>
-            {pack.tags.length ? <div className="inline-tags">{pack.tags.map((tag) => <span className="tag-chip static" key={tag}>{tag}</span>)}</div> : null}
-            <details className="exchange-pack-lessons">
-              <summary>Lessons in this pack</summary>
-              <ul>
-                {pack.lessonTitles.map((title) => <li key={title}>{title}</li>)}
-              </ul>
-            </details>
-          </article>
-        ))}
-      </div>
-    </section>
+    <ol className="community-stepper exchange-stepper" aria-label="Exchange steps">
+      {labels.map((label, index) => {
+        const step = (index + 1) as ExchangeStep;
+        return (
+          <li key={label} className={activeStep === step ? "active" : activeStep > step ? "complete" : ""} aria-current={activeStep === step ? "step" : undefined}>
+            <span>{step}</span>{label}
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 

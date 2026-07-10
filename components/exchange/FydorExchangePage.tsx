@@ -15,29 +15,11 @@ import {
 import type { StudyLessonMeta } from "@/lib/imported-content/types";
 import type { LessonImportInput } from "@/lib/language/types";
 import { publishFydorPack } from "@/lib/public-library";
-import { readLocal, readSessionProgress, writeLocal, writeSessionProgress } from "@/lib/storage";
+import { readSessionProgress, writeSessionProgress } from "@/lib/storage";
 import { z } from "zod";
-import { InstallPackSection, MyPacksSection, SharePackSection } from "./ExchangeSections";
+import { InstallPackSection, SharePackSection } from "./ExchangeSections";
 
 export type DuplicateMode = "skip" | "replace" | "keep";
-
-export interface InstalledPackRecord {
-  id: string;
-  title: string;
-  description?: string;
-  author?: string;
-  organization?: string;
-  version: string;
-  license?: string;
-  language: string;
-  baseLanguage: string;
-  level?: string;
-  tags: string[];
-  installedAt: string;
-  lessonTitles: string[];
-  lessonIds: string[];
-  sentenceCount: number;
-}
 
 export interface ExchangePackMetadata {
   title: string;
@@ -58,12 +40,7 @@ const installSummarySchema = z.object({
 });
 export type InstallSummary = z.infer<typeof installSummarySchema>;
 
-const INSTALLED_PACKS_KEY = "fydor.exchange.installedPacks.v1";
 const EXCHANGE_PROGRESS_KEY = "fydor.exchange.workspace";
-
-const installedPacksSchema = z.array(z.custom<InstalledPackRecord>((value) => (
-  Boolean(value) && typeof value === "object"
-)));
 
 const exchangeProgressSchema = z.object({
   packSource: z.string(),
@@ -80,10 +57,7 @@ const exchangeProgressSchema = z.object({
     version: z.string(),
     license: z.string(),
     tags: z.string()
-  }),
-  packSearch: z.string(),
-  packLanguage: z.string(),
-  packLevel: z.string()
+  })
 });
 type ExchangeProgress = z.infer<typeof exchangeProgressSchema>;
 
@@ -96,7 +70,6 @@ export function FydorExchangePage() {
   const [savedProgress] = useState(() => readSessionProgress(EXCHANGE_PROGRESS_KEY, exchangeProgressSchema));
   const [lessons, setLessons] = useState<StudyLessonMeta[]>([]);
   const [lessonsLoading, setLessonsLoading] = useState(true);
-  const [installedPacks, setInstalledPacks] = useState<InstalledPackRecord[]>([]);
   const [packSource, setPackSource] = useState(savedProgress?.packSource ?? emptyPackSource);
   const [packPreview, setPackPreview] = useState<FydorPackValidation | null>(() => (
     savedProgress?.packSource ? parseFydorPack(savedProgress.packSource) : null
@@ -124,13 +97,9 @@ export function FydorExchangePage() {
     license: "CC BY",
     tags: ""
   });
-  const [packSearch, setPackSearch] = useState(savedProgress?.packSearch ?? "");
-  const [packLanguage, setPackLanguage] = useState(savedProgress?.packLanguage ?? "all");
-  const [packLevel, setPackLevel] = useState(savedProgress?.packLevel ?? "all");
 
   useEffect(() => {
     refreshLessons();
-    setInstalledPacks(readInstalledPacks());
   }, []);
 
   useEffect(() => {
@@ -141,12 +110,9 @@ export function FydorExchangePage() {
       installSummary,
       status,
       selectedLessonIds: [...selectedLessonIds],
-      metadata,
-      packSearch,
-      packLanguage,
-      packLevel
+      metadata
     } satisfies ExchangeProgress);
-  }, [duplicateMode, installSummary, metadata, packLanguage, packLevel, packSearch, packSource, selectedInstallLessons, selectedLessonIds, status]);
+  }, [duplicateMode, installSummary, metadata, packSource, selectedInstallLessons, selectedLessonIds, status]);
 
   const existingLessonByKey = useMemo(() => {
     const map = new Map<string, StudyLessonMeta>();
@@ -167,25 +133,6 @@ export function FydorExchangePage() {
     });
     return duplicates;
   }, [existingLessonByKey, packPreview]);
-
-  const filteredInstalledPacks = useMemo(() => {
-    const query = packSearch.trim().toLowerCase();
-    return installedPacks.filter((pack) => {
-      const matchesQuery = !query || [
-        pack.title,
-        pack.author,
-        pack.organization,
-        pack.tags.join(" "),
-        pack.lessonTitles.join(" ")
-      ].filter(Boolean).join(" ").toLowerCase().includes(query);
-      const matchesLanguage = packLanguage === "all" || pack.language === packLanguage;
-      const matchesLevel = packLevel === "all" || (pack.level ?? "none") === packLevel;
-      return matchesQuery && matchesLanguage && matchesLevel;
-    });
-  }, [installedPacks, packLanguage, packLevel, packSearch]);
-
-  const packLanguages = Array.from(new Set(installedPacks.map((pack) => pack.language))).sort();
-  const packLevels = Array.from(new Set(installedPacks.map((pack) => pack.level ?? "none"))).sort();
 
   async function refreshLessons() {
     setLessonsLoading(true);
@@ -260,9 +207,6 @@ export function FydorExchangePage() {
       sentenceCount: 0,
       details: []
     };
-    const installedLessonTitles: string[] = [];
-    const installedLessonIds: string[] = [];
-
     try {
       for (const { lesson, index } of lessonsToInstall) {
         const existing = existingLessonByKey.get(lessonKey(lesson));
@@ -278,8 +222,6 @@ export function FydorExchangePage() {
           summary.replaced += 1;
           summary.sentenceCount += lesson.sentences.length;
           summary.details.push(`Replaced ${lesson.title}.`);
-          installedLessonTitles.push(lesson.title);
-          installedLessonIds.push(existing.id);
           continue;
         }
 
@@ -289,40 +231,9 @@ export function FydorExchangePage() {
         summary.installed += result.lessonCreated || result.sentencesImported > 0 ? 1 : 0;
         summary.sentenceCount += lessonForImport.sentences.length;
         summary.details.push(`Installed ${lessonForImport.title}.`);
-        installedLessonTitles.push(lessonForImport.title);
       }
 
-      const refreshedLessons = await getLessons();
-      setLessons(refreshedLessons);
-      const refreshedByKey = new Map(refreshedLessons.map((lesson) => [
-        lessonKey({ title: lesson.title, language: lesson.language, baseLanguage: lesson.baseLanguage }),
-        lesson
-      ]));
-      installedLessonIds.push(...installedLessonTitles
-        .map((title) => refreshedByKey.get(lessonKey({ title, language: pack.language, baseLanguage: pack.baseLanguage }))?.id)
-        .filter((id): id is string => Boolean(id)));
-
-      if (installedLessonTitles.length) {
-        const nextPacks = upsertInstalledPack(installedPacks, {
-          id: pack.id,
-          title: pack.title,
-          description: pack.description,
-          author: pack.author?.name,
-          organization: pack.author?.organization,
-          version: pack.version,
-          license: pack.license,
-          language: pack.language,
-          baseLanguage: pack.baseLanguage,
-          level: pack.level,
-          tags: pack.tags ?? [],
-          installedAt: new Date().toISOString(),
-          lessonTitles: Array.from(new Set(installedLessonTitles)),
-          lessonIds: Array.from(new Set(installedLessonIds)),
-          sentenceCount: summary.sentenceCount
-        });
-        setInstalledPacks(nextPacks);
-        writeInstalledPacks(nextPacks);
-      }
+      setLessons(await getLessons());
 
       setInstallSummary(summary);
       setStatus("Pack install complete.");
@@ -490,18 +401,6 @@ export function FydorExchangePage() {
             onPublishSelected={() => void publishSelectedPack()}
           />
         ) : null}
-        <MyPacksSection
-          installedPacks={installedPacks}
-          filteredInstalledPacks={filteredInstalledPacks}
-          packLanguages={packLanguages}
-          packLevels={packLevels}
-          packSearch={packSearch}
-          packLanguage={packLanguage}
-          packLevel={packLevel}
-          onSearchChange={setPackSearch}
-          onLanguageChange={setPackLanguage}
-          onLevelChange={setPackLevel}
-        />
       </div>
     </AppShell>
   );
@@ -523,17 +422,4 @@ function copyLessonTitle(lesson: LessonImportInput, index: number): LessonImport
 
 function splitTags(value: string): string[] {
   return value.split(",").map((tag) => tag.trim()).filter(Boolean);
-}
-
-function readInstalledPacks(): InstalledPackRecord[] {
-  return readLocal(INSTALLED_PACKS_KEY, installedPacksSchema) ?? [];
-}
-
-function writeInstalledPacks(packs: InstalledPackRecord[]) {
-  writeLocal(INSTALLED_PACKS_KEY, packs);
-}
-
-function upsertInstalledPack(packs: InstalledPackRecord[], nextPack: InstalledPackRecord): InstalledPackRecord[] {
-  const existing = packs.filter((pack) => pack.id !== nextPack.id);
-  return [nextPack, ...existing];
 }

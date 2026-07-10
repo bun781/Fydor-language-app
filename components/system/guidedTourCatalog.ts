@@ -251,7 +251,7 @@ const tourCatalog: Record<string, TourStep[]> = {
         "Open a published lesson to inspect its metadata and sentences.",
         "The library can send a lesson directly to the install screen."
       ],
-      targetSelectors: ['[data-tour="exchange-hub-library"]'],
+      targetSelectors: ['[data-tour="exchange-public-library"]'],
       placement: "bottom"
     },
     {
@@ -279,19 +279,7 @@ const tourCatalog: Record<string, TourStep[]> = {
         "Duplicate handling decides whether old lessons are skipped, replaced, or kept."
       ],
       targetSelectors: ['[data-tour="exchange-install"]'],
-      placement: "bottom"
-    },
-    {
-      route: "/fydor-exchange/import",
-      section: "Fydor Exchange",
-      title: "Review installed packs",
-      description: "My Packs keeps track of pack metadata already installed on this device.",
-      details: [
-        "Search by pack title, author, organization, tags, or included lessons.",
-        "Use this view to see what is already available locally."
-      ],
-      targetSelectors: ['[data-tour="exchange-library"]'],
-      placement: "top",
+      placement: "bottom",
       primaryLabel: "Finish"
     }
   ],
@@ -306,19 +294,7 @@ const tourCatalog: Record<string, TourStep[]> = {
         "Build a preview to check the pack before sharing it."
       ],
       targetSelectors: ['[data-tour="exchange-share"]'],
-      placement: "bottom"
-    },
-    {
-      route: "/fydor-exchange/export",
-      section: "Fydor Exchange",
-      title: "Review installed packs",
-      description: "My Packs keeps track of pack metadata already installed on this device.",
-      details: [
-        "Search by pack title, author, organization, tags, or included lessons.",
-        "Use this view to see what is already available locally."
-      ],
-      targetSelectors: ['[data-tour="exchange-library"]'],
-      placement: "top",
+      placement: "bottom",
       primaryLabel: "Finish"
     }
   ],

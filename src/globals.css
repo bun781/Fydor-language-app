@@ -2499,10 +2499,6 @@ textarea.input {
   align-content: start;
 }
 
-.exchange-my-packs {
-  grid-column: 1 / -1;
-}
-
 .exchange-public-library {
   grid-column: 1 / -1;
 }
@@ -2615,8 +2611,7 @@ textarea.input {
   padding: 3px 8px;
 }
 
-.exchange-lesson-picker,
-.exchange-pack-list {
+.exchange-lesson-picker {
   display: grid;
   gap: 8px;
   max-height: min(42vh, 420px);
@@ -2665,6 +2660,15 @@ textarea.input {
   display: grid;
   gap: 12px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.exchange-stepper {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.exchange-step-panel {
+  display: grid;
+  gap: 12px;
 }
 
 .share-pack-section {
@@ -3605,7 +3609,6 @@ textarea.input {
     grid-template-columns: 1fr;
   }
 
-  .exchange-my-packs,
   .exchange-public-library,
   .exchange-wide-field {
     grid-column: auto;

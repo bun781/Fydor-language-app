@@ -3,7 +3,6 @@ import { AppShell } from "@/components/AppShell";
 import LessonImportsPage from "@/components/admin-imports/LessonImportsPage";
 import { ExchangeHubPage } from "@/components/exchange/ExchangeHubPage";
 import { FydorExchangePage } from "@/components/exchange/FydorExchangePage";
-import { PublicLibraryPage } from "@/components/exchange/PublicLibraryPage";
 import { ImportedContentWorkspace } from "@/components/imported-content/ImportedContentWorkspace";
 import { ReadingWorkspace } from "@/components/reading/ReadingWorkspace";
 import { CommunityWorkspace } from "@/components/community/CommunityWorkspace";
@@ -19,7 +18,7 @@ export function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/lessons/manage" replace />} />
           <Route path="/lessons/manage" element={<LessonImportsPage initialMode="lessons" />} />
-          <Route path="/library" element={<PublicLibraryPage />} />
+          <Route path="/library" element={<Navigate to="/fydor-exchange" replace />} />
           <Route path="/admin/imports" element={<LessonImportsPage />} />
           <Route path="/fydor-exchange" element={<ExchangeHubPage />} />
           <Route path="/fydor-exchange/import" element={<FydorExchangePage />} />
