@@ -20,7 +20,7 @@ export function App() {
           <Route path="/lessons/manage" element={<LessonImportsPage initialMode="lessons" />} />
           <Route path="/admin/imports" element={<LessonImportsPage />} />
           <Route path="/fydor-exchange" element={<ExchangeHubPage />} />
-          <Route path="/fydor-exchange/import" element={<LessonImportsPage />} />
+          <Route path="/fydor-exchange/import" element={<FydorExchangePage />} />
           <Route path="/fydor-exchange/export" element={<FydorExchangePage />} />
           <Route path="/community/contribute" element={<CommunityWorkspace />} />
           <Route path="/community/moderate" element={<Navigate to="/community/contribute?tab=moderate" replace />} />

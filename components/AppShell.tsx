@@ -43,7 +43,7 @@ const routeTitles: Record<string, string> = {
   "/admin/imports": "Builder",
   "/lessons/manage": "Lessons",
   "/fydor-exchange": "Fydor Exchange",
-  "/fydor-exchange/import": "Import Pack",
+  "/fydor-exchange/import": "Install Pack",
   "/fydor-exchange/export": "Export Pack",
   "/community/contribute": "Contribute",
   "/review": "Review",

@@ -335,6 +335,7 @@ const defaultScopes: Record<string, string> = {
   "/lessons/manage": "/lessons/manage::builder",
   "/review": "/review::start",
   "/fydor-exchange": "/fydor-exchange",
+  "/fydor-exchange/import": "/fydor-exchange",
   "/study/imported-content": "/study/imported-content",
   "/study/fill-blank": "/study/fill-blank",
   "/study/multiple-choice": "/study/multiple-choice"

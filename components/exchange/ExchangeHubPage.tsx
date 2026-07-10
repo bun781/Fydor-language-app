@@ -1,6 +1,7 @@
 import { Boxes, Download, Send, Upload } from "lucide-react";
 import { Link } from "react-router-dom";
 import { AppShell } from "@/components/AppShell";
+import { PublicLessonLibrary } from "./PublicLessonLibrary";
 
 export function ExchangeHubPage() {
   return (
@@ -15,23 +16,25 @@ export function ExchangeHubPage() {
         </header>
 
         <div className="exchange-actions">
-          <Link className="button secondary" to="/fydor-exchange/import">Import pack</Link>
+          <Link className="button secondary" to="/fydor-exchange/import">Install pack</Link>
           <Link className="button secondary" to="/fydor-exchange/export">Export back</Link>
           <Link className="button secondary" to="/community/contribute">Contribute</Link>
         </div>
+
+        <PublicLessonLibrary />
 
         <section className="grid grid-3 exchange-hub-grid">
           <article className="card stack exchange-hub-card">
             <div className="exchange-section-heading">
               <Upload size={20} />
               <div>
-                <h2>Import Pack</h2>
-                <p className="muted">Open the lesson import screen and bring in a published lesson or shared pack.</p>
+                <h2>Install Pack</h2>
+                <p className="muted">Open the install pack screen and bring in a published lesson or shared pack.</p>
               </div>
             </div>
             <Link className="button" to="/fydor-exchange/import">
               <Download size={18} />
-              Go to import
+              Go to install
             </Link>
           </article>
 

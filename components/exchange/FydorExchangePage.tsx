@@ -1,6 +1,6 @@
 import { CheckCircle2, PackageOpen } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { AppShell } from "@/components/AppShell";
 import { exportLesson, getLessons, importLesson, updateLesson } from "@/lib/desktopApi";
 import { errorMessage } from "@/lib/errors";
@@ -18,7 +18,6 @@ import { publishFydorPack } from "@/lib/public-library";
 import { readLocal, readSessionProgress, writeLocal, writeSessionProgress } from "@/lib/storage";
 import { z } from "zod";
 import { InstallPackSection, MyPacksSection, SharePackSection } from "./ExchangeSections";
-import { PublicLessonLibrary } from "./PublicLessonLibrary";
 
 export type DuplicateMode = "skip" | "replace" | "keep";
 
@@ -91,6 +90,9 @@ type ExchangeProgress = z.infer<typeof exchangeProgressSchema>;
 const emptyPackSource = "";
 
 export function FydorExchangePage() {
+  const { pathname } = useLocation();
+  const isInstallRoute = pathname === "/fydor-exchange/import";
+  const isExportRoute = pathname === "/fydor-exchange/export";
   const [savedProgress] = useState(() => readSessionProgress(EXCHANGE_PROGRESS_KEY, exchangeProgressSchema));
   const [lessons, setLessons] = useState<StudyLessonMeta[]>([]);
   const [lessonsLoading, setLessonsLoading] = useState(true);
@@ -431,7 +433,7 @@ export function FydorExchangePage() {
         </div>
         <div className="exchange-actions">
           <Link className="button secondary" to="/fydor-exchange">Exchange home</Link>
-          <Link className="button secondary" to="/fydor-exchange/import">Import pack</Link>
+          <Link className="button secondary" to="/fydor-exchange/import">Install pack</Link>
           <Link className="button secondary" to="/community/contribute">Contribute</Link>
         </div>
       </div>
@@ -452,39 +454,42 @@ export function FydorExchangePage() {
       ) : null}
 
       <div className="exchange-grid">
-        <PublicLessonLibrary />
-        <InstallPackSection
-          packSource={packSource}
-          packPreview={packPreview}
-          duplicateIndexes={duplicateIndexes}
-          selectedInstallLessons={selectedInstallLessons}
-          duplicateMode={duplicateMode}
-          installing={installing}
-          installSummary={installSummary}
-          onReadFile={readFile}
-          onPreviewPack={() => previewPack()}
-          onPackSourceChange={updatePackSource}
-          onToggleLesson={toggleInstallLesson}
-          onDuplicateModeChange={setDuplicateMode}
-          onInstall={installSelectedLessons}
-        />
-        <SharePackSection
-          lessons={lessons}
-          lessonsLoading={lessonsLoading}
-          selectedLessonIds={selectedLessonIds}
-          metadata={metadata}
-          exporting={exporting}
-          publishing={publishing}
-          exportPreview={exportPreview}
-          onSelectAll={selectAllLessons}
-          onClearSelection={clearSelectedLessons}
-          onToggleLesson={toggleExportLesson}
-          onMetadataChange={updateMetadata}
-          onBuildPreview={() => void buildExportPreview()}
-          onExportSelected={() => void exportSelectedPack()}
-          onExportAll={() => void exportSelectedPack(new Set(lessons.map((lesson) => lesson.id)))}
-          onPublishSelected={() => void publishSelectedPack()}
-        />
+        {!isExportRoute ? (
+          <InstallPackSection
+            packSource={packSource}
+            packPreview={packPreview}
+            duplicateIndexes={duplicateIndexes}
+            selectedInstallLessons={selectedInstallLessons}
+            duplicateMode={duplicateMode}
+            installing={installing}
+            installSummary={installSummary}
+            onReadFile={readFile}
+            onPreviewPack={() => previewPack()}
+            onPackSourceChange={updatePackSource}
+            onToggleLesson={toggleInstallLesson}
+            onDuplicateModeChange={setDuplicateMode}
+            onInstall={installSelectedLessons}
+          />
+        ) : null}
+        {!isInstallRoute ? (
+          <SharePackSection
+            lessons={lessons}
+            lessonsLoading={lessonsLoading}
+            selectedLessonIds={selectedLessonIds}
+            metadata={metadata}
+            exporting={exporting}
+            publishing={publishing}
+            exportPreview={exportPreview}
+            onSelectAll={selectAllLessons}
+            onClearSelection={clearSelectedLessons}
+            onToggleLesson={toggleExportLesson}
+            onMetadataChange={updateMetadata}
+            onBuildPreview={() => void buildExportPreview()}
+            onExportSelected={() => void exportSelectedPack()}
+            onExportAll={() => void exportSelectedPack(new Set(lessons.map((lesson) => lesson.id)))}
+            onPublishSelected={() => void publishSelectedPack()}
+          />
+        ) : null}
         <MyPacksSection
           installedPacks={installedPacks}
           filteredInstalledPacks={filteredInstalledPacks}
