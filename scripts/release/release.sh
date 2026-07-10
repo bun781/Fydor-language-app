@@ -8,6 +8,7 @@
 #   scripts/release/release.sh --mac-only | --windows-only
 set -u
 cd "$(dirname "$0")/../.." || exit 1
+export PATH="/opt/homebrew/opt/llvm/bin:/opt/homebrew/bin:$PATH"
 
 DO_MAC=1
 DO_WIN=1

@@ -35,6 +35,10 @@ fi
 cd "$WEBSITE" || exit 1
 shasum -a 256 "${STAGE[@]}"
 git add "${STAGE[@]}"
+if git diff --cached --quiet; then
+  echo "OK unchanged $(git rev-parse --short HEAD): ${STAGE[*]}"
+  exit 0
+fi
 git commit -m "Update desktop downloads" >/tmp/fydor-publish.log 2>&1
 if [ $? -ne 0 ]; then
   echo "FAIL git commit failed (see /tmp/fydor-publish.log)"

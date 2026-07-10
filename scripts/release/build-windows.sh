@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# Cross-compiles the Windows binary and bundles it with NSIS. Prints one final line:
+# Cross-compiles the unsigned Windows binary and bundles it with NSIS. Prints one final line:
 #   OK <path-to-exe>
 # or
 #   FAIL <reason>   (see .codex/skills/fydor-release-publisher/references/fydor-release-troubleshooting.md)
 set -u
 cd "$(dirname "$0")/../.." || exit 1
+export PATH="/opt/homebrew/opt/llvm/bin:/opt/homebrew/bin:$PATH"
 
 TARGET="x86_64-pc-windows-msvc"
 for tool in cargo-xwin llvm-rc makensis; do
