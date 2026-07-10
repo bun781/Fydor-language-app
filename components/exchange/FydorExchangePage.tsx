@@ -103,6 +103,11 @@ export function FydorExchangePage() {
   }, []);
 
   useEffect(() => {
+    if (lessonsLoading) return;
+    setSelectedLessonIds((current) => filterSelectedLessonIds(current, lessons));
+  }, [lessons, lessonsLoading]);
+
+  useEffect(() => {
     writeSessionProgress(EXCHANGE_PROGRESS_KEY, {
       packSource,
       duplicateMode,
@@ -273,8 +278,16 @@ export function FydorExchangePage() {
   }
 
   async function buildExportPreview(ids = selectedLessonIds) {
-    if (!ids.size) {
+    if (lessonsLoading) {
+      setErrors(["Lessons are still loading. Try again in a moment."]);
+      return null;
+    }
+
+    const exportIds = filterSelectedLessonIds(ids, lessons);
+    if (!exportIds.size) {
       setErrors(["Select one or more lessons to export."]);
+      setSelectedLessonIds(new Set());
+      setExportPreview(null);
       return null;
     }
 
@@ -282,7 +295,8 @@ export function FydorExchangePage() {
     setErrors([]);
     setStatus("");
     try {
-      const exportedLessons = await Promise.all([...ids].map((lessonId) => exportLesson(lessonId)));
+      if (exportIds.size !== ids.size) setSelectedLessonIds(exportIds);
+      const exportedLessons = await Promise.all([...exportIds].map((lessonId) => exportLesson(lessonId)));
       const pack = createFydorPack({
         title: metadata.title,
         description: metadata.description,
@@ -422,4 +436,9 @@ function copyLessonTitle(lesson: LessonImportInput, index: number): LessonImport
 
 function splitTags(value: string): string[] {
   return value.split(",").map((tag) => tag.trim()).filter(Boolean);
+}
+
+export function filterSelectedLessonIds(selectedIds: Set<string>, lessons: Pick<StudyLessonMeta, "id">[]): Set<string> {
+  const lessonIds = new Set(lessons.map((lesson) => lesson.id));
+  return new Set([...selectedIds].filter((lessonId) => lessonIds.has(lessonId)));
 }

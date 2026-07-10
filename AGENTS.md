@@ -1,5 +1,13 @@
 # AGENTS.md — Fydor (Habitz) Coding Agent Guide
 
+## Default application target
+
+Unless the user explicitly specifies the website, `fydor-website`, or another
+nested project, interpret project requests as changes to the Fydor desktop app
+in this repository. Inspect and modify the desktop app first; do not infer that
+a request belongs to the website merely because website files are open in the
+IDE or mentioned in context.
+
 Fydor is a local-first language-learning desktop app: a Vite + React SPA inside a Tauri shell, with all persistence in SQLite via Rust commands. There is no web server and no server-side database — `vite build` emits a static bundle to `dist/` that Tauri serves. Routing is client-side via React Router's `HashRouter` (hash URLs work from a single static `index.html` without server rewrites).
 
 ## Repository Overview
