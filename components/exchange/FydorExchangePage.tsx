@@ -2,7 +2,7 @@ import { CheckCircle2, PackageOpen } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { AppShell } from "@/components/AppShell";
-import { exportLesson, getLessons, importLesson, updateLesson } from "@/lib/desktopApi";
+import { exportLesson, getLessons, importLesson, saveFydorPack, updateLesson } from "@/lib/desktopApi";
 import { errorMessage } from "@/lib/errors";
 import {
   createFydorPack,
@@ -323,14 +323,12 @@ export function FydorExchangePage() {
   async function exportSelectedPack(ids = selectedLessonIds) {
     const pack = exportPreview && ids === selectedLessonIds ? exportPreview : await buildExportPreview(ids);
     if (!pack) return;
-    const blob = new Blob([JSON.stringify(pack, null, 2)], { type: "application/json" });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${slugifyPackTitle(pack.title)}.fydorpack`;
-    link.click();
-    window.URL.revokeObjectURL(url);
-    setStatus(`Exported ${pack.title}.`);
+    const savedPath = await saveFydorPack(
+      `${slugifyPackTitle(pack.title)}.fydorpack`,
+      JSON.stringify(pack, null, 2)
+    );
+    if (!savedPath) return;
+    setStatus(`Exported ${pack.title} to ${savedPath}.`);
   }
 
   async function publishSelectedPack(ids = selectedLessonIds) {

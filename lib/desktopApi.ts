@@ -99,6 +99,10 @@ export async function installPublishedLesson(input: {
   return invoke("install_published_lesson", input);
 }
 
+export async function saveFydorPack(suggestedName: string, source: string): Promise<string | null> {
+  return invoke("save_fydor_pack", { suggestedName, source });
+}
+
 export async function openGenerationDestination(
   destination: "chatgpt" | "claude" | "contributor",
   sourceLessonId?: string
