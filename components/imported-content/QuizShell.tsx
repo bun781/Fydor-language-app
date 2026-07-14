@@ -3,6 +3,9 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import type { StudyLessonMeta } from "@/lib/imported-content/types";
+import type { StudyPackMeta } from "@/lib/imported-content/types";
+import type { StudyScope } from "@/lib/studyScope";
+import { StudyScopePicker } from "@/components/study/StudyScopePicker";
 import type { QuizScore, SavedTestResult, TestMode, TestStatus } from "./quizSession";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { PastQuizResults } from "./PastQuizResults";
@@ -34,6 +37,7 @@ export function QuizHeader({ title, badge, selectedCount, poolSize, score, statu
 
 export function QuizSetupPanel({
   availableLessons, selectedLessonIds, toggleLesson,
+  packs, studyScope, onStudyScopeChange,
   questionCountText, maxQuestions, onQuestionCountChange, onQuestionCountBlur,
   testMode, setTestMode,
   extraControls,
@@ -44,6 +48,9 @@ export function QuizSetupPanel({
   availableLessons: StudyLessonMeta[];
   selectedLessonIds: Set<string>;
   toggleLesson: (id: string) => void;
+  packs?: StudyPackMeta[];
+  studyScope?: StudyScope;
+  onStudyScopeChange?: (scope: StudyScope) => void;
   questionCountText: string;
   maxQuestions: number;
   onQuestionCountChange: (text: string) => void;
@@ -73,10 +80,14 @@ export function QuizSetupPanel({
         </div>
       </div>
 
+      {packs?.length && studyScope && onStudyScopeChange ? (
+        <StudyScopePicker packs={packs} lessons={availableLessons} scope={studyScope} onChange={onStudyScopeChange} />
+      ) : null}
+
       <div className="test-setup-grid">
         <div className="stack">
           <span className="cloze-context-label">Lessons</span>
-          <div className="test-lesson-list">
+          <div className="test-lesson-list" style={packs?.length && studyScope ? { display: "none" } : undefined}>
             {availableLessons.map((item) => (
               <label className="test-check-row" key={item.id}>
                 <input type="checkbox" checked={selectedLessonIds.has(item.id)} onChange={() => toggleLesson(item.id)} />

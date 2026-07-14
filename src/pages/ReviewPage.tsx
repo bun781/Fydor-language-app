@@ -4,22 +4,28 @@ import { AppShell } from "@/components/AppShell";
 import { ReviewDeck } from "@/components/review/ReviewDeck";
 import { PageState } from "@/components/system/PageState";
 import { errorMessage } from "@/lib/errors";
-import { getItemReviewTargets, getLessonCached, getLessons, getReviewQueue, resetReviewProgress } from "@/lib/desktopApi";
+import { getItemReviewTargets, getLessonCached, getLessons, getPacks, getReviewQueue, resetReviewProgress } from "@/lib/desktopApi";
 import { readSessionProgress, writeSessionProgress } from "@/lib/storage";
-import type { StudyLesson, StudyLessonMeta } from "@/lib/imported-content/types";
+import type { StudyLesson, StudyLessonMeta, StudyPackMeta } from "@/lib/imported-content/types";
+import { defaultStudyScope, resolveStudyScope, studyScopeSchema, type StudyScope } from "@/lib/studyScope";
 import type { ReviewItemTarget, ReviewResetScope, ReviewSentence } from "@/lib/review/types";
 import { z } from "zod";
 
 const REVIEW_SELECTION_KEY = "review.selected-lessons";
 
-const reviewSelectionSchema = z.object({ lessonIds: z.array(z.string()) });
+const reviewSelectionSchema = z.object({
+  scope: studyScopeSchema.optional(),
+  lessonIds: z.array(z.string()).optional()
+});
 
 export default function ReviewPage() {
   const [sentences, setSentences] = useState<ReviewSentence[]>([]);
   const [itemTargets, setItemTargets] = useState<ReviewItemTarget[]>([]);
   const [lessons, setLessons] = useState<StudyLessonMeta[]>([]);
+  const [packs, setPacks] = useState<StudyPackMeta[]>([]);
   const [fullLessons, setFullLessons] = useState<StudyLesson[]>([]);
   const [selectedLessonIds, setSelectedLessonIds] = useState<string[]>([]);
+  const [studyScope, setStudyScope] = useState<StudyScope>(defaultStudyScope(true));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const filteredSentences = useMemo(
@@ -37,18 +43,22 @@ export default function ReviewPage() {
   useEffect(() => {
     let cancelled = false;
 
-    Promise.all([getReviewQueue(), getLessons(), loadItemTargets()])
-      .then(([queue, lessonList, targets]) => {
+    Promise.all([getReviewQueue(), getLessons(), getPacks(), loadItemTargets()])
+      .then(([queue, lessonList, packList, targets]) => {
         if (cancelled) return;
         setItemTargets(targets);
         const availableLessonIds = getAvailableLessonIds(queue, lessonList);
         const savedSelection = readSessionProgress(REVIEW_SELECTION_KEY, reviewSelectionSchema);
-        const restoredLessonIds = savedSelection
-          ? savedSelection.lessonIds.filter((id) => availableLessonIds.includes(id))
-          : [];
+        const restoredScope = savedSelection?.scope ?? (savedSelection?.lessonIds ? {
+          ...defaultStudyScope(false),
+          lessonIds: savedSelection.lessonIds
+        } : defaultStudyScope(true));
+        const restoredLessonIds = resolveStudyScope(restoredScope, lessonList, packList).filter((id) => availableLessonIds.includes(id));
 
         setSentences(queue);
         setLessons(lessonList);
+        setPacks(packList);
+        setStudyScope(restoredScope);
         setSelectedLessonIds(restoredLessonIds.length ? restoredLessonIds : availableLessonIds);
 
         // Full lesson bodies are only needed by the stats browser; load them without blocking first paint.
@@ -98,12 +108,20 @@ export default function ReviewPage() {
           fullLessons={filterLessonsByLesson(fullLessons, selectedLessonIds)}
           sentenceCountByLesson={sentenceCountByLesson}
           selectedLessonIds={selectedLessonIds}
+          packs={packs}
+          studyScope={studyScope}
           sentences={filteredSentences}
           items={filteredItemTargets}
           onResetProgress={handleResetProgress}
           onSelectedLessonIdsChange={(lessonIds) => {
             setSelectedLessonIds(lessonIds);
-            writeSessionProgress(REVIEW_SELECTION_KEY, { lessonIds });
+            writeSessionProgress(REVIEW_SELECTION_KEY, { lessonIds, scope: { ...defaultStudyScope(false), lessonIds } });
+          }}
+          onStudyScopeChange={(scope) => {
+            const lessonIds = resolveStudyScope(scope, lessons, packs);
+            setStudyScope(scope);
+            setSelectedLessonIds(lessonIds);
+            writeSessionProgress(REVIEW_SELECTION_KEY, { scope });
           }}
         />
       ) : (

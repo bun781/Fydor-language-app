@@ -8,7 +8,8 @@ import {
   itemTargetToQueueEntry,
   parseReviewTargetKey,
   summarizeReviewSentences,
-  type ReviewQueueFilter
+  type ReviewQueueFilter,
+  type ReviewQueueOrder
 } from "./queue";
 import {
   buildReviewSessionSummary,
@@ -28,6 +29,7 @@ interface ReviewDeckState {
   saving: boolean;
   error: string | null;
   filter: ReviewQueueFilter;
+  queueOrder: ReviewQueueOrder;
   started: boolean;
   activeSession: {
     startedAt: Date;
@@ -43,6 +45,7 @@ interface ReviewDeckState {
 
 const reviewDecisionSchema = z.enum(["forgot", "hard", "remembered", "easy", "forgotten"]);
 const reviewQueueFilterSchema = z.enum(["mixed", "due", "new", "all"]);
+const reviewQueueOrderSchema = z.enum(["srs", "chronological", "random"]);
 
 const reviewSentenceSchema = z.object({
   id: z.string(),
@@ -67,6 +70,8 @@ const reviewSentenceSchema = z.object({
   focusMeaning: z.string().nullable().optional(),
   focusExplanation: z.string().nullable().optional(),
   itemType: z.enum(["word", "grammar", "chunk"]).optional()
+  ,packPosition: z.number().nullable().optional()
+  ,lessonPosition: z.number().nullable().optional()
 });
 
 const reviewSessionEventSchema = z.object({
@@ -103,6 +108,7 @@ const reviewDeckProgressSchema = z.object({
   order: z.array(z.string()),
   position: z.number().int(),
   filter: reviewQueueFilterSchema,
+  queueOrder: reviewQueueOrderSchema.default("srs"),
   started: z.boolean(),
   activeSession: z.unknown().transform((value) => activeSessionSchema.safeParse(value).data ?? null),
   completedSession: z.unknown().transform((value) => completedSessionSchema.safeParse(value).data ?? null)
@@ -113,6 +119,7 @@ const reviewDeckProgressSchema = z.object({
   saving: false,
   error: null,
   filter: item.filter,
+  queueOrder: item.queueOrder,
   started: item.started,
   activeSession: item.activeSession,
   completedSession: item.completedSession
@@ -122,6 +129,7 @@ export interface ReviewDeckOptions {
   // Daily new-card cap remaining today; undefined means uncapped. Applied when the
   // queue is built, so it bounds "mixed" and "new" sessions but not "all" browsing.
   newLimit?: number;
+  order?: ReviewQueueOrder;
 }
 
 export function useReviewDeck(initialSentences: ReviewSentence[], options: ReviewDeckOptions = {}) {
@@ -132,6 +140,7 @@ export function useReviewDeck(initialSentences: ReviewSentence[], options: Revie
     saving: false,
     error: null,
     filter: "mixed",
+    queueOrder: options.order ?? "srs",
     started: false,
     activeSession: null,
     completedSession: null
@@ -164,23 +173,25 @@ export function useReviewDeck(initialSentences: ReviewSentence[], options: Revie
   const summary = summarizeReviewSentences(state.sentences);
 
   const newLimit = options.newLimit;
-  const startReview = useCallback((filter: ReviewQueueFilter = "mixed") => {
+  const configuredOrder = options.order ?? "srs";
+  const startReview = useCallback((filter: ReviewQueueFilter = "mixed", order: ReviewQueueOrder = configuredOrder) => {
     setState((prev) => {
       const startedAt = new Date();
-      const order = buildInterleavedReviewQueue(prev.sentences, { filter, seed: startedAt.getTime(), shuffled: true, now: startedAt, newLimit });
+      const queue = buildInterleavedReviewQueue(prev.sentences, { filter, seed: startedAt.getTime(), shuffled: order === "random", order, now: startedAt, newLimit });
 
       return {
         ...prev,
         filter,
-        started: order.length > 0,
+        queueOrder: order,
+        started: queue.length > 0,
         position: 0,
-        order,
+        order: queue,
         error: null,
-        activeSession: order.length > 0 ? { startedAt, queueIds: order, reviewed: [] } : null,
+        activeSession: queue.length > 0 ? { startedAt, queueIds: queue, reviewed: [] } : null,
         completedSession: null
       };
     });
-  }, [newLimit]);
+  }, [configuredOrder, newLimit]);
 
   const startFocusedReview = useCallback((sentenceIds: string[], label = "Targeted retry") => {
     setState((prev) => {
@@ -318,6 +329,7 @@ export function useReviewDeck(initialSentences: ReviewSentence[], options: Revie
     error: state.error,
     started: state.started,
     filter: state.filter,
+    queueOrder: state.queueOrder,
     startReview,
     startFocusedReview,
     returnToMenu,

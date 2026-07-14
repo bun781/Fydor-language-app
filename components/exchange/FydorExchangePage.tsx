@@ -2,7 +2,7 @@ import { CheckCircle2, PackageOpen } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { AppShell } from "@/components/AppShell";
-import { exportLesson, getLessons, importLesson, saveFydorPack, updateLesson } from "@/lib/desktopApi";
+import { exportLesson, getLessons, importLesson, moveLessonsToPack, saveFydorPack, updateLesson, upsertPack } from "@/lib/desktopApi";
 import { errorMessage } from "@/lib/errors";
 import {
   createFydorPack,
@@ -213,6 +213,21 @@ export function FydorExchangePage() {
       details: []
     };
     try {
+      const packRecord = await upsertPack({
+        stableId: pack.id,
+        title: pack.title,
+        description: pack.description,
+        authorName: pack.author?.name,
+        organization: pack.author?.organization,
+        authorUrl: pack.author?.url,
+        language: pack.language,
+        baseLanguage: pack.baseLanguage,
+        level: pack.level,
+        tags: pack.tags,
+        version: pack.version,
+        license: pack.license,
+        sourceType: "exchange"
+      });
       for (const { lesson, index } of lessonsToInstall) {
         const existing = existingLessonByKey.get(lessonKey(lesson));
         if (existing && duplicateMode === "skip") {
@@ -224,6 +239,7 @@ export function FydorExchangePage() {
         if (existing && duplicateMode === "replace") {
           const result = await updateLesson(existing.id, JSON.stringify(withPackSource(lesson, pack), null, 2));
           if (result.errors.length) throw new Error(result.errors.join("\n"));
+          await moveLessonsToPack([existing.id], packRecord.id);
           summary.replaced += 1;
           summary.sentenceCount += lesson.sentences.length;
           summary.details.push(`Replaced ${lesson.title}.`);
@@ -233,6 +249,7 @@ export function FydorExchangePage() {
         const lessonForImport = existing ? copyLessonTitle(lesson, index) : lesson;
         const result = await importLesson(JSON.stringify(withPackSource(lessonForImport, pack), null, 2));
         if (result.errors.length) throw new Error(result.errors.join("\n"));
+        if (result.lessonId) await moveLessonsToPack([result.lessonId], packRecord.id);
         summary.installed += result.lessonCreated || result.sentencesImported > 0 ? 1 : 0;
         summary.sentenceCount += lessonForImport.sentences.length;
         summary.details.push(`Installed ${lessonForImport.title}.`);

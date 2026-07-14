@@ -25,12 +25,17 @@ import {
   deleteLesson as deleteLessonApi,
   exportLesson as exportLessonApi,
   getLessons,
+  getPacks,
   importLesson as importLessonApi,
+  moveLessonsToPack,
   openCommunityWorkspace,
   previewLessonImport,
+  deletePack,
+  upsertPack,
+  updatePack,
   updateLesson as updateLessonApi
 } from "@/lib/desktopApi";
-import type { StudyLessonMeta } from "@/lib/imported-content/types";
+import type { StudyLessonMeta, StudyPackMeta } from "@/lib/imported-content/types";
 import type {
   LessonChunkInput,
   LessonGrammarInput,
@@ -86,6 +91,7 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
   const [importing, setImporting] = useState(false);
   const [summary, setSummary] = useState<LessonImportSummary | null>(null);
   const [lessonOptions, setLessonOptions] = useState<StudyLessonMeta[]>([]);
+  const [packOptions, setPackOptions] = useState<StudyPackMeta[]>([]);
   const [lessonsLoading, setLessonsLoading] = useState(true);
   const [targetLessonId, setTargetLessonId] = useState(savedProgress?.targetLessonId ?? "new");
   const [editorLessonId, setEditorLessonId] = useState<string | null>(savedProgress?.editorLessonId ?? null);
@@ -193,8 +199,9 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
 
   async function refreshLessons() {
     try {
-      const items = await getLessons();
+      const [items, packs] = await Promise.all([getLessons(), getPacks()]);
       setLessonOptions(items);
+      setPackOptions(packs);
     } catch (error) {
       setErrors([errorMessage(error, "Unable to load lessons.")]);
     }
@@ -402,6 +409,19 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
           setSummary(null);
           setErrors(result.errors);
           return;
+        }
+        if (result.lessonCreated && result.lessonId) {
+          const importedLesson = JSON.parse(jsonSource) as LessonImportInput;
+          const pack = await upsertPack({
+            title: `Imported · ${importedLesson.title}`,
+            description: importedLesson.description ?? "Imported lesson",
+            language: importedLesson.language,
+            baseLanguage: importedLesson.baseLanguage,
+            level: importedLesson.level,
+            tags: importedLesson.tags,
+            sourceType: "import"
+          });
+          await moveLessonsToPack([result.lessonId], pack.id);
         }
         setSummary(result);
         setStatus(shouldAppendSentenceJson ? "Sentences appended." : editorLessonId ? "Lesson updated." : lessonId ? "Sentences appended." : "Lesson saved.");
@@ -708,6 +728,7 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
       {mode === "lessons" ? (
         <LessonLibraryPanel
           lessons={lessonOptions}
+          packs={packOptions}
           loading={lessonsLoading}
           selectedLessonId={selectedLibraryLessonId}
           onSelectLesson={setSelectedLibraryLessonId}
@@ -716,6 +737,28 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
           onExportLesson={exportLessonToFile}
           onDeleteLesson={requestDeleteLesson}
           onConvertLesson={(lessonId) => void convertToContributorDraft(lessonId)}
+          onMoveLessons={async (lessonIds, packId) => {
+            await moveLessonsToPack(lessonIds, packId);
+            await refreshLessons();
+          }}
+          onCreatePack={async (title) => {
+            await upsertPack({ title, sourceType: "personal" });
+            await refreshLessons();
+          }}
+          onRenamePack={async (packId, title) => {
+            const pack = packOptions.find((item) => item.id === packId);
+            await updatePack(packId, title, pack?.description ?? "", Boolean(pack?.archived));
+            await refreshLessons();
+          }}
+          onArchivePack={async (packId, archived) => {
+            const pack = packOptions.find((item) => item.id === packId);
+            await updatePack(packId, pack?.title ?? "Pack", pack?.description ?? "", archived);
+            await refreshLessons();
+          }}
+          onDeletePack={async (packId) => {
+            await deletePack(packId);
+            await refreshLessons();
+          }}
         />
       ) : mode === "builder" ? (
         <LessonBuilderEditor

@@ -2,6 +2,7 @@
 import type { ReviewItemTarget, ReviewSentence, SentenceReviewState } from "./types";
 
 export type ReviewQueueFilter = "mixed" | "due" | "new" | "all";
+export type ReviewQueueOrder = "srs" | "chronological" | "random";
 
 export type ReviewTargetKind = "sentence" | "item";
 
@@ -27,6 +28,7 @@ export interface ReviewQueueOptions {
   // Daily new-card cap: at most this many never-graded cards enter "mixed" and "new"
   // queues. Undefined means uncapped; "all" is a full browse and ignores it.
   newLimit?: number;
+  order?: ReviewQueueOrder;
 }
 
 /**
@@ -74,32 +76,36 @@ export function buildInterleavedReviewQueue(
   const filter = options.filter ?? "mixed";
   const now = options.now ?? new Date();
   const rng = createSeededRng(options.seed ?? Date.now());
-  const shuffled = options.shuffled ?? true;
+  const shuffled = options.order === "chronological" ? false : (options.shuffled ?? true);
+  const order = options.order ?? (shuffled ? "random" : "srs");
 
   const due = uniqueSentences.filter((sentence) => isDue(sentence, now) && (sentence.repetitions ?? 0) > 0);
   const fresh = uniqueSentences.filter((sentence) => (sentence.repetitions ?? 0) === 0);
   const mastered = uniqueSentences.filter((sentence) => !isDue(sentence, now) && (sentence.repetitions ?? 0) > 0);
 
-  if (filter === "due") return orderedIds(due, rng, shuffled);
+  if (filter === "due") return orderedIds(due, rng, shuffled, order);
   if (filter === "new") {
-    const orderedFresh = ordered(fresh, rng, shuffled);
+    const orderedFresh = ordered(fresh, rng, shuffled, order);
     const limited = options.newLimit === undefined ? orderedFresh : take(orderedFresh, options.newLimit);
     return limited.map((sentence) => sentence.id);
   }
-  if (filter === "all") return orderedIds(uniqueSentences, rng, shuffled);
+  if (filter === "all") return orderedIds(uniqueSentences, rng, shuffled, order);
 
-  const duePicked = ordered(due, rng, shuffled);
+  const duePicked = ordered(due, rng, shuffled, order);
   const uncappedFreshTarget = duePicked.length ? Math.max(1, Math.ceil(duePicked.length * 0.3)) : fresh.length;
   const freshTarget = options.newLimit === undefined
     ? uncappedFreshTarget
     : Math.min(uncappedFreshTarget, Math.max(0, options.newLimit));
-  const freshPicked = take(ordered(fresh, rng, shuffled), freshTarget);
+  const freshPicked = take(ordered(fresh, rng, shuffled, order), freshTarget);
   const masteredTarget = Math.max(1, Math.ceil((duePicked.length + freshPicked.length) * 0.12));
-  const masteredPicked = take(ordered(mastered, rng, shuffled), masteredTarget);
+  const masteredPicked = take(ordered(mastered, rng, shuffled, order), masteredTarget);
   const picked = weightedMerge(duePicked, freshPicked, masteredPicked);
 
   const fallback = picked.length ? picked : uniqueSentences;
-  return avoidSameLessonRuns(ordered(fallback, rng, true)).map((sentence) => sentence.id);
+  const finalQueue = order === "chronological"
+    ? ordered(fallback, rng, false, order)
+    : avoidSameLessonRuns(ordered(fallback, rng, true, order));
+  return finalQueue.map((sentence) => sentence.id);
 }
 
 export function summarizeReviewSentences(sentences: ReviewSentence[]) {
@@ -130,12 +136,17 @@ function isDue(sentence: ReviewSentence, now: Date): boolean {
   return new Date(sentence.dueAt ?? 0).getTime() <= now.getTime();
 }
 
-function orderedIds(sentences: ReviewSentence[], rng: () => number, shuffled: boolean): string[] {
-  return ordered(sentences, rng, shuffled).map((sentence) => sentence.id);
+function orderedIds(sentences: ReviewSentence[], rng: () => number, shuffled: boolean, order: ReviewQueueOrder): string[] {
+  return ordered(sentences, rng, shuffled, order).map((sentence) => sentence.id);
 }
 
-function ordered(sentences: ReviewSentence[], rng: () => number, shuffled: boolean): ReviewSentence[] {
+function ordered(sentences: ReviewSentence[], rng: () => number, shuffled: boolean, order: ReviewQueueOrder): ReviewSentence[] {
   const sorted = [...sentences].sort((a, b) => {
+    if (order === "chronological") {
+      return (a.packPosition ?? Number.MAX_SAFE_INTEGER) - (b.packPosition ?? Number.MAX_SAFE_INTEGER)
+        || (a.lessonPosition ?? Number.MAX_SAFE_INTEGER) - (b.lessonPosition ?? Number.MAX_SAFE_INTEGER)
+        || a.id.localeCompare(b.id);
+    }
     const dueDiff = new Date(a.dueAt ?? 0).getTime() - new Date(b.dueAt ?? 0).getTime();
     if (dueDiff !== 0) return dueDiff;
     return scoreReviewSentence(a) - scoreReviewSentence(b);

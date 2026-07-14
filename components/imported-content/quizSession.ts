@@ -39,36 +39,52 @@ function useQuizLessonSelection({
   lesson,
   lessons,
   initialSelectedLessonIds,
-  canChangeSelection
+  canChangeSelection,
+  controlledSelectedLessonIds,
+  onSelectedLessonIdsChange
 }: {
   lesson: StudyLesson | null;
   lessons: StudyLessonMeta[];
   initialSelectedLessonIds: string[];
   canChangeSelection: boolean;
+  controlledSelectedLessonIds?: string[];
+  onSelectedLessonIdsChange?: (ids: string[]) => void;
 }) {
   const availableLessons = useMemo(() => (
     lessons.length ? lessons : lesson ? [lessonToMeta(lesson)] : []
   ), [lesson, lessons]);
-  const [selectedLessonIds, setSelectedLessonIds] = useState<Set<string>>(() => (
+  const [internalSelectedLessonIds, setInternalSelectedLessonIds] = useState<Set<string>>(() => (
     new Set(initialSelectedLessonIds.length ? initialSelectedLessonIds : lesson ? [lesson.id] : [])
   ));
+  const selectedLessonIds = useMemo(
+    () => new Set(controlledSelectedLessonIds ?? internalSelectedLessonIds),
+    [controlledSelectedLessonIds, internalSelectedLessonIds]
+  );
   const [loadedLessons, setLoadedLessons] = useState<StudyLesson[]>(() => (lesson ? [lesson] : []));
   const [loadingLessons, setLoadingLessons] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!availableLessons.length) {
-      setSelectedLessonIds(new Set());
+      if (controlledSelectedLessonIds === undefined) setInternalSelectedLessonIds(new Set());
       return;
     }
 
-    setSelectedLessonIds((current) => {
+    const reconcile = (current: Set<string>) => {
       const validIds = new Set(availableLessons.map((item) => item.id));
       const next = new Set([...current].filter((id) => validIds.has(id)));
       if (!next.size) next.add(lesson?.id && validIds.has(lesson.id) ? lesson.id : availableLessons[0].id);
       return next;
-    });
-  }, [availableLessons, lesson?.id]);
+    };
+    if (controlledSelectedLessonIds === undefined) {
+      setInternalSelectedLessonIds(reconcile(internalSelectedLessonIds));
+    } else if (onSelectedLessonIdsChange) {
+      const next = reconcile(selectedLessonIds);
+      if (next.size !== selectedLessonIds.size || [...next].some((id) => !selectedLessonIds.has(id))) {
+        onSelectedLessonIdsChange([...next]);
+      }
+    }
+  }, [availableLessons, controlledSelectedLessonIds, internalSelectedLessonIds, lesson?.id, onSelectedLessonIdsChange, selectedLessonIds]);
 
   useEffect(() => {
     if (!lesson) return;
@@ -107,12 +123,11 @@ function useQuizLessonSelection({
 
   function toggleLesson(lessonId: string) {
     if (!canChangeSelection) return;
-    setSelectedLessonIds((current) => {
-      const next = new Set(current);
-      if (next.has(lessonId)) next.delete(lessonId);
-      else next.add(lessonId);
-      return next;
-    });
+    const next = new Set(selectedLessonIds);
+    if (next.has(lessonId)) next.delete(lessonId);
+    else next.add(lessonId);
+    if (controlledSelectedLessonIds !== undefined) onSelectedLessonIdsChange?.([...next]);
+    else setInternalSelectedLessonIds(next);
   }
 
   return {
@@ -200,6 +215,8 @@ export function useQuizSession<TCard>(cfg: {
   isCorrect: (card: TCard, answer: string) => boolean;
   /** Choices selectable via the 1-9 keys for a card, or null when the user types instead. */
   getHotkeyChoices?: (card: TCard, deck: TCard[]) => string[] | null;
+  controlledSelectedLessonIds?: string[];
+  onSelectedLessonIdsChange?: (ids: string[]) => void;
   /** Mode-specific fields persisted alongside the base progress (memoize in the caller). */
   extraProgress?: Record<string, unknown>;
 }) {
@@ -209,7 +226,9 @@ export function useQuizSession<TCard>(cfg: {
     lesson: cfg.lesson,
     lessons: cfg.lessons,
     initialSelectedLessonIds: initialProgress?.selectedLessonIds ?? [],
-    canChangeSelection: status === "setup"
+    canChangeSelection: status === "setup",
+    controlledSelectedLessonIds: cfg.controlledSelectedLessonIds,
+    onSelectedLessonIdsChange: cfg.onSelectedLessonIdsChange
   });
   const { availableLessons, selectedLessonIds, loadedLessons, loadingLessons } = selection;
   const [questionCount, setQuestionCount] = useState(() => initialProgress?.questionCount ?? DEFAULT_QUESTION_COUNT);

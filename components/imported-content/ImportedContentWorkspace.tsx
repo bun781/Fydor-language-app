@@ -2,8 +2,12 @@ import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { PageState } from "@/components/system/PageState";
 import { errorMessage } from "@/lib/errors";
-import { getLessons } from "@/lib/desktopApi";
+import { getLessons, getPacks } from "@/lib/desktopApi";
 import type { StudyLessonMeta } from "@/lib/imported-content/types";
+import type { StudyPackMeta } from "@/lib/imported-content/types";
+import { StudyScopePicker } from "@/components/study/StudyScopePicker";
+import { defaultStudyScope, resolveStudyScope, studyScopeSchema, type StudyScope } from "@/lib/studyScope";
+import { readSessionProgress, writeSessionProgress } from "@/lib/storage";
 import { useImportedLessonBrowser } from "./useImportedLessonBrowser";
 import { ImportedContentStudy } from "./ImportedContentStudy";
 import { MultipleChoiceMode } from "./MultipleChoiceMode";
@@ -33,6 +37,8 @@ const modeContent: Record<StudyMode, { title: string; description: string }> = {
 export function ImportedContentWorkspace({ mode = "lesson" }: Props) {
   const content = modeContent[mode];
   const [allLessons, setAllLessons] = useState<StudyLessonMeta[]>([]);
+  const [packs, setPacks] = useState<StudyPackMeta[]>([]);
+  const [scope, setScope] = useState<StudyScope>(() => readSessionProgress("study.scope", studyScopeSchema) ?? defaultStudyScope(true));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,10 +46,11 @@ export function ImportedContentWorkspace({ mode = "lesson" }: Props) {
     let cancelled = false;
 
     async function loadLessons() {
-      const lessons = await getLessons();
+      const [lessons, packList] = await Promise.all([getLessons(), getPacks()]);
 
       if (!cancelled) {
         setAllLessons(lessons);
+        setPacks(packList);
       }
     }
 
@@ -60,7 +67,13 @@ export function ImportedContentWorkspace({ mode = "lesson" }: Props) {
     };
   }, []);
 
-  const browser = useImportedLessonBrowser(null, allLessons);
+  const selectedScopeLessonIds = scope.allPacks || scope.packIds.length || scope.lessonIds.length
+    ? resolveStudyScope(scope, allLessons, packs)
+    : allLessons.map((lesson) => lesson.id);
+  const browser = useImportedLessonBrowser(null, allLessons, selectedScopeLessonIds);
+  const currentScopeIndex = selectedScopeLessonIds.indexOf(browser.selectedLessonId);
+  const nextScopeLessonId = currentScopeIndex >= 0 ? selectedScopeLessonIds[currentScopeIndex + 1] : undefined;
+  const nextScopeLesson = nextScopeLessonId ? allLessons.find((lesson) => lesson.id === nextScopeLessonId) : undefined;
 
   if (loading) {
     return <PageState eyebrow="Loading" title="Loading flashcards" description="Opening your saved lessons." />;
@@ -97,6 +110,19 @@ export function ImportedContentWorkspace({ mode = "lesson" }: Props) {
           <p className="muted">{content.description}</p>
         </div>
       </div>
+
+      {mode === "lesson" && packs.length ? (
+        <StudyScopePicker
+          packs={packs}
+          lessons={allLessons}
+          scope={scope}
+          onChange={(nextScope) => {
+            setScope(nextScope);
+            writeSessionProgress("study.scope", nextScope);
+          }}
+          title="Study scope"
+        />
+      ) : null}
 
       {mode === "lesson" ? (
         <div className="lesson-selector-bar" data-tour="study-selector-bar">
@@ -137,11 +163,16 @@ export function ImportedContentWorkspace({ mode = "lesson" }: Props) {
       {browser.error ? <p className="review-error">{browser.error}</p> : null}
 
       {mode === "lesson" ? (
-        <ImportedContentStudy lesson={browser.lesson} loadingLesson={browser.loadingLesson} />
+        <ImportedContentStudy
+          lesson={browser.lesson}
+          loadingLesson={browser.loadingLesson}
+          nextLessonTitle={nextScopeLesson?.title}
+          onNextLesson={nextScopeLessonId ? () => void browser.switchLesson(nextScopeLessonId) : undefined}
+        />
       ) : mode === "fill-blank" ? (
-        <FillBlankMode lesson={browser.lesson} lessons={allLessons} />
+        <FillBlankMode lesson={browser.lesson} lessons={allLessons} packs={packs} studyScope={scope} onStudyScopeChange={(nextScope) => { setScope(nextScope); writeSessionProgress("study.scope", nextScope); }} />
       ) : (
-        <MultipleChoiceMode lesson={browser.lesson} lessons={allLessons} />
+        <MultipleChoiceMode lesson={browser.lesson} lessons={allLessons} packs={packs} studyScope={scope} onStudyScopeChange={(nextScope) => { setScope(nextScope); writeSessionProgress("study.scope", nextScope); }} />
       )}
     </div>
   );

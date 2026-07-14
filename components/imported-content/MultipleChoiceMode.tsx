@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { AudioButton } from "@/components/ui/AudioButton";
-import type { QuizQuestion, StudyLesson, StudyLessonMeta } from "@/lib/imported-content/types";
+import type { QuizQuestion, StudyLesson, StudyLessonMeta, StudyPackMeta } from "@/lib/imported-content/types";
+import type { StudyScope } from "@/lib/studyScope";
+import { resolveStudyScope } from "@/lib/studyScope";
 import { buildQuizDeck } from "@/lib/imported-content/study-utils";
 import { readSessionProgress } from "@/lib/storage";
 import { scoreSchema, useQuizSession } from "./quizSession";
@@ -17,6 +19,9 @@ import { z } from "zod";
 interface Props {
   lesson: StudyLesson | null;
   lessons?: StudyLessonMeta[];
+  packs?: StudyPackMeta[];
+  studyScope?: StudyScope;
+  onStudyScopeChange?: (scope: StudyScope) => void;
 }
 
 const RESULTS_KEY = "fydor.multiple-choice-test-results";
@@ -50,7 +55,7 @@ const multipleChoiceProgressSchema = z.object({
   submittedCards: item.submittedCards.filter((id) => item.deck.some((question) => getQuestionKey(question) === id))
 }));
 
-export function MultipleChoiceMode({ lesson, lessons = [] }: Props) {
+export function MultipleChoiceMode({ lesson, lessons = [], packs = [], studyScope, onStudyScopeChange }: Props) {
   const [initialProgress] = useState(() => readSessionProgress(PROGRESS_KEY, multipleChoiceProgressSchema));
   const quiz = useQuizSession<QuizQuestion>({
     progressKey: PROGRESS_KEY,
@@ -64,7 +69,8 @@ export function MultipleChoiceMode({ lesson, lessons = [] }: Props) {
     },
     getCardKey: getQuestionKey,
     isCorrect: (question, answer) => normalize(answer) === normalize(question.answer),
-    getHotkeyChoices: (question) => question.options ?? null
+    getHotkeyChoices: (question) => question.options ?? null,
+    controlledSelectedLessonIds: studyScope ? resolveStudyScope(studyScope, lessons, packs) : undefined
   });
   const { card: question, status, score, deck, index, activeAnswer, currentSubmitted, currentResult } = quiz;
 
@@ -92,6 +98,9 @@ export function MultipleChoiceMode({ lesson, lessons = [] }: Props) {
           availableLessons={quiz.availableLessons}
           selectedLessonIds={quiz.selectedLessonIds}
           toggleLesson={quiz.toggleLesson}
+          packs={packs}
+          studyScope={studyScope}
+          onStudyScopeChange={onStudyScopeChange}
           questionCountText={quiz.questionCountText}
           maxQuestions={quiz.maxQuestions}
           onQuestionCountChange={quiz.onQuestionCountChange}

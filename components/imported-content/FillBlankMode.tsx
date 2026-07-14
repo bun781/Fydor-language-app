@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { AudioButton } from "@/components/ui/AudioButton";
-import type { StudyLesson, StudyLessonMeta, StudySentence } from "@/lib/imported-content/types";
+import type { StudyLesson, StudyLessonMeta, StudyPackMeta, StudySentence } from "@/lib/imported-content/types";
+import type { StudyScope } from "@/lib/studyScope";
+import { resolveStudyScope } from "@/lib/studyScope";
 import { buildClozeCandidates, type ClozeCandidate } from "@/lib/imported-content/study-utils";
 import { stableShuffle } from "@/lib/imported-content/stableShuffle";
 import { answersMatch, normalizePracticeAnswer } from "@/lib/imported-content/text-spans";
@@ -19,6 +21,9 @@ import { z } from "zod";
 interface Props {
   lesson: StudyLesson | null;
   lessons?: StudyLessonMeta[];
+  packs?: StudyPackMeta[];
+  studyScope?: StudyScope;
+  onStudyScopeChange?: (scope: StudyScope) => void;
 }
 
 type AnswerMode = "type" | "choice";
@@ -86,7 +91,7 @@ const fillBlankProgressSchema = z.object({
   submittedCards: item.submittedCards.filter((id) => item.deck.some((card) => card.id === id))
 }));
 
-export function FillBlankMode({ lesson, lessons = [] }: Props) {
+export function FillBlankMode({ lesson, lessons = [], packs = [], studyScope, onStudyScopeChange }: Props) {
   const [initialProgress] = useState(() => readSessionProgress(PROGRESS_KEY, fillBlankProgressSchema));
   const [answerMode, setAnswerMode] = useState<AnswerMode>(() => initialProgress?.answerMode ?? "choice");
   const extraProgress = useMemo(() => ({ answerMode }), [answerMode]);
@@ -104,6 +109,7 @@ export function FillBlankMode({ lesson, lessons = [] }: Props) {
       const choices = buildChoices(card.candidate.answerText, deck);
       return choices.length >= 2 ? choices : null;
     },
+    controlledSelectedLessonIds: studyScope ? resolveStudyScope(studyScope, lessons, packs) : undefined,
     extraProgress
   });
   const { card, status, score, deck, index, activeAnswer, currentSubmitted, currentResult } = quiz;
@@ -141,6 +147,9 @@ export function FillBlankMode({ lesson, lessons = [] }: Props) {
           availableLessons={quiz.availableLessons}
           selectedLessonIds={quiz.selectedLessonIds}
           toggleLesson={quiz.toggleLesson}
+          packs={packs}
+          studyScope={studyScope}
+          onStudyScopeChange={onStudyScopeChange}
           questionCountText={quiz.questionCountText}
           maxQuestions={quiz.maxQuestions}
           onQuestionCountChange={quiz.onQuestionCountChange}

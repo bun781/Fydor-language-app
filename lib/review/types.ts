@@ -33,6 +33,8 @@ export interface ReviewSentence {
   focusExplanation?: string | null;
   // Set only on entries derived from a ReviewItemTarget ("item:<id>" queue keys).
   itemType?: "word" | "grammar" | "chunk";
+  packPosition?: number | null;
+  lessonPosition?: number | null;
 }
 
 // Aggregated review history and mastery counters for the progress layer (streaks,

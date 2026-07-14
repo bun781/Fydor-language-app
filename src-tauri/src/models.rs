@@ -196,6 +196,8 @@ pub struct ReviewSentence {
     pub focus_text: Option<String>,
     pub focus_meaning: Option<String>,
     pub focus_explanation: Option<String>,
+    pub pack_position: Option<i64>,
+    pub lesson_position: Option<i64>,
 }
 
 // A canonical learning item as a review target: its scheduling state (from

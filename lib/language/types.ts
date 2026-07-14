@@ -85,6 +85,7 @@ export interface LessonImportPreviewResult {
 }
 
 export interface LessonImportSummary {
+  lessonId?: string | null;
   lessonCreated: boolean;
   lessonUpdated: boolean;
   sentencesImported: number;

@@ -11,18 +11,23 @@ const SELECTED_LESSON_KEY = "selected-lesson";
 
 const selectedLessonSchema = z.object({ lessonId: z.string() });
 
-export function useImportedLessonBrowser(initialLesson: StudyLesson | null, allLessons: StudyLessonMeta[]) {
-  const languageGroups = useMemo(() => groupLessonsByLanguage(allLessons), [allLessons]);
+export function useImportedLessonBrowser(initialLesson: StudyLesson | null, allLessons: StudyLessonMeta[], allowedLessonIds?: string[]) {
+  const availableLessons = useMemo(() => {
+    if (!allowedLessonIds?.length) return allLessons;
+    const allowed = new Set(allowedLessonIds);
+    return allLessons.filter((item) => allowed.has(item.id));
+  }, [allLessons, allowedLessonIds]);
+  const languageGroups = useMemo(() => groupLessonsByLanguage(availableLessons), [availableLessons]);
   const queryLessonId = getQueryLessonId();
   const [savedSelection] = useState(() => readSessionProgress(SELECTED_LESSON_KEY, selectedLessonSchema));
   const preferredLessonId = queryLessonId ?? savedSelection?.lessonId ?? null;
   const savedLesson = preferredLessonId
-    ? allLessons.find((item) => item.id === preferredLessonId) ?? null
+    ? availableLessons.find((item) => item.id === preferredLessonId) ?? null
     : null;
   const [lesson, setLesson] = useState(initialLesson);
-  const [selectedLessonId, setSelectedLessonId] = useState(initialLesson?.id ?? savedLesson?.id ?? allLessons[0]?.id ?? "");
+  const [selectedLessonId, setSelectedLessonId] = useState(initialLesson?.id ?? savedLesson?.id ?? availableLessons[0]?.id ?? "");
   const [selectedLanguage, setSelectedLanguage] = useState(
-    initialLesson?.language ?? savedLesson?.language ?? allLessons[0]?.language ?? ""
+    initialLesson?.language ?? savedLesson?.language ?? availableLessons[0]?.language ?? ""
   );
   const [loadingLesson, setLoadingLesson] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,22 +41,22 @@ export function useImportedLessonBrowser(initialLesson: StudyLesson | null, allL
   }, [initialLesson]);
 
   useEffect(() => {
-    if (!allLessons.length) {
+    if (!availableLessons.length) {
       setLesson(null);
       setSelectedLessonId("");
       setSelectedLanguage("");
       return;
     }
 
-    if (!selectedLessonId || !allLessons.some((item) => item.id === selectedLessonId)) {
+    if (!selectedLessonId || !availableLessons.some((item) => item.id === selectedLessonId)) {
       const fallback = preferredLessonId
-        ? allLessons.find((item) => item.id === preferredLessonId) ?? allLessons[0]
-        : allLessons[0];
+        ? availableLessons.find((item) => item.id === preferredLessonId) ?? availableLessons[0]
+        : availableLessons[0];
       setSelectedLessonId(fallback.id);
       setSelectedLanguage(fallback.language);
       writeSessionProgress(SELECTED_LESSON_KEY, { lessonId: fallback.id });
     }
-  }, [allLessons, preferredLessonId, selectedLessonId]);
+  }, [availableLessons, preferredLessonId, selectedLessonId]);
 
   const activeLanguageGroup = languageGroups.find((group) => group.language === selectedLanguage) ?? languageGroups[0] ?? null;
   const languageLessons = activeLanguageGroup?.lessons ?? [];
@@ -98,7 +103,7 @@ export function useImportedLessonBrowser(initialLesson: StudyLesson | null, allL
   function switchLesson(lessonId: string) {
     setSelectedLessonId(lessonId);
     writeSessionProgress(SELECTED_LESSON_KEY, { lessonId });
-    const selectedMeta = allLessons.find((item) => item.id === lessonId);
+    const selectedMeta = availableLessons.find((item) => item.id === lessonId);
     if (selectedMeta) setSelectedLanguage(selectedMeta.language);
   }
 

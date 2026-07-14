@@ -480,9 +480,12 @@ const REVIEW_SENTENCE_SELECT: &str = r#"
       s.review_state, s.review_streak, s.reviewed_at,
       ri.due_at, ri.last_reviewed_at, ri.repetitions, ri.lapses,
       ri.difficulty, ri.stability, ri.recall_mode, ri.scheduler_engine,
-      s.focus_display_text, s.focus_meaning, s.focus_explanation
+      s.focus_display_text, s.focus_meaning, s.focus_explanation,
+      l.pack_position, ls.position
     FROM sentences s
     JOIN review_items ri ON ri.sentence_id = s.id
+    LEFT JOIN lessons l ON l.id = s.lesson_id
+    LEFT JOIN lesson_sentences ls ON ls.lesson_id = s.lesson_id AND ls.sentence_id = s.id
 "#;
 
 fn get_review_queue_inner(conn: &Connection) -> Result<Vec<ReviewSentence>> {
@@ -620,6 +623,8 @@ fn map_review_sentence(row: &rusqlite::Row<'_>) -> rusqlite::Result<ReviewSenten
         focus_text: row.get(18)?,
         focus_meaning: row.get(19)?,
         focus_explanation: row.get(20)?,
+        pack_position: row.get(21)?,
+        lesson_position: row.get(22)?,
     })
 }
 

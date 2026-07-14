@@ -6,9 +6,13 @@ import { z } from "zod";
 import { createTourScope, replayGuidedTour } from "@/components/system/GuidedTour";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import type { StudyLesson, StudyLessonMeta } from "@/lib/imported-content/types";
+import type { StudyPackMeta } from "@/lib/imported-content/types";
+import type { StudyScope } from "@/lib/studyScope";
+import { StudyScopePicker } from "@/components/study/StudyScopePicker";
 import { getReviewShortcutAction, isSpaceKey, shouldIgnoreReviewHotkey, shouldRevealOnSpaceRelease } from "@/lib/review/keyboard";
 import { localDayKey, remainingNewCards } from "@/lib/review/progress";
 import { itemTargetToQueueEntry } from "@/lib/review/queue";
+import type { ReviewQueueOrder } from "@/lib/review/queue";
 import type { ReviewItemTarget, ReviewProgressSnapshot, ReviewResetScope, ReviewSentence } from "@/lib/review/types";
 import { useReviewDeck } from "@/lib/review/useReviewDeck";
 import { ReviewControls } from "./ReviewControls";
@@ -38,12 +42,15 @@ const reviewRevealSchema = z.object({
 interface ReviewDeckProps {
   allSentenceCount?: number;
   lessons?: StudyLessonMeta[];
+  packs?: StudyPackMeta[];
+  studyScope?: StudyScope;
   fullLessons?: StudyLesson[];
   sentenceCountByLesson?: Map<string, number>;
   selectedLessonIds?: string[];
   sentences: ReviewSentence[];
   items?: ReviewItemTarget[];
   onSelectedLessonIdsChange?: (lessonIds: string[]) => void;
+  onStudyScopeChange?: (scope: StudyScope) => void;
   onResetProgress?: (scope: ReviewResetScope) => Promise<void> | void;
 }
 
@@ -55,9 +62,12 @@ export function ReviewDeck({
   allSentenceCount,
   fullLessons = [],
   lessons = [],
+  packs = [],
+  studyScope,
   sentenceCountByLesson,
   selectedLessonIds = lessons.map((lesson) => lesson.id),
   onSelectedLessonIdsChange,
+  onStudyScopeChange,
   onResetProgress
 }: ReviewDeckProps) {
   const totalSentenceCount = allSentenceCount ?? sentences.length;
@@ -88,6 +98,7 @@ export function ReviewDeck({
   } = useReviewDeck(reviewTargets, { newLimit: remainingNew });
   const [revealed, setRevealed] = useState(false);
   const [menuView, setMenuView] = useState<"start" | "statistics">("start");
+  const [queueOrder, setQueueOrder] = useState<ReviewQueueOrder>("srs");
   const [confirmResetLesson, setConfirmResetLesson] = useState(false);
   const spacePressSentenceIdRef = useRef<string | null>(null);
   const availableBreakdown = summarizeAvailableSentences(reviewTargets, remainingNew);
@@ -216,27 +227,38 @@ export function ReviewDeck({
         ) : (
           <section className="review-start-panel review-start-panel-controls">
             <div className="review-start-actions">
-              <button className="button" type="button" data-tour="review-start-mixed" onClick={() => startReview("mixed")}>
+              <button className="button" type="button" data-tour="review-start-mixed" onClick={() => startReview("mixed", queueOrder)}>
                 Start Mixed Review
               </button>
               <div className="review-filter-row" aria-label="Review filters">
-                <button className="button secondary" type="button" data-tour="review-start-due" onClick={() => startReview("due")} disabled={queueDashboard.due === 0}>Due only</button>
-                <button className="button secondary" type="button" data-tour="review-start-new" onClick={() => startReview("new")} disabled={queueDashboard.new === 0}>New only</button>
-                <button className="button secondary" type="button" onClick={() => startReview("all")}>All selected</button>
+                <button className="button secondary" type="button" data-tour="review-start-due" onClick={() => startReview("due", queueOrder)} disabled={queueDashboard.due === 0}>Due only</button>
+                <button className="button secondary" type="button" data-tour="review-start-new" onClick={() => startReview("new", queueOrder)} disabled={queueDashboard.new === 0}>New only</button>
+                <button className="button secondary" type="button" onClick={() => startReview("all", queueOrder)}>All selected</button>
                 {onResetProgress && selectedLessonIds.length ? (
                   <button className="button secondary" type="button" data-tour="review-reset-progress" onClick={() => setConfirmResetLesson(true)}>
                     <RotateCcw size={16} /> Reset Progress
                   </button>
                 ) : null}
               </div>
+              <label className="review-order-select">Order
+                <select className="input selector-compact" value={queueOrder} onChange={(event) => setQueueOrder(event.target.value as ReviewQueueOrder)}>
+                  <option value="srs">SRS recommended</option>
+                  <option value="chronological">Chronological pack order</option>
+                  <option value="random">Random</option>
+                </select>
+              </label>
             </div>
-            <ReviewLessonSelect
-              lessons={lessonOptions}
-              selectedLessonIds={selectedLessonIds}
-              sentenceCountByLesson={lessonSentenceCounts}
-              totalSentenceCount={totalSentenceCount}
-              onChange={onSelectedLessonIdsChange}
-            />
+            {studyScope && onStudyScopeChange && packs.length ? (
+              <StudyScopePicker packs={packs} lessons={lessons} scope={studyScope} onChange={onStudyScopeChange} title="Review scope" />
+            ) : (
+              <ReviewLessonSelect
+                lessons={lessonOptions}
+                selectedLessonIds={selectedLessonIds}
+                sentenceCountByLesson={lessonSentenceCounts}
+                totalSentenceCount={totalSentenceCount}
+                onChange={onSelectedLessonIdsChange}
+              />
+            )}
             <ReviewMenuActions
               statsDisabled={!onResetProgress}
               onShowStats={() => setMenuView("statistics")}
@@ -295,9 +317,9 @@ export function ReviewDeck({
           if (!completedSession?.summary.retrySentenceIds.length) return;
           startFocusedReview(completedSession.summary.retrySentenceIds, "Weak-card retry");
         }}
-        onStartDue={() => startReview("due")}
-        onStartMixed={() => startReview("mixed")}
-        onStartNew={() => startReview("new")}
+        onStartDue={() => startReview("due", queueOrder)}
+        onStartMixed={() => startReview("mixed", queueOrder)}
+        onStartNew={() => startReview("new", queueOrder)}
         onBack={handleBackToMenu}
       />
     );
@@ -342,4 +364,3 @@ export function ReviewDeck({
     </div>
   );
 }
-

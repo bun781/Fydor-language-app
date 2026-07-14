@@ -230,6 +230,17 @@ describe("review algorithm", () => {
     expect(queue).toEqual(["due-a", "new-a"]);
   });
 
+  it("orders chronological queues by pack, lesson, and sentence position", () => {
+    const chronological: ReviewSentence[] = [
+      { id: "lesson-2-sentence-1", language: "ko", text: "2", translation: "2", reviewState: "unknown", reviewStreak: 0, reviewedAt: null, packPosition: 1, lessonPosition: 0 },
+      { id: "lesson-1-sentence-2", language: "ko", text: "1b", translation: "1b", reviewState: "unknown", reviewStreak: 0, reviewedAt: null, packPosition: 0, lessonPosition: 0 },
+      { id: "lesson-1-sentence-1", language: "ko", text: "1a", translation: "1a", reviewState: "unknown", reviewStreak: 0, reviewedAt: null, packPosition: 0, lessonPosition: 0 }
+    ];
+
+    expect(buildInterleavedReviewQueue(chronological, { filter: "all", order: "chronological" }))
+      .toEqual(["lesson-1-sentence-1", "lesson-1-sentence-2", "lesson-2-sentence-1"]);
+  });
+
   it("summarizes the review state counts", () => {
     expect(summarizeReviewSentences(sentences)).toEqual({
       total: 5,

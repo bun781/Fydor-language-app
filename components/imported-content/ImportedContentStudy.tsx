@@ -16,6 +16,8 @@ import { z } from "zod";
 interface Props {
   lesson: StudyLesson | null;
   loadingLesson?: boolean;
+  nextLessonTitle?: string;
+  onNextLesson?: () => void;
 }
 
 const DEFAULT_REVEAL: RevealState = {
@@ -47,7 +49,7 @@ const flashcardProgressSchema = z.object({
 
 type FlashcardProgress = z.infer<typeof flashcardProgressSchema>;
 
-export function ImportedContentStudy({ lesson: initialLesson, loadingLesson = false }: Props) {
+export function ImportedContentStudy({ lesson: initialLesson, loadingLesson = false, nextLessonTitle, onNextLesson }: Props) {
   const [lesson, setLesson] = useState(initialLesson);
   const [cardIndex, setCardIndex] = useState(0);
   const [cardOrder, setCardOrder] = useState<string[]>(
@@ -354,6 +356,7 @@ export function ImportedContentStudy({ lesson: initialLesson, loadingLesson = fa
             >
               Random order {randomOrderEnabled ? "On" : "Off"}
             </button>
+            {onNextLesson && nextLessonTitle ? <button type="button" className="button secondary" onClick={onNextLesson}>Next lesson: {nextLessonTitle}</button> : null}
           </div>
         </section>
       ) : activeSentence ? (
@@ -431,4 +434,3 @@ function restoreFlashcardProgress(lesson: StudyLesson): FlashcardProgress | null
 function getFlashcardProgressKey(lessonId: string) {
   return `flashcards.${lessonId}`;
 }
-

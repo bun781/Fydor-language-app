@@ -4,8 +4,8 @@ import { AnnotatedSentence } from "@/components/imported-content/AnnotatedSenten
 import { PageState } from "@/components/system/PageState";
 import { AudioButton } from "@/components/ui/AudioButton";
 import { errorMessage } from "@/lib/errors";
-import { getLessonCached, getLessons } from "@/lib/desktopApi";
-import type { StudyLesson, StudyLessonMeta } from "@/lib/imported-content/types";
+import { getLessonCached, getLessons, getPacks } from "@/lib/desktopApi";
+import type { StudyLesson, StudyLessonMeta, StudyPackMeta } from "@/lib/imported-content/types";
 import {
   nextSentenceIndex,
   previousSentenceIndex,
@@ -28,6 +28,8 @@ type ReadingPosition = z.infer<typeof readingPositionSchema>;
 // touches review scheduling or grading.
 export function LessonReader() {
   const [lessons, setLessons] = useState<StudyLessonMeta[]>([]);
+  const [packs, setPacks] = useState<StudyPackMeta[]>([]);
+  const [selectedPackId, setSelectedPackId] = useState("all");
   const [lesson, setLesson] = useState<StudyLesson | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -38,10 +40,11 @@ export function LessonReader() {
 
   useEffect(() => {
     let cancelled = false;
-    getLessons()
-      .then(async (metas) => {
+    Promise.all([getLessons(), getPacks()])
+      .then(async ([metas, packList]) => {
         if (cancelled) return;
         setLessons(metas);
+        setPacks(packList);
         const saved = readSessionProgress(READING_POSITION_KEY, readingPositionSchema);
         if (saved && metas.some((meta) => meta.id === saved.lessonId)) {
           const restored = await getLessonCached(saved.lessonId);
@@ -132,8 +135,10 @@ export function LessonReader() {
   }, [sentenceIndex]);
 
   const sortedLessons = useMemo(
-    () => [...lessons].sort((a, b) => a.title.localeCompare(b.title)),
-    [lessons]
+    () => [...lessons]
+      .filter((lesson) => selectedPackId === "all" || lesson.packId === selectedPackId)
+      .sort((a, b) => (a.packPosition ?? Number.MAX_SAFE_INTEGER) - (b.packPosition ?? Number.MAX_SAFE_INTEGER) || a.title.localeCompare(b.title)),
+    [lessons, selectedPackId]
   );
 
   if (loading) {
@@ -170,7 +175,16 @@ export function LessonReader() {
     }
 
     return (
-      <div className="reading-lesson-list" role="list" aria-label="Lessons available for reading">
+      <div className="reading-library">
+        <div className="reading-pack-filter" aria-label="Reading packs">
+          <button className={selectedPackId === "all" ? "active" : ""} type="button" onClick={() => setSelectedPackId("all")}>All packs</button>
+          {packs.filter((pack) => !pack.archived).map((pack) => (
+            <button className={selectedPackId === pack.id ? "active" : ""} type="button" key={pack.id} onClick={() => setSelectedPackId(pack.id)}>
+              <span>{pack.title}</span><small>{pack.lessonCount} lessons</small>
+            </button>
+          ))}
+        </div>
+        <div className="reading-lesson-list" role="list" aria-label="Lessons available for reading">
         {sortedLessons.map((meta) => (
           <button
             key={meta.id}
@@ -188,6 +202,7 @@ export function LessonReader() {
             </span>
           </button>
         ))}
+        </div>
       </div>
     );
   }
