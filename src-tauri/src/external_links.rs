@@ -1,4 +1,4 @@
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_opener::OpenerExt;
 use url::Url;
 
@@ -13,7 +13,11 @@ pub fn open_generation_destination(
     let target = match destination.as_str() {
         "chatgpt" => "https://chatgpt.com/".to_string(),
         "claude" => "https://claude.ai/".to_string(),
-        "contributor" => contributor_url(source_lesson_id.as_deref())?,
+        "contributor" => {
+            community_url("contribute.html", "contribute", source_lesson_id.as_deref())?
+        }
+        "moderate" => community_url("moderate.html", "moderate", None)?,
+        "admin" => community_url("admin.html", "admin", None)?,
         _ => return Err("Unsupported external destination.".to_string()),
     };
     app.opener()
@@ -21,16 +25,54 @@ pub fn open_generation_destination(
         .map_err(|error| error.to_string())
 }
 
-fn contributor_url(source_lesson_id: Option<&str>) -> Result<String, String> {
+#[tauri::command]
+pub async fn open_community_workspace(
+    destination: String,
+    source_lesson_id: Option<String>,
+    app: AppHandle,
+) -> Result<(), String> {
+    let (page, fragment, title) = match destination.as_str() {
+        "contributor" => (
+            "contribute.html",
+            "contribute",
+            "Fydor Contributor Workspace",
+        ),
+        "moderate" => ("moderate.html", "moderate", "Fydor Moderation Workspace"),
+        "admin" => ("admin.html", "admin", "Fydor Administration Workspace"),
+        _ => return Err("Unsupported community workspace.".to_string()),
+    };
+    let target = Url::parse(&community_url(page, fragment, source_lesson_id.as_deref())?)
+        .map_err(|error| error.to_string())?;
+    let label = format!("community-{}", destination);
+
+    if let Some(window) = app.get_webview_window(&label) {
+        window.navigate(target).map_err(|error| error.to_string())?;
+        window.show().map_err(|error| error.to_string())?;
+        window.set_focus().map_err(|error| error.to_string())?;
+        return Ok(());
+    }
+
+    WebviewWindowBuilder::new(&app, label, WebviewUrl::External(target))
+        .title(title)
+        .inner_size(1200.0, 900.0)
+        .resizable(true)
+        .center()
+        .build()
+        .map(|_| ())
+        .map_err(|error| error.to_string())
+}
+
+fn community_url(
+    page: &str,
+    fragment: &str,
+    source_lesson_id: Option<&str>,
+) -> Result<String, String> {
     let configured = std::env::var("FYDOR_WEB_ORIGIN")
         .ok()
         .or_else(|| option_env!("FYDOR_WEB_ORIGIN").map(str::to_string))
         .unwrap_or_else(|| DEFAULT_WEB_ORIGIN.to_string());
     let mut url = validate_web_origin(&configured)?;
-    url.set_path(&format!(
-        "{}/contribute.html",
-        url.path().trim_end_matches('/')
-    ));
+    url.set_path(&format!("{}/{}", url.path().trim_end_matches('/'), page));
     if let Some(lesson_id) = source_lesson_id {
         if !is_uuid(lesson_id) {
             return Err("Invalid source lesson identifier.".to_string());
@@ -38,6 +80,7 @@ fn contributor_url(source_lesson_id: Option<&str>) -> Result<String, String> {
         url.query_pairs_mut()
             .append_pair("conversionSource", lesson_id);
     }
+    url.set_fragment(Some(fragment));
     Ok(url.to_string())
 }
 
@@ -78,5 +121,17 @@ mod tests {
         assert!(validate_web_origin("https://user:pass@example.com").is_err());
         assert!(validate_web_origin("http://localhost:8080").is_ok());
         assert!(validate_web_origin("https://preview.example.com/").is_ok());
+    }
+
+    #[test]
+    fn community_pages_are_fixed_and_conversion_ids_are_validated() {
+        let url = community_url(
+            "contribute.html",
+            "contribute",
+            Some("550e8400-e29b-41d4-a716-446655440000"),
+        )
+        .expect("valid community URL");
+        assert_eq!(url, "https://fydor.vercel.app/contribute.html?conversionSource=550e8400-e29b-41d4-a716-446655440000#contribute");
+        assert!(community_url("moderate.html", "moderate", Some("not-a-uuid")).is_err());
     }
 }

@@ -49,7 +49,8 @@ fn main() {
             review::get_review_progress,
             reading::get_reading_inputs,
             public_library::install_published_lesson,
-            external_links::open_generation_destination
+            external_links::open_generation_destination,
+            external_links::open_community_workspace
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

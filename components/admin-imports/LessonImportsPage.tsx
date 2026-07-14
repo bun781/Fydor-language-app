@@ -10,7 +10,6 @@ import {
   Upload
 } from "lucide-react";
 import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
-import { useNavigate } from "react-router-dom";
 import { AppShell } from "@/components/AppShell";
 import { LessonBuilderEditor, type ActiveAnnotation } from "@/components/admin-imports/LessonBuilderEditor";
 import { LessonLibraryPanel } from "@/components/admin-imports/LessonLibraryPanel";
@@ -27,6 +26,7 @@ import {
   exportLesson as exportLessonApi,
   getLessons,
   importLesson as importLessonApi,
+  openCommunityWorkspace,
   previewLessonImport,
   updateLesson as updateLessonApi
 } from "@/lib/desktopApi";
@@ -68,7 +68,6 @@ const LESSON_MANAGER_PROGRESS_KEY = "lesson-manager.workspace";
 
 // Chunk: editor state and data loading
 export default function LessonImportsPage({ initialMode = "builder" }: LessonImportsPageProps) {
-  const navigate = useNavigate();
   const [savedProgress] = useState(() => readSessionProgress(LESSON_MANAGER_PROGRESS_KEY, lessonManagerProgressSchema));
   const initialEditorLesson = savedProgress?.lesson ?? initialLesson;
   const [mode, setMode] = useState<WorkspaceMode>(savedProgress?.mode ?? initialMode);
@@ -536,8 +535,8 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
         }))
       };
       await navigator.clipboard.writeText(JSON.stringify(contributorLesson, null, 2));
-      navigate(`/community/contribute?sourceLessonId=${encodeURIComponent(lessonId)}`);
-      setStatus("Personal lesson copied. Continue in Fydor's contributor workspace; the original remains private and unchanged.");
+      await openCommunityWorkspace("contributor", lessonId);
+      setStatus("Personal lesson copied. Continue in the online Fydor contributor workspace; the original remains private and unchanged.");
     } catch (error) {
       setErrors([errorMessage(error, "Unable to prepare this contributor draft.")]);
     }

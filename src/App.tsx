@@ -5,7 +5,7 @@ import { ExchangeHubPage } from "@/components/exchange/ExchangeHubPage";
 import { FydorExchangePage } from "@/components/exchange/FydorExchangePage";
 import { ImportedContentWorkspace } from "@/components/imported-content/ImportedContentWorkspace";
 import { ReadingWorkspace } from "@/components/reading/ReadingWorkspace";
-import { CommunityWorkspace } from "@/components/community/CommunityWorkspace";
+import { CommunityWebsiteEntry } from "@/components/community/CommunityWebsiteEntry";
 import { ErrorBoundary } from "./ErrorBoundary";
 import ReviewPage from "./pages/ReviewPage";
 
@@ -23,9 +23,9 @@ export function App() {
           <Route path="/fydor-exchange" element={<ExchangeHubPage />} />
           <Route path="/fydor-exchange/import" element={<FydorExchangePage />} />
           <Route path="/fydor-exchange/export" element={<FydorExchangePage />} />
-          <Route path="/community/contribute" element={<CommunityWorkspace initialTab="contribute" />} />
-          <Route path="/community/moderate" element={<CommunityWorkspace initialTab="moderate" />} />
-          <Route path="/community/admin" element={<CommunityWorkspace initialTab="admin" />} />
+          <Route path="/community/contribute" element={<CommunityWebsiteEntry destination="contributor" />} />
+          <Route path="/community/moderate" element={<CommunityWebsiteEntry destination="moderate" />} />
+          <Route path="/community/admin" element={<CommunityWebsiteEntry destination="admin" />} />
           <Route path="/review" element={<ReviewPage />} />
           <Route path="/reading" element={<AppShell><ReadingWorkspace /></AppShell>} />
           <Route path="/study/imported-content" element={<AppShell><ImportedContentWorkspace /></AppShell>} />

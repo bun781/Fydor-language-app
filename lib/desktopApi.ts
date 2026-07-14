@@ -105,3 +105,10 @@ export async function openGenerationDestination(
 ): Promise<void> {
   return invoke("open_generation_destination", { destination, ...(sourceLessonId ? { sourceLessonId } : {}) });
 }
+
+export async function openCommunityWorkspace(
+  destination: "contributor" | "moderate" | "admin",
+  sourceLessonId?: string
+): Promise<void> {
+  return invoke("open_community_workspace", { destination, ...(sourceLessonId ? { sourceLessonId } : {}) });
+}
