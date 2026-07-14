@@ -1,12 +1,52 @@
 // Single point of contact between the frontend and Tauri Rust commands. All invoke() calls live here. Command name strings must match #[tauri::command] names in src-tauri/src/.
 import { invoke } from "@tauri-apps/api/core";
-import type { StudyLesson, StudyLessonMeta } from "@/lib/imported-content/types";
+import type { StudyLesson, StudyLessonMeta, StudyPackMeta } from "@/lib/imported-content/types";
 import type { LessonImportInput, LessonImportPreviewResult, LessonImportSummary } from "@/lib/language/types";
 import type { ReadingInputs } from "@/lib/reading/analyzer";
 import type { ReviewDecision, ReviewItemTarget, ReviewProgressSnapshot, ReviewResetScope, ReviewSentence } from "@/lib/review/types";
 
 export async function getLessons(): Promise<StudyLessonMeta[]> {
   return invoke("get_lessons");
+}
+
+export interface PackInput {
+  stableId?: string;
+  title: string;
+  description?: string;
+  authorName?: string;
+  organization?: string;
+  authorUrl?: string;
+  language?: string;
+  baseLanguage?: string;
+  level?: string;
+  tags?: string[];
+  version?: string;
+  license?: string;
+  sourceType?: string;
+}
+
+export async function getPacks(): Promise<StudyPackMeta[]> {
+  return invoke("get_packs");
+}
+
+export async function upsertPack(input: PackInput): Promise<StudyPackMeta> {
+  return invoke("upsert_pack", { input });
+}
+
+export async function updatePack(packId: string, title: string, description: string, archived: boolean): Promise<void> {
+  return invoke("update_pack", { packId, title, description, archived });
+}
+
+export async function moveLessonsToPack(lessonIds: string[], packId: string): Promise<void> {
+  return invoke("move_lessons_to_pack", { lessonIds, packId });
+}
+
+export async function reorderPackLessons(packId: string, lessonIds: string[]): Promise<void> {
+  return invoke("reorder_pack_lessons", { packId, lessonIds });
+}
+
+export async function deletePack(packId: string): Promise<void> {
+  return invoke("delete_pack", { packId });
 }
 
 async function getLesson(lessonId: string): Promise<StudyLesson | null> {

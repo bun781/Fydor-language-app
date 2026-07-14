@@ -5,6 +5,47 @@ use rusqlite::{Connection, OptionalExtension};
 
 // Chunk: lesson reads and export
 pub(crate) fn get_lessons_inner(conn: &Connection) -> Result<Vec<StudyLessonMeta>> {
+    if !table_exists(conn, "packs")? {
+        return get_lessons_without_packs(conn);
+    }
+    let mut stmt = conn.prepare(
+        r#"
+        SELECT l.id, l.target_language, l.base_language, l.title, l.description, l.level, l.tags,
+               COUNT(ls.sentence_id) AS sentence_count, l.purpose, l.published_stable_id, l.published_version,
+               l.pack_id, p.title, l.pack_position, COALESCE(p.archived, 0)
+        FROM lessons l
+        LEFT JOIN lesson_sentences ls ON ls.lesson_id = l.id
+        LEFT JOIN packs p ON p.id = l.pack_id
+        GROUP BY l.id
+        ORDER BY COALESCE(p.archived, 0), p.title, l.pack_position, l.imported_at DESC
+        "#,
+    )?;
+
+    let rows = stmt.query_map([], |row| {
+        Ok(StudyLessonMeta {
+            id: row.get(0)?,
+            language: row.get(1)?,
+            base_language: row.get(2)?,
+            title: row.get(3)?,
+            description: row.get(4)?,
+            level: row.get(5)?,
+            tags: db::parse_json_array(row.get(6)?),
+            sentence_count: row.get(7)?,
+            purpose: row.get(8)?,
+            published_stable_id: row.get(9)?,
+            published_version: row.get(10)?,
+            pack_id: row.get(11)?,
+            pack_title: row.get(12)?,
+            pack_position: row.get(13)?,
+            pack_archived: row.get::<_, i64>(14)? != 0,
+        })
+    })?;
+
+    rows.collect::<rusqlite::Result<Vec<_>>>()
+        .map_err(Into::into)
+}
+
+fn get_lessons_without_packs(conn: &Connection) -> Result<Vec<StudyLessonMeta>> {
     let mut stmt = conn.prepare(
         r#"
         SELECT l.id, l.target_language, l.base_language, l.title, l.description, l.level, l.tags,
@@ -29,11 +70,24 @@ pub(crate) fn get_lessons_inner(conn: &Connection) -> Result<Vec<StudyLessonMeta
             purpose: row.get(8)?,
             published_stable_id: row.get(9)?,
             published_version: row.get(10)?,
+            pack_id: None,
+            pack_title: None,
+            pack_position: None,
+            pack_archived: false,
         })
     })?;
 
     rows.collect::<rusqlite::Result<Vec<_>>>()
         .map_err(Into::into)
+}
+
+fn table_exists(conn: &Connection, table: &str) -> Result<bool> {
+    Ok(conn
+        .query_row(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?1",
+            [table],
+            |row| row.get::<_, i64>(0),
+        )? > 0)
 }
 
 pub(crate) fn get_lesson_inner(conn: &Connection, lesson_id: &str) -> Result<Option<StudyLesson>> {

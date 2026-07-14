@@ -263,6 +263,7 @@ fn reviewed_sentences_are_preserved(
 
 fn empty_summary() -> LessonImportSummary {
     LessonImportSummary {
+        lesson_id: None,
         lesson_created: false,
         lesson_updated: false,
         sentences_imported: 0,

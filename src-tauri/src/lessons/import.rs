@@ -702,6 +702,7 @@ pub(crate) fn import_plan(conn: &mut Connection, plan: ImportPlan) -> Result<Les
     tx.commit()?;
 
     Ok(LessonImportSummary {
+        lesson_id: Some(lesson_id),
         lesson_created: plan.target_lesson.is_none(),
         lesson_updated: plan.target_lesson.is_some(),
         sentences_imported,
@@ -922,6 +923,7 @@ pub(crate) fn replace_lesson(
     tx.commit()?;
 
     Ok(LessonImportSummary {
+        lesson_id: Some(lesson_id.to_string()),
         lesson_created: false,
         lesson_updated: true,
         sentences_imported,
@@ -1356,6 +1358,7 @@ fn chunk_output(chunk: &LessonChunkInput) -> LessonChunkOutput {
 
 pub(crate) fn empty_summary_with_error(error: &str) -> LessonImportSummary {
     LessonImportSummary {
+        lesson_id: None,
         lesson_created: false,
         lesson_updated: false,
         sentences_imported: 0,

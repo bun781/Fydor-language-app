@@ -7,6 +7,7 @@ mod external_links;
 mod lessons;
 mod models;
 mod normalize;
+mod packs;
 mod pack_export;
 mod public_library;
 mod reading;
@@ -51,6 +52,12 @@ fn main() {
             lessons::delete_lesson,
             lessons::preview_lesson_import,
             lessons::import_lesson,
+            packs::get_packs,
+            packs::upsert_pack,
+            packs::update_pack,
+            packs::move_lessons_to_pack,
+            packs::reorder_pack_lessons,
+            packs::delete_pack,
             review::get_review_queue,
             review::update_review_item,
             review::reset_review_progress,

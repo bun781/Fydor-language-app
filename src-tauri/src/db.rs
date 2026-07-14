@@ -287,6 +287,50 @@ pub(crate) fn migrate(conn: &Connection) -> Result<()> {
         )?;
     }
 
+    if current < 7 {
+        run_migration(
+            conn,
+            7,
+            r#"
+            CREATE TABLE packs (
+              id TEXT PRIMARY KEY,
+              stable_id TEXT NOT NULL UNIQUE,
+              title TEXT NOT NULL,
+              description TEXT,
+              author_name TEXT,
+              organization TEXT,
+              author_url TEXT,
+              language TEXT NOT NULL DEFAULT '',
+              base_language TEXT NOT NULL DEFAULT '',
+              level TEXT,
+              tags TEXT NOT NULL DEFAULT '[]',
+              version TEXT NOT NULL DEFAULT '1.0.0',
+              license TEXT,
+              source_type TEXT NOT NULL DEFAULT 'personal',
+              archived INTEGER NOT NULL DEFAULT 0 CHECK (archived IN (0, 1)),
+              created_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL
+            );
+            CREATE INDEX packs_archived_idx ON packs(archived);
+            ALTER TABLE lessons ADD COLUMN pack_id TEXT;
+            ALTER TABLE lessons ADD COLUMN pack_position INTEGER;
+            INSERT INTO packs
+              (id, stable_id, title, description, language, base_language, source_type, created_at, updated_at)
+            VALUES
+              ('personal-unsorted', 'personal-unsorted', 'Personal / Unsorted', 'Lessons without a dedicated pack.', '', '', 'personal', datetime('now'), datetime('now'));
+            UPDATE lessons
+            SET pack_id = 'personal-unsorted',
+                pack_position = (
+                  SELECT COUNT(*) FROM lessons later
+                  WHERE later.imported_at < lessons.imported_at
+                     OR (later.imported_at = lessons.imported_at AND later.id < lessons.id)
+                )
+            WHERE pack_id IS NULL;
+            CREATE INDEX lessons_pack_idx ON lessons(pack_id, pack_position);
+            "#,
+        )?;
+    }
+
     Ok(())
 }
 

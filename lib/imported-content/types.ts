@@ -10,6 +10,30 @@ export interface StudyLessonMeta {
   purpose?: "personal" | "contributor";
   publishedStableId?: string | null;
   publishedVersion?: string | null;
+  packId?: string | null;
+  packTitle?: string | null;
+  packPosition?: number | null;
+  packArchived?: boolean;
+}
+
+export interface StudyPackMeta {
+  id: string;
+  stableId: string;
+  title: string;
+  description: string | null;
+  authorName: string | null;
+  organization: string | null;
+  authorUrl: string | null;
+  language: string;
+  baseLanguage: string;
+  level: string | null;
+  tags: string[];
+  version: string;
+  license: string | null;
+  sourceType: string;
+  archived: boolean;
+  lessonCount: number;
+  sentenceCount: number;
 }
 
 export interface StudyWord {

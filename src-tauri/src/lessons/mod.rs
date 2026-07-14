@@ -4,7 +4,7 @@
 mod import;
 mod read;
 
-use crate::{db, models::*};
+use crate::{db, models::*, packs};
 pub(crate) use import::*;
 use read::*;
 use tauri::State;
@@ -44,7 +44,9 @@ pub fn update_lesson(
     let (lesson, raw_value) = parse_lesson_json(&source).map_err(|errors| errors.join("\n"))?;
     let plan = build_import_plan(&conn, lesson, raw_value, Some(lesson_id.as_str()))
         .map_err(|err| err.to_string())?;
-    replace_lesson(&mut conn, &lesson_id, plan).map_err(|err| err.to_string())
+    let summary = replace_lesson(&mut conn, &lesson_id, plan).map_err(|err| err.to_string())?;
+    packs::ensure_lesson_pack(&mut conn, &lesson_id).map_err(|err| err.to_string())?;
+    Ok(summary)
 }
 
 #[tauri::command]
@@ -83,7 +85,11 @@ pub fn import_lesson(
         ));
     }
 
-    import_plan(&mut conn, plan).map_err(|err| err.to_string())
+    let summary = import_plan(&mut conn, plan).map_err(|err| err.to_string())?;
+    if let Some(lesson_id) = summary.lesson_id.as_deref() {
+        packs::ensure_lesson_pack(&mut conn, lesson_id).map_err(|err| err.to_string())?;
+    }
+    Ok(summary)
 }
 
 #[cfg(test)]

@@ -87,6 +87,32 @@ pub struct StudyLessonMeta {
     pub purpose: String,
     pub published_stable_id: Option<String>,
     pub published_version: Option<String>,
+    pub pack_id: Option<String>,
+    pub pack_title: Option<String>,
+    pub pack_position: Option<i64>,
+    pub pack_archived: bool,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StudyPackMeta {
+    pub id: String,
+    pub stable_id: String,
+    pub title: String,
+    pub description: Option<String>,
+    pub author_name: Option<String>,
+    pub organization: Option<String>,
+    pub author_url: Option<String>,
+    pub language: String,
+    pub base_language: String,
+    pub level: Option<String>,
+    pub tags: Vec<String>,
+    pub version: String,
+    pub license: Option<String>,
+    pub source_type: String,
+    pub archived: bool,
+    pub lesson_count: i64,
+    pub sentence_count: i64,
 }
 
 #[derive(Debug, Serialize)]
@@ -336,6 +362,7 @@ pub struct LessonImportPreviewResult {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LessonImportSummary {
+    pub lesson_id: Option<String>,
     pub lesson_created: bool,
     pub lesson_updated: bool,
     pub sentences_imported: i64,
