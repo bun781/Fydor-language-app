@@ -3,7 +3,12 @@ use sha2::{Digest, Sha256};
 use unicode_normalization::UnicodeNormalization;
 
 pub fn normalize_text(text: &str) -> String {
-    text.nfkc().collect::<String>().trim().split_whitespace().collect::<Vec<_>>().join(" ")
+    text.nfkc()
+        .collect::<String>()
+        .trim()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 pub fn normalize_sentence_text(text: &str) -> String {
@@ -11,7 +16,11 @@ pub fn normalize_sentence_text(text: &str) -> String {
 }
 
 pub fn build_canonical_key(language: &str, value: &str) -> String {
-    format!("{}:{}", normalize_sentence_text(language), normalize_sentence_text(value))
+    format!(
+        "{}:{}",
+        normalize_sentence_text(language),
+        normalize_sentence_text(value)
+    )
 }
 
 pub fn hash_json_value(value: &Value) -> String {
@@ -22,7 +31,14 @@ pub fn hash_json_value(value: &Value) -> String {
 
 fn stable_stringify(value: &Value) -> String {
     match value {
-        Value::Array(values) => format!("[{}]", values.iter().map(stable_stringify).collect::<Vec<_>>().join(",")),
+        Value::Array(values) => format!(
+            "[{}]",
+            values
+                .iter()
+                .map(stable_stringify)
+                .collect::<Vec<_>>()
+                .join(",")
+        ),
         Value::Object(map) => {
             let mut entries = map.iter().collect::<Vec<_>>();
             entries.sort_by(|(left, _), (right, _)| left.cmp(right));
@@ -30,7 +46,11 @@ fn stable_stringify(value: &Value) -> String {
                 "{{{}}}",
                 entries
                     .into_iter()
-                    .map(|(key, entry)| format!("{}:{}", serde_json::to_string(key).unwrap(), stable_stringify(entry)))
+                    .map(|(key, entry)| format!(
+                        "{}:{}",
+                        serde_json::to_string(key).unwrap(),
+                        stable_stringify(entry)
+                    ))
                     .collect::<Vec<_>>()
                     .join(",")
             )

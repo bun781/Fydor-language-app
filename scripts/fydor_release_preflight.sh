@@ -29,8 +29,9 @@ fi
 
 print_header "Desktop release environment"
 printf 'FYDOR_RELEASE_WEB_ORIGIN: %s\n' "$FYDOR_RELEASE_WEB_ORIGIN"
+printf 'FYDOR_UPDATER_ENDPOINT:   %s\n' "$FYDOR_UPDATER_ENDPOINT"
 if check_release_env; then
-  printf 'OK desktop release env contains no bundled Supabase/database variables\n'
+  printf 'OK desktop release env has updater signing material and no bundled Supabase/database variables\n'
 fi
 
 print_header "Release targets"
@@ -39,7 +40,7 @@ printf 'Windows EXE:  %s\n' "$WEBSITE_REPO/downloads/fydor-windows.exe"
 ls -lh "$WEBSITE_REPO/downloads/fydor-mac.dmg" "$WEBSITE_REPO/downloads/fydor-windows.exe" 2>/dev/null || true
 
 print_header "Tools"
-for tool in npm cargo rustup cargo-xwin llvm-rc makensis codesign hdiutil shasum file; do
+for tool in npm cargo rustup cargo-xwin llvm-rc makensis osslsigncode codesign hdiutil shasum file; do
   if command -v "$tool" >/dev/null 2>&1; then
     printf '%-12s %s\n' "$tool" "$(command -v "$tool")"
   else

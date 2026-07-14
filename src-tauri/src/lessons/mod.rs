@@ -17,22 +17,33 @@ pub fn get_lessons(state: State<db::AppState>) -> Result<Vec<StudyLessonMeta>, S
 }
 
 #[tauri::command]
-pub fn get_lesson(lesson_id: String, state: State<db::AppState>) -> Result<Option<StudyLesson>, String> {
+pub fn get_lesson(
+    lesson_id: String,
+    state: State<db::AppState>,
+) -> Result<Option<StudyLesson>, String> {
     let conn = state.conn.lock().map_err(|err| err.to_string())?;
     get_lesson_inner(&conn, &lesson_id).map_err(|err| err.to_string())
 }
 
 #[tauri::command]
-pub fn export_lesson(lesson_id: String, state: State<db::AppState>) -> Result<LessonImportInput, String> {
+pub fn export_lesson(
+    lesson_id: String,
+    state: State<db::AppState>,
+) -> Result<LessonImportInput, String> {
     let conn = state.conn.lock().map_err(|err| err.to_string())?;
     export_lesson_inner(&conn, &lesson_id).map_err(|err| err.to_string())
 }
 
 #[tauri::command]
-pub fn update_lesson(lesson_id: String, source: String, state: State<db::AppState>) -> Result<LessonImportSummary, String> {
+pub fn update_lesson(
+    lesson_id: String,
+    source: String,
+    state: State<db::AppState>,
+) -> Result<LessonImportSummary, String> {
     let mut conn = state.conn.lock().map_err(|err| err.to_string())?;
     let (lesson, raw_value) = parse_lesson_json(&source).map_err(|errors| errors.join("\n"))?;
-    let plan = build_import_plan(&conn, lesson, raw_value, Some(lesson_id.as_str())).map_err(|err| err.to_string())?;
+    let plan = build_import_plan(&conn, lesson, raw_value, Some(lesson_id.as_str()))
+        .map_err(|err| err.to_string())?;
     replace_lesson(&mut conn, &lesson_id, plan).map_err(|err| err.to_string())
 }
 
@@ -43,21 +54,33 @@ pub fn delete_lesson(lesson_id: String, state: State<db::AppState>) -> Result<()
 }
 
 #[tauri::command]
-pub fn preview_lesson_import(source: String, lesson_id: Option<String>, state: State<db::AppState>) -> Result<LessonImportPreviewResult, String> {
+pub fn preview_lesson_import(
+    source: String,
+    lesson_id: Option<String>,
+    state: State<db::AppState>,
+) -> Result<LessonImportPreviewResult, String> {
     let conn = state.conn.lock().map_err(|err| err.to_string())?;
     let (lesson, raw_value) = parse_lesson_json(&source).map_err(|errors| errors.join("\n"))?;
-    let plan = build_import_plan(&conn, lesson, raw_value, lesson_id.as_deref()).map_err(|err| err.to_string())?;
+    let plan = build_import_plan(&conn, lesson, raw_value, lesson_id.as_deref())
+        .map_err(|err| err.to_string())?;
     Ok(build_preview(&plan))
 }
 
 #[tauri::command]
-pub fn import_lesson(source: String, lesson_id: Option<String>, state: State<db::AppState>) -> Result<LessonImportSummary, String> {
+pub fn import_lesson(
+    source: String,
+    lesson_id: Option<String>,
+    state: State<db::AppState>,
+) -> Result<LessonImportSummary, String> {
     let mut conn = state.conn.lock().map_err(|err| err.to_string())?;
     let (lesson, raw_value) = parse_lesson_json(&source).map_err(|errors| errors.join("\n"))?;
-    let plan = build_import_plan(&conn, lesson, raw_value, lesson_id.as_deref()).map_err(|err| err.to_string())?;
+    let plan = build_import_plan(&conn, lesson, raw_value, lesson_id.as_deref())
+        .map_err(|err| err.to_string())?;
 
     if plan.duplicate_import {
-        return Ok(empty_summary_with_error("This lesson has already been imported."));
+        return Ok(empty_summary_with_error(
+            "This lesson has already been imported.",
+        ));
     }
 
     import_plan(&mut conn, plan).map_err(|err| err.to_string())
@@ -70,7 +93,8 @@ mod tests {
 
     fn test_conn() -> Connection {
         let conn = Connection::open_in_memory().expect("open in-memory database");
-        conn.pragma_update(None, "foreign_keys", "ON").expect("enable foreign keys");
+        conn.pragma_update(None, "foreign_keys", "ON")
+            .expect("enable foreign keys");
         conn.execute_batch(
             r#"
             CREATE TABLE lessons (
@@ -335,9 +359,37 @@ mod tests {
 
         delete_lesson_inner(&mut conn, &lesson_a_id).expect("delete original lesson");
 
-        assert_eq!(scalar_count(&conn, "SELECT COUNT(*) FROM lessons WHERE id = ?1", &lesson_a_id), 0);
-        assert_eq!(scalar_count(&conn, "SELECT COUNT(*) FROM sentences WHERE lesson_id = ?1", &lesson_b_id), 1);
-        assert_eq!(scalar_count(&conn, "SELECT COUNT(*) FROM lesson_sentences WHERE lesson_id = ?1", &lesson_b_id), 1);
-        assert_eq!(scalar_count(&conn, "SELECT COUNT(*) FROM review_items WHERE lesson_id = ?1", &lesson_b_id), 1);
+        assert_eq!(
+            scalar_count(
+                &conn,
+                "SELECT COUNT(*) FROM lessons WHERE id = ?1",
+                &lesson_a_id
+            ),
+            0
+        );
+        assert_eq!(
+            scalar_count(
+                &conn,
+                "SELECT COUNT(*) FROM sentences WHERE lesson_id = ?1",
+                &lesson_b_id
+            ),
+            1
+        );
+        assert_eq!(
+            scalar_count(
+                &conn,
+                "SELECT COUNT(*) FROM lesson_sentences WHERE lesson_id = ?1",
+                &lesson_b_id
+            ),
+            1
+        );
+        assert_eq!(
+            scalar_count(
+                &conn,
+                "SELECT COUNT(*) FROM review_items WHERE lesson_id = ?1",
+                &lesson_b_id
+            ),
+            1
+        );
     }
 }

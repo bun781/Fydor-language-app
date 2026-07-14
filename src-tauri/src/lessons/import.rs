@@ -202,10 +202,14 @@ impl<'de> Visitor<'de> for CheckedJsonVisitor {
         let mut values = serde_json::Map::new();
         while let Some(key) = map.next_key::<String>()? {
             if matches!(key.as_str(), "__proto__" | "prototype" | "constructor") {
-                return Err(<A::Error as de::Error>::custom(format!("dangerous object key: {key}")));
+                return Err(<A::Error as de::Error>::custom(format!(
+                    "dangerous object key: {key}"
+                )));
             }
             if values.contains_key(&key) {
-                return Err(<A::Error as de::Error>::custom(format!("duplicate object key: {key}")));
+                return Err(<A::Error as de::Error>::custom(format!(
+                    "duplicate object key: {key}"
+                )));
             }
             values.insert(key, map.next_value::<CheckedJson>()?.0);
         }
@@ -363,10 +367,13 @@ pub(crate) fn build_import_plan(
     let duplicate_import = if target_lesson.is_some() {
         false
     } else {
-        conn
-            .query_row("SELECT id FROM lessons WHERE source_hash = ?1 LIMIT 1", [&source_hash], |_| Ok(()))
-            .optional()?
-            .is_some()
+        conn.query_row(
+            "SELECT id FROM lessons WHERE source_hash = ?1 LIMIT 1",
+            [&source_hash],
+            |_| Ok(()),
+        )
+        .optional()?
+        .is_some()
     };
 
     let normalized_texts = lesson
@@ -422,7 +429,11 @@ pub(crate) fn build_import_plan(
     })
 }
 
-fn load_target_lesson(conn: &Connection, lesson_id: &str, source_lesson: &LessonImportInput) -> Result<TargetLesson> {
+fn load_target_lesson(
+    conn: &Connection,
+    lesson_id: &str,
+    source_lesson: &LessonImportInput,
+) -> Result<TargetLesson> {
     let target = conn
         .query_row(
             "SELECT id, target_language, base_language FROM lessons WHERE id = ?1",
@@ -443,7 +454,9 @@ fn load_target_lesson(conn: &Connection, lesson_id: &str, source_lesson: &Lesson
         return Err(anyhow::anyhow!("Selected lesson was not found."));
     };
 
-    if target.language != source_lesson.language || target.base_language != source_lesson.base_language {
+    if target.language != source_lesson.language
+        || target.base_language != source_lesson.base_language
+    {
         return Err(anyhow::anyhow!(
             "The selected lesson uses {} → {}, but the import source uses {} → {}.",
             target.language,
@@ -457,12 +470,11 @@ fn load_target_lesson(conn: &Connection, lesson_id: &str, source_lesson: &Lesson
     let rows = stmt.query_map([lesson_id], |row| row.get::<_, String>(0))?;
     let existing_sentence_ids = rows.collect::<rusqlite::Result<HashSet<_>>>()?;
 
-    let next_position = conn
-        .query_row(
-            "SELECT COALESCE(MAX(position), -1) + 1 FROM lesson_sentences WHERE lesson_id = ?1",
-            [lesson_id],
-            |row| row.get::<_, i64>(0),
-        )?;
+    let next_position = conn.query_row(
+        "SELECT COALESCE(MAX(position), -1) + 1 FROM lesson_sentences WHERE lesson_id = ?1",
+        [lesson_id],
+        |row| row.get::<_, i64>(0),
+    )?;
 
     target.existing_sentence_ids = existing_sentence_ids;
     target.next_position = next_position;
@@ -495,9 +507,27 @@ pub(crate) fn build_preview(plan: &ImportPlan) -> LessonImportPreviewResult {
                 duplicate_sentence: plan
                     .existing_sentences_by_text
                     .contains_key(&normalize::normalize_sentence_text(&sentence.text)),
-                words: sentence.words.as_deref().unwrap_or(&[]).iter().map(word_output).collect(),
-                grammar: sentence.grammar.as_deref().unwrap_or(&[]).iter().map(grammar_output).collect(),
-                chunks: sentence.chunks.as_deref().unwrap_or(&[]).iter().map(chunk_output).collect(),
+                words: sentence
+                    .words
+                    .as_deref()
+                    .unwrap_or(&[])
+                    .iter()
+                    .map(word_output)
+                    .collect(),
+                grammar: sentence
+                    .grammar
+                    .as_deref()
+                    .unwrap_or(&[])
+                    .iter()
+                    .map(grammar_output)
+                    .collect(),
+                chunks: sentence
+                    .chunks
+                    .as_deref()
+                    .unwrap_or(&[])
+                    .iter()
+                    .map(chunk_output)
+                    .collect(),
             })
             .collect(),
         vocabulary: preview_items(plan, "word"),
@@ -538,13 +568,21 @@ pub(crate) fn import_plan(conn: &mut Connection, plan: ImportPlan) -> Result<Les
 
     let mut item_id_by_key = HashMap::new();
     for item in plan.existing_items_by_key.values() {
-        item_id_by_key.insert(item_lookup_key(&item.item_type, &item.canonical_key), item.id.clone());
+        item_id_by_key.insert(
+            item_lookup_key(&item.item_type, &item.canonical_key),
+            item.id.clone(),
+        );
     }
 
     let new_items = plan
         .candidate_items
         .iter()
-        .filter(|candidate| !plan.existing_items_by_key.contains_key(&item_lookup_key(&candidate.item_type, &candidate.canonical_key)))
+        .filter(|candidate| {
+            !plan.existing_items_by_key.contains_key(&item_lookup_key(
+                &candidate.item_type,
+                &candidate.canonical_key,
+            ))
+        })
         .cloned()
         .collect::<Vec<_>>();
     for item in &new_items {
@@ -566,16 +604,28 @@ pub(crate) fn import_plan(conn: &mut Connection, plan: ImportPlan) -> Result<Les
                 db::now(),
             ],
         )?;
-        item_id_by_key.insert(item_lookup_key(&item.item_type, &item.canonical_key), item_id);
+        item_id_by_key.insert(
+            item_lookup_key(&item.item_type, &item.canonical_key),
+            item_id,
+        );
     }
 
     for candidate in &plan.candidate_items {
-        if let Some(existing) = plan.existing_items_by_key.get(&item_lookup_key(&candidate.item_type, &candidate.canonical_key)) {
+        if let Some(existing) = plan.existing_items_by_key.get(&item_lookup_key(
+            &candidate.item_type,
+            &candidate.canonical_key,
+        )) {
             if existing.meaning.is_none() && candidate.meaning.is_some() {
-                tx.execute("UPDATE learning_items SET meaning = ?1, updated_at = ?2 WHERE id = ?3", params![candidate.meaning, db::now(), existing.id])?;
+                tx.execute(
+                    "UPDATE learning_items SET meaning = ?1, updated_at = ?2 WHERE id = ?3",
+                    params![candidate.meaning, db::now(), existing.id],
+                )?;
             }
             if existing.explanation.is_none() && candidate.explanation.is_some() {
-                tx.execute("UPDATE learning_items SET explanation = ?1, updated_at = ?2 WHERE id = ?3", params![candidate.explanation, db::now(), existing.id])?;
+                tx.execute(
+                    "UPDATE learning_items SET explanation = ?1, updated_at = ?2 WHERE id = ?3",
+                    params![candidate.explanation, db::now(), existing.id],
+                )?;
             }
         }
     }
@@ -584,11 +634,17 @@ pub(crate) fn import_plan(conn: &mut Connection, plan: ImportPlan) -> Result<Les
     let mut sentences_imported = 0;
     let mut sentences_skipped = 0;
     let mut links_created = 0;
-    let mut next_position = plan.target_lesson.as_ref().map(|target| target.next_position).unwrap_or(0);
+    let mut next_position = plan
+        .target_lesson
+        .as_ref()
+        .map(|target| target.next_position)
+        .unwrap_or(0);
 
     for (index, sentence) in plan.lesson.sentences.iter().enumerate() {
         let normalized = normalize::normalize_sentence_text(&sentence.text);
-        let sentence_id = if let Some(existing_id) = plan.existing_sentences_by_text.get(&normalized) {
+        let sentence_id = if let Some(existing_id) =
+            plan.existing_sentences_by_text.get(&normalized)
+        {
             sentences_skipped += 1;
             existing_id.clone()
         } else {
@@ -620,7 +676,11 @@ pub(crate) fn import_plan(conn: &mut Connection, plan: ImportPlan) -> Result<Les
             .unwrap_or(true);
 
         if should_link_sentence {
-            let position = if plan.target_lesson.is_some() { next_position } else { index as i64 };
+            let position = if plan.target_lesson.is_some() {
+                next_position
+            } else {
+                index as i64
+            };
             tx.execute(
                 "INSERT INTO lesson_sentences (id, lesson_id, sentence_id, position, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?5)",
                 params![db::id(), lesson_id, sentence_id, position, db::now()],
@@ -630,7 +690,13 @@ pub(crate) fn import_plan(conn: &mut Connection, plan: ImportPlan) -> Result<Les
                 next_position += 1;
             }
         }
-        links_created += create_sentence_item_links(&tx, &plan.lesson.language, &sentence_id, sentence, &item_id_by_key)?;
+        links_created += create_sentence_item_links(
+            &tx,
+            &plan.lesson.language,
+            &sentence_id,
+            sentence,
+            &item_id_by_key,
+        )?;
     }
 
     tx.commit()?;
@@ -651,7 +717,11 @@ pub(crate) fn import_plan(conn: &mut Connection, plan: ImportPlan) -> Result<Les
     })
 }
 
-pub(crate) fn replace_lesson(conn: &mut Connection, lesson_id: &str, plan: ImportPlan) -> Result<LessonImportSummary> {
+pub(crate) fn replace_lesson(
+    conn: &mut Connection,
+    lesson_id: &str,
+    plan: ImportPlan,
+) -> Result<LessonImportSummary> {
     let tx = conn.transaction()?;
     let now = db::now();
     let previous_sentence_ids = plan
@@ -688,17 +758,28 @@ pub(crate) fn replace_lesson(conn: &mut Connection, lesson_id: &str, plan: Impor
         ],
     )?;
 
-    tx.execute("DELETE FROM lesson_sentences WHERE lesson_id = ?1", [lesson_id])?;
+    tx.execute(
+        "DELETE FROM lesson_sentences WHERE lesson_id = ?1",
+        [lesson_id],
+    )?;
 
     let mut item_id_by_key = HashMap::new();
     for item in plan.existing_items_by_key.values() {
-        item_id_by_key.insert(item_lookup_key(&item.item_type, &item.canonical_key), item.id.clone());
+        item_id_by_key.insert(
+            item_lookup_key(&item.item_type, &item.canonical_key),
+            item.id.clone(),
+        );
     }
 
     let new_items = plan
         .candidate_items
         .iter()
-        .filter(|candidate| !plan.existing_items_by_key.contains_key(&item_lookup_key(&candidate.item_type, &candidate.canonical_key)))
+        .filter(|candidate| {
+            !plan.existing_items_by_key.contains_key(&item_lookup_key(
+                &candidate.item_type,
+                &candidate.canonical_key,
+            ))
+        })
         .cloned()
         .collect::<Vec<_>>();
     for item in &new_items {
@@ -720,16 +801,28 @@ pub(crate) fn replace_lesson(conn: &mut Connection, lesson_id: &str, plan: Impor
                 db::now(),
             ],
         )?;
-        item_id_by_key.insert(item_lookup_key(&item.item_type, &item.canonical_key), item_id);
+        item_id_by_key.insert(
+            item_lookup_key(&item.item_type, &item.canonical_key),
+            item_id,
+        );
     }
 
     for candidate in &plan.candidate_items {
-        if let Some(existing) = plan.existing_items_by_key.get(&item_lookup_key(&candidate.item_type, &candidate.canonical_key)) {
+        if let Some(existing) = plan.existing_items_by_key.get(&item_lookup_key(
+            &candidate.item_type,
+            &candidate.canonical_key,
+        )) {
             if existing.meaning.is_none() && candidate.meaning.is_some() {
-                tx.execute("UPDATE learning_items SET meaning = ?1, updated_at = ?2 WHERE id = ?3", params![candidate.meaning, db::now(), existing.id])?;
+                tx.execute(
+                    "UPDATE learning_items SET meaning = ?1, updated_at = ?2 WHERE id = ?3",
+                    params![candidate.meaning, db::now(), existing.id],
+                )?;
             }
             if existing.explanation.is_none() && candidate.explanation.is_some() {
-                tx.execute("UPDATE learning_items SET explanation = ?1, updated_at = ?2 WHERE id = ?3", params![candidate.explanation, db::now(), existing.id])?;
+                tx.execute(
+                    "UPDATE learning_items SET explanation = ?1, updated_at = ?2 WHERE id = ?3",
+                    params![candidate.explanation, db::now(), existing.id],
+                )?;
             }
         }
     }
@@ -792,12 +885,27 @@ pub(crate) fn replace_lesson(conn: &mut Connection, lesson_id: &str, plan: Impor
             sentence_id
         };
 
-        tx.execute("DELETE FROM sentence_vocabulary_links WHERE sentence_id = ?1", [&sentence_id])?;
-        tx.execute("DELETE FROM sentence_grammar_links WHERE sentence_id = ?1", [&sentence_id])?;
-        tx.execute("DELETE FROM sentence_chunk_links WHERE sentence_id = ?1", [&sentence_id])?;
+        tx.execute(
+            "DELETE FROM sentence_vocabulary_links WHERE sentence_id = ?1",
+            [&sentence_id],
+        )?;
+        tx.execute(
+            "DELETE FROM sentence_grammar_links WHERE sentence_id = ?1",
+            [&sentence_id],
+        )?;
+        tx.execute(
+            "DELETE FROM sentence_chunk_links WHERE sentence_id = ?1",
+            [&sentence_id],
+        )?;
         tx.execute("INSERT INTO lesson_sentences (id, lesson_id, sentence_id, position, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?5)", params![db::id(), lesson_id, sentence_id, index as i64, now])?;
         kept_sentence_ids.insert(sentence_id.clone());
-        links_created += create_sentence_item_links(&tx, &plan.lesson.language, &sentence_id, sentence, &item_id_by_key)?;
+        links_created += create_sentence_item_links(
+            &tx,
+            &plan.lesson.language,
+            &sentence_id,
+            sentence,
+            &item_id_by_key,
+        )?;
     }
 
     for sentence_id in previous_sentence_ids.difference(&kept_sentence_ids) {
@@ -832,7 +940,9 @@ pub(crate) fn replace_lesson(conn: &mut Connection, lesson_id: &str, plan: Impor
 pub(crate) fn delete_lesson_inner(conn: &mut Connection, lesson_id: &str) -> Result<()> {
     let tx = conn.transaction()?;
     let exists = tx
-        .query_row("SELECT id FROM lessons WHERE id = ?1", [lesson_id], |_| Ok(()))
+        .query_row("SELECT id FROM lessons WHERE id = ?1", [lesson_id], |_| {
+            Ok(())
+        })
         .optional()?
         .is_some();
     if !exists {
@@ -840,7 +950,8 @@ pub(crate) fn delete_lesson_inner(conn: &mut Connection, lesson_id: &str) -> Res
     }
 
     let lesson_sentence_ids = {
-        let mut stmt = tx.prepare("SELECT sentence_id FROM lesson_sentences WHERE lesson_id = ?1")?;
+        let mut stmt =
+            tx.prepare("SELECT sentence_id FROM lesson_sentences WHERE lesson_id = ?1")?;
         let rows = stmt.query_map([lesson_id], |row| row.get::<_, String>(0))?;
         rows.collect::<rusqlite::Result<Vec<_>>>()?
     };
@@ -876,10 +987,22 @@ pub(crate) fn delete_lesson_inner(conn: &mut Connection, lesson_id: &str) -> Res
                 params![replacement_lesson_id, lesson_id, now, sentence_id],
             )?;
         } else {
-            tx.execute("DELETE FROM review_items WHERE sentence_id = ?1", [&sentence_id])?;
-            tx.execute("DELETE FROM sentence_vocabulary_links WHERE sentence_id = ?1", [&sentence_id])?;
-            tx.execute("DELETE FROM sentence_grammar_links WHERE sentence_id = ?1", [&sentence_id])?;
-            tx.execute("DELETE FROM sentence_chunk_links WHERE sentence_id = ?1", [&sentence_id])?;
+            tx.execute(
+                "DELETE FROM review_items WHERE sentence_id = ?1",
+                [&sentence_id],
+            )?;
+            tx.execute(
+                "DELETE FROM sentence_vocabulary_links WHERE sentence_id = ?1",
+                [&sentence_id],
+            )?;
+            tx.execute(
+                "DELETE FROM sentence_grammar_links WHERE sentence_id = ?1",
+                [&sentence_id],
+            )?;
+            tx.execute(
+                "DELETE FROM sentence_chunk_links WHERE sentence_id = ?1",
+                [&sentence_id],
+            )?;
             tx.execute("DELETE FROM sentences WHERE id = ?1", [&sentence_id])?;
         }
     }
@@ -909,44 +1032,84 @@ fn create_sentence_item_links(
     let mut inserted = 0;
 
     for word in sentence.words.as_deref().unwrap_or(&[]) {
-        let key = normalize::build_canonical_key(language, word.lemma.as_deref().unwrap_or(&word.surface));
-        let Some(item_id) = item_id_by_key.get(&item_lookup_key("word", &key)) else { continue };
+        let key = normalize::build_canonical_key(
+            language,
+            word.lemma.as_deref().unwrap_or(&word.surface),
+        );
+        let Some(item_id) = item_id_by_key.get(&item_lookup_key("word", &key)) else {
+            continue;
+        };
         let unique = format!("word:{item_id}:{}", word.surface);
         if !seen.insert(unique) {
             continue;
         }
-        inserted += insert_link(tx, "sentence_vocabulary_links", "vocabulary_item_id", sentence_id, item_id, &word.surface)?;
+        inserted += insert_link(
+            tx,
+            "sentence_vocabulary_links",
+            "vocabulary_item_id",
+            sentence_id,
+            item_id,
+            &word.surface,
+        )?;
     }
 
     for grammar in sentence.grammar.as_deref().unwrap_or(&[]) {
         let key = normalize::build_canonical_key(language, &grammar.pattern);
-        let Some(item_id) = item_id_by_key.get(&item_lookup_key("grammar", &key)) else { continue };
+        let Some(item_id) = item_id_by_key.get(&item_lookup_key("grammar", &key)) else {
+            continue;
+        };
         let surface = grammar.surface.as_deref().unwrap_or(&grammar.pattern);
         let unique = format!("grammar:{item_id}:{surface}");
         if !seen.insert(unique) {
             continue;
         }
-        inserted += insert_link(tx, "sentence_grammar_links", "grammar_item_id", sentence_id, item_id, surface)?;
+        inserted += insert_link(
+            tx,
+            "sentence_grammar_links",
+            "grammar_item_id",
+            sentence_id,
+            item_id,
+            surface,
+        )?;
     }
 
     for chunk in sentence.chunks.as_deref().unwrap_or(&[]) {
         let key = normalize::build_canonical_key(language, &chunk.surface);
-        let Some(item_id) = item_id_by_key.get(&item_lookup_key("chunk", &key)) else { continue };
+        let Some(item_id) = item_id_by_key.get(&item_lookup_key("chunk", &key)) else {
+            continue;
+        };
         let unique = format!("chunk:{item_id}:{}", chunk.surface);
         if !seen.insert(unique) {
             continue;
         }
-        inserted += insert_link(tx, "sentence_chunk_links", "chunk_item_id", sentence_id, item_id, &chunk.surface)?;
+        inserted += insert_link(
+            tx,
+            "sentence_chunk_links",
+            "chunk_item_id",
+            sentence_id,
+            item_id,
+            &chunk.surface,
+        )?;
     }
 
     Ok(inserted)
 }
 
-fn insert_link(tx: &Transaction<'_>, table: &str, item_column: &str, sentence_id: &str, item_id: &str, surface: &str) -> Result<i64> {
+fn insert_link(
+    tx: &Transaction<'_>,
+    table: &str,
+    item_column: &str,
+    sentence_id: &str,
+    item_id: &str,
+    surface: &str,
+) -> Result<i64> {
     let sql = format!(
         "INSERT OR IGNORE INTO {table} (id, sentence_id, {item_column}, surface_text, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?5)"
     );
-    let changed = tx.execute(&sql, params![db::id(), sentence_id, item_id, surface, db::now()])?;
+    let changed = tx.execute(
+        &sql,
+        params![db::id(), sentence_id, item_id, surface, db::now()],
+    )?;
     Ok(changed as i64)
 }
 
@@ -955,31 +1118,46 @@ fn collect_candidates(lesson: &LessonImportInput) -> Vec<CandidateItem> {
     let mut items: HashMap<String, CandidateItem> = HashMap::new();
     for sentence in &lesson.sentences {
         for word in sentence.words.as_deref().unwrap_or(&[]) {
-            upsert_candidate(&mut items, CandidateItem {
-                canonical_key: normalize::build_canonical_key(&lesson.language, word.lemma.as_deref().unwrap_or(&word.surface)),
-                item_type: "word".to_string(),
-                display_text: word.lemma.clone().unwrap_or_else(|| word.surface.clone()),
-                meaning: word.meaning.clone(),
-                explanation: word.explanation.clone(),
-            });
+            upsert_candidate(
+                &mut items,
+                CandidateItem {
+                    canonical_key: normalize::build_canonical_key(
+                        &lesson.language,
+                        word.lemma.as_deref().unwrap_or(&word.surface),
+                    ),
+                    item_type: "word".to_string(),
+                    display_text: word.lemma.clone().unwrap_or_else(|| word.surface.clone()),
+                    meaning: word.meaning.clone(),
+                    explanation: word.explanation.clone(),
+                },
+            );
         }
         for grammar in sentence.grammar.as_deref().unwrap_or(&[]) {
-            upsert_candidate(&mut items, CandidateItem {
-                canonical_key: normalize::build_canonical_key(&lesson.language, &grammar.pattern),
-                item_type: "grammar".to_string(),
-                display_text: grammar.pattern.clone(),
-                meaning: grammar.meaning.clone(),
-                explanation: grammar.explanation.clone(),
-            });
+            upsert_candidate(
+                &mut items,
+                CandidateItem {
+                    canonical_key: normalize::build_canonical_key(
+                        &lesson.language,
+                        &grammar.pattern,
+                    ),
+                    item_type: "grammar".to_string(),
+                    display_text: grammar.pattern.clone(),
+                    meaning: grammar.meaning.clone(),
+                    explanation: grammar.explanation.clone(),
+                },
+            );
         }
         for chunk in sentence.chunks.as_deref().unwrap_or(&[]) {
-            upsert_candidate(&mut items, CandidateItem {
-                canonical_key: normalize::build_canonical_key(&lesson.language, &chunk.surface),
-                item_type: "chunk".to_string(),
-                display_text: chunk.surface.clone(),
-                meaning: chunk.meaning.clone(),
-                explanation: chunk.explanation.clone(),
-            });
+            upsert_candidate(
+                &mut items,
+                CandidateItem {
+                    canonical_key: normalize::build_canonical_key(&lesson.language, &chunk.surface),
+                    item_type: "chunk".to_string(),
+                    display_text: chunk.surface.clone(),
+                    meaning: chunk.meaning.clone(),
+                    explanation: chunk.explanation.clone(),
+                },
+            );
         }
     }
     items.into_values().collect()
@@ -1011,7 +1189,12 @@ fn preview_items(plan: &ImportPlan, item_type: &str) -> Vec<LessonImportPreviewI
                 display_text: item.display_text.clone(),
                 meaning: item.meaning.clone(),
                 explanation: item.explanation.clone(),
-                status: if plan.existing_items_by_key.contains_key(&key) { "existing" } else { "new" }.to_string(),
+                status: if plan.existing_items_by_key.contains_key(&key) {
+                    "existing"
+                } else {
+                    "new"
+                }
+                .to_string(),
             }
         })
         .collect()
@@ -1022,13 +1205,37 @@ fn summarize_item_occurrences(plan: &ImportPlan) -> (i64, i64, i64, i64, i64, i6
     let mut counts = (0, 0, 0, 0, 0, 0);
     for sentence in &plan.lesson.sentences {
         for word in sentence.words.as_deref().unwrap_or(&[]) {
-            bump_count(&mut counts.0, &mut counts.1, &mut seen, &plan.existing_items_by_key, "word", &normalize::build_canonical_key(&plan.lesson.language, word.lemma.as_deref().unwrap_or(&word.surface)));
+            bump_count(
+                &mut counts.0,
+                &mut counts.1,
+                &mut seen,
+                &plan.existing_items_by_key,
+                "word",
+                &normalize::build_canonical_key(
+                    &plan.lesson.language,
+                    word.lemma.as_deref().unwrap_or(&word.surface),
+                ),
+            );
         }
         for grammar in sentence.grammar.as_deref().unwrap_or(&[]) {
-            bump_count(&mut counts.2, &mut counts.3, &mut seen, &plan.existing_items_by_key, "grammar", &normalize::build_canonical_key(&plan.lesson.language, &grammar.pattern));
+            bump_count(
+                &mut counts.2,
+                &mut counts.3,
+                &mut seen,
+                &plan.existing_items_by_key,
+                "grammar",
+                &normalize::build_canonical_key(&plan.lesson.language, &grammar.pattern),
+            );
         }
         for chunk in sentence.chunks.as_deref().unwrap_or(&[]) {
-            bump_count(&mut counts.4, &mut counts.5, &mut seen, &plan.existing_items_by_key, "chunk", &normalize::build_canonical_key(&plan.lesson.language, &chunk.surface));
+            bump_count(
+                &mut counts.4,
+                &mut counts.5,
+                &mut seen,
+                &plan.existing_items_by_key,
+                "chunk",
+                &normalize::build_canonical_key(&plan.lesson.language, &chunk.surface),
+            );
         }
     }
     counts
@@ -1108,7 +1315,8 @@ fn required(label: &str, value: &str, errors: &mut Vec<String>) {
 }
 
 fn contains_surface(sentence_text: &str, surface: &str) -> bool {
-    normalize::normalize_sentence_text(sentence_text).contains(&normalize::normalize_sentence_text(surface))
+    normalize::normalize_sentence_text(sentence_text)
+        .contains(&normalize::normalize_sentence_text(surface))
 }
 
 fn item_lookup_key(item_type: &str, canonical_key: &str) -> String {

@@ -77,7 +77,15 @@ export async function getCommunityPrivileges(session: CommunitySession): Promise
 }
 
 async function request<T>(url: string, init: RequestInit = {}): Promise<T> {
-  const response = await fetch(url, { ...init, cache: "no-store" });
+  let response: Response;
+  try {
+    response = await fetch(url, { ...init, cache: "no-store" });
+  } catch (error) {
+    if (isFetchNetworkError(error)) {
+      throw new Error("Unable to reach the Fydor community service. Check your connection and make sure the configured Fydor website allows desktop app requests.");
+    }
+    throw error;
+  }
   const data = await response.json().catch(() => null) as T | ApiErrorBody | null;
   if (!response.ok) throw new Error(apiErrorMessage(data as ApiErrorBody | null, `Request failed (${response.status}).`));
   return data as T;
@@ -102,3 +110,8 @@ function apiErrorMessage(data: ApiErrorBody | null, fallback: string): string {
 }
 
 export function communityActionId(prefix: string) { return `${prefix}:${crypto.randomUUID()}`; }
+
+function isFetchNetworkError(error: unknown): boolean {
+  if (!(error instanceof TypeError)) return false;
+  return /failed to fetch|load failed|networkerror|network request failed/i.test(error.message);
+}

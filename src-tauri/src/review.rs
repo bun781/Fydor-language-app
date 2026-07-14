@@ -62,8 +62,8 @@ fn update_review_item_inner(
     grade: &str,
 ) -> Result<ReviewSentence> {
     ensure_review_items(conn)?;
-    let current = get_sentence(conn, sentence_id)?
-        .ok_or_else(|| anyhow::anyhow!("Sentence not found."))?;
+    let current =
+        get_sentence(conn, sentence_id)?.ok_or_else(|| anyhow::anyhow!("Sentence not found."))?;
 
     let reviewed_at = db::now();
     let mut scheduler_state = SchedulerState::from(&current);
@@ -136,14 +136,17 @@ pub fn reset_review_progress(
 
     match scope {
         ReviewResetScope::Lesson { lesson_id } => reset_lesson_progress(&conn, &lesson_id),
-        ReviewResetScope::Sentence { sentence_id } => reset_sentences_progress(&conn, &[sentence_id]),
+        ReviewResetScope::Sentence { sentence_id } => {
+            reset_sentences_progress(&conn, &[sentence_id])
+        }
         ReviewResetScope::Item {
             item_type,
             canonical_key,
             lesson_id,
         } => {
-            let sentence_ids = get_item_sentence_ids(&conn, &item_type, &canonical_key, lesson_id.as_deref())
-                .map_err(|err| err.to_string())?;
+            let sentence_ids =
+                get_item_sentence_ids(&conn, &item_type, &canonical_key, lesson_id.as_deref())
+                    .map_err(|err| err.to_string())?;
             reset_sentences_progress(&conn, &sentence_ids)
                 .and_then(|()| reset_item_review_state(&conn, &item_type, &canonical_key))
         }
@@ -152,7 +155,9 @@ pub fn reset_review_progress(
 }
 
 #[tauri::command]
-pub fn get_item_review_targets(state: State<db::AppState>) -> Result<Vec<ReviewItemTarget>, String> {
+pub fn get_item_review_targets(
+    state: State<db::AppState>,
+) -> Result<Vec<ReviewItemTarget>, String> {
     let conn = state.conn.lock().map_err(|err| err.to_string())?;
     get_item_review_targets_inner(&conn, None).map_err(|err| err.to_string())
 }
@@ -199,7 +204,14 @@ fn record_review_event(
     conn.execute(
         "INSERT INTO review_events (id, target_kind, target_id, grade, was_new, reviewed_at)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-        params![db::id(), target_kind, target_id, grade, was_new as i64, reviewed_at],
+        params![
+            db::id(),
+            target_kind,
+            target_id,
+            grade,
+            was_new as i64,
+            reviewed_at
+        ],
     )?;
     Ok(())
 }
@@ -237,7 +249,9 @@ fn get_review_progress_inner(conn: &Connection) -> Result<ReviewProgressSnapshot
         |row| row.get(0),
     )?;
     let item_graded: i64 =
-        conn.query_row("SELECT COUNT(*) FROM item_review_states", [], |row| row.get(0))?;
+        conn.query_row("SELECT COUNT(*) FROM item_review_states", [], |row| {
+            row.get(0)
+        })?;
     let item_mastered: i64 = conn.query_row(
         "SELECT COUNT(*) FROM item_review_states WHERE repetitions >= ?1",
         [MASTERED_REPETITIONS],
@@ -279,7 +293,11 @@ fn get_item_review_targets_inner(
     conn: &Connection,
     learning_item_id: Option<&str>,
 ) -> Result<Vec<ReviewItemTarget>> {
-    let filter = if learning_item_id.is_some() { "AND li.id = ?2" } else { "" };
+    let filter = if learning_item_id.is_some() {
+        "AND li.id = ?2"
+    } else {
+        ""
+    };
     let arm = |link_table: &str, item_column: &str, item_type: &str| {
         format!(
             r#"
@@ -359,8 +377,10 @@ fn get_item_review_targets_inner(
             Some((best, best_count)) => {
                 let better = annotation_count < *best_count
                     || (annotation_count == *best_count
-                        && (candidate.example_text.chars().count(), &candidate.example_sentence_id)
-                            < (best.example_text.chars().count(), &best.example_sentence_id));
+                        && (
+                            candidate.example_text.chars().count(),
+                            &candidate.example_sentence_id,
+                        ) < (best.example_text.chars().count(), &best.example_sentence_id));
                 if better {
                     *best = candidate;
                     *best_count = annotation_count;
@@ -379,7 +399,11 @@ fn get_item_review_targets_inner(
             target
         })
         .collect();
-    result.sort_by(|a, b| a.due_at.cmp(&b.due_at).then_with(|| a.canonical_key.cmp(&b.canonical_key)));
+    result.sort_by(|a, b| {
+        a.due_at
+            .cmp(&b.due_at)
+            .then_with(|| a.canonical_key.cmp(&b.canonical_key))
+    });
     Ok(result)
 }
 
@@ -463,10 +487,12 @@ const REVIEW_SENTENCE_SELECT: &str = r#"
 
 fn get_review_queue_inner(conn: &Connection) -> Result<Vec<ReviewSentence>> {
     ensure_review_items(conn)?;
-    let mut stmt =
-        conn.prepare(&format!("{REVIEW_SENTENCE_SELECT} ORDER BY ri.due_at ASC, s.text ASC"))?;
+    let mut stmt = conn.prepare(&format!(
+        "{REVIEW_SENTENCE_SELECT} ORDER BY ri.due_at ASC, s.text ASC"
+    ))?;
     let rows = stmt.query_map([], map_review_sentence)?;
-    rows.collect::<rusqlite::Result<Vec<_>>>().map_err(Into::into)
+    rows.collect::<rusqlite::Result<Vec<_>>>()
+        .map_err(Into::into)
 }
 
 fn get_sentence(conn: &Connection, sentence_id: &str) -> Result<Option<ReviewSentence>> {
@@ -525,7 +551,11 @@ fn get_item_sentence_ids(
         "chunk" => ("sentence_chunk_links", "chunk_item_id"),
         _ => return Ok(Vec::new()),
     };
-    let lesson_filter = if lesson_id.is_some() { "AND s.lesson_id = ?3" } else { "" };
+    let lesson_filter = if lesson_id.is_some() {
+        "AND s.lesson_id = ?3"
+    } else {
+        ""
+    };
     let sql = format!(
         r#"
         SELECT DISTINCT s.id
@@ -537,11 +567,17 @@ fn get_item_sentence_ids(
     );
     let mut stmt = conn.prepare(&sql)?;
     if let Some(lesson_id) = lesson_id {
-        let rows = stmt.query_map(params![item_type, canonical_key, lesson_id], |row| row.get::<_, String>(0))?;
-        rows.collect::<rusqlite::Result<Vec<_>>>().map_err(Into::into)
+        let rows = stmt.query_map(params![item_type, canonical_key, lesson_id], |row| {
+            row.get::<_, String>(0)
+        })?;
+        rows.collect::<rusqlite::Result<Vec<_>>>()
+            .map_err(Into::into)
     } else {
-        let rows = stmt.query_map(params![item_type, canonical_key], |row| row.get::<_, String>(0))?;
-        rows.collect::<rusqlite::Result<Vec<_>>>().map_err(Into::into)
+        let rows = stmt.query_map(params![item_type, canonical_key], |row| {
+            row.get::<_, String>(0)
+        })?;
+        rows.collect::<rusqlite::Result<Vec<_>>>()
+            .map_err(Into::into)
     }
 }
 
@@ -655,7 +691,11 @@ fn schedule_review(current: &SchedulerState, grade: &str, reviewed_at: &str) -> 
         } else {
             current.repetitions
         },
-        lapses: if grade == "forgot" { current.lapses + 1 } else { current.lapses },
+        lapses: if grade == "forgot" {
+            current.lapses + 1
+        } else {
+            current.lapses
+        },
         difficulty: update_fixed_difficulty(current.difficulty, grade),
         stability: update_fixed_stability(current.stability, grade),
     }
@@ -673,10 +713,15 @@ fn next_fixed_due_at(grade: &str, reviewed_at: &str) -> String {
     next.to_rfc3339()
 }
 
-fn schedule_fsrs_review(current: &SchedulerState, grade: &str, reviewed_at: &str) -> ReviewSchedule {
+fn schedule_fsrs_review(
+    current: &SchedulerState,
+    grade: &str,
+    reviewed_at: &str,
+) -> ReviewSchedule {
     let fsrs_grade = fsrs_grade(grade);
     let reviewed_at_date = parse_utc(reviewed_at);
-    let first_review = current.repetitions == 0 && current.lapses == 0 && current.last_reviewed_at.is_none();
+    let first_review =
+        current.repetitions == 0 && current.lapses == 0 && current.last_reviewed_at.is_none();
 
     let (difficulty, stability) = if first_review {
         (
@@ -689,10 +734,8 @@ fn schedule_fsrs_review(current: &SchedulerState, grade: &str, reviewed_at: &str
             .as_deref()
             .map(parse_utc)
             .unwrap_or(reviewed_at_date);
-        let elapsed_days = (reviewed_at_date - last_reviewed_at)
-            .num_seconds()
-            .max(0) as f64
-            / 86_400.0;
+        let elapsed_days =
+            (reviewed_at_date - last_reviewed_at).num_seconds().max(0) as f64 / 86_400.0;
         let recall = fsrs_retrievability(current.stability, elapsed_days);
         let next_difficulty = fsrs_next_difficulty(current.difficulty, fsrs_grade);
         let next_stability = if fsrs_grade == 1 {
@@ -716,7 +759,11 @@ fn schedule_fsrs_review(current: &SchedulerState, grade: &str, reviewed_at: &str
         } else {
             current.repetitions + 1
         },
-        lapses: if fsrs_grade == 1 { current.lapses + 1 } else { current.lapses },
+        lapses: if fsrs_grade == 1 {
+            current.lapses + 1
+        } else {
+            current.lapses
+        },
         difficulty: round4(difficulty),
         stability: round4(stability),
     }
@@ -754,8 +801,8 @@ fn update_fixed_stability(current: f64, grade: &str) -> f64 {
 }
 
 const FSRS_WEIGHTS: [f64; 17] = [
-    0.4872, 1.4003, 3.7145, 13.8206, 5.1618, 1.2298, 0.8975, 0.031, 1.6474,
-    0.1367, 1.0461, 2.1072, 0.0793, 0.3246, 1.587, 0.2272, 2.8755,
+    0.4872, 1.4003, 3.7145, 13.8206, 5.1618, 1.2298, 0.8975, 0.031, 1.6474, 0.1367, 1.0461, 2.1072,
+    0.0793, 0.3246, 1.587, 0.2272, 2.8755,
 ];
 const FSRS_DECAY: f64 = -0.5;
 const FSRS_FACTOR: f64 = 19.0 / 81.0;
@@ -779,7 +826,8 @@ fn fsrs_retrievability(stability: f64, elapsed_days: f64) -> f64 {
 }
 
 fn fsrs_next_interval_days(stability: f64) -> i64 {
-    let interval = (stability / FSRS_FACTOR) * (FSRS_REQUEST_RETENTION.powf(1.0 / FSRS_DECAY) - 1.0);
+    let interval =
+        (stability / FSRS_FACTOR) * (FSRS_REQUEST_RETENTION.powf(1.0 / FSRS_DECAY) - 1.0);
     interval.round().max(1.0) as i64
 }
 
@@ -793,21 +841,22 @@ fn fsrs_initial_difficulty(grade: i64) -> f64 {
 
 fn fsrs_next_difficulty(difficulty: f64, grade: i64) -> f64 {
     let updated = difficulty - FSRS_WEIGHTS[6] * ((grade - 3) as f64);
-    fsrs_clamp_difficulty(FSRS_WEIGHTS[7] * fsrs_initial_difficulty(4) + (1.0 - FSRS_WEIGHTS[7]) * updated)
+    fsrs_clamp_difficulty(
+        FSRS_WEIGHTS[7] * fsrs_initial_difficulty(4) + (1.0 - FSRS_WEIGHTS[7]) * updated,
+    )
 }
 
 fn fsrs_recall_stability(difficulty: f64, stability: f64, recall: f64, grade: i64) -> f64 {
     let hard_penalty = if grade == 2 { FSRS_WEIGHTS[15] } else { 1.0 };
     let easy_bonus = if grade == 4 { FSRS_WEIGHTS[16] } else { 1.0 };
-    stability * (
-        1.0
+    stability
+        * (1.0
             + FSRS_WEIGHTS[8].exp()
-            * (11.0 - difficulty)
-            * stability.powf(-FSRS_WEIGHTS[9])
-            * ((FSRS_WEIGHTS[10] * (1.0 - recall)).exp() - 1.0)
-            * hard_penalty
-            * easy_bonus
-    )
+                * (11.0 - difficulty)
+                * stability.powf(-FSRS_WEIGHTS[9])
+                * ((FSRS_WEIGHTS[10] * (1.0 - recall)).exp() - 1.0)
+                * hard_penalty
+                * easy_bonus)
 }
 
 fn fsrs_forget_stability(difficulty: f64, stability: f64, recall: f64) -> f64 {
@@ -880,16 +929,26 @@ mod tests {
                 Some(normalized),
                 "normalize_grade({decision})"
             );
-            assert_eq!(legacy_review_state(normalized), legacy, "legacy_review_state({normalized})");
+            assert_eq!(
+                legacy_review_state(normalized),
+                legacy,
+                "legacy_review_state({normalized})"
+            );
         }
 
-        let transitions = fixture["recallModeProgression"].as_array().expect("recall array");
+        let transitions = fixture["recallModeProgression"]
+            .as_array()
+            .expect("recall array");
         assert_eq!(transitions.len(), 20);
         for case in transitions {
             let mode = case["mode"].as_str().unwrap();
             let grade = case["grade"].as_str().unwrap();
             let next = case["next"].as_str().unwrap();
-            assert_eq!(next_recall_mode(mode, grade), next, "next_recall_mode({mode}, {grade})");
+            assert_eq!(
+                next_recall_mode(mode, grade),
+                next,
+                "next_recall_mode({mode}, {grade})"
+            );
         }
     }
 
@@ -999,7 +1058,8 @@ mod tests {
 
     fn test_conn() -> Connection {
         let conn = Connection::open_in_memory().expect("open in-memory database");
-        conn.pragma_update(None, "foreign_keys", "ON").expect("enable foreign keys");
+        conn.pragma_update(None, "foreign_keys", "ON")
+            .expect("enable foreign keys");
         crate::db::migrate(&conn).expect("run migrations");
         conn
     }
@@ -1038,14 +1098,20 @@ mod tests {
         let targets = get_item_review_targets_inner(&conn, None).expect("load targets");
 
         assert_eq!(targets.len(), 2);
-        let word = targets.iter().find(|target| target.id == "item-1").expect("word target");
+        let word = targets
+            .iter()
+            .find(|target| target.id == "item-1")
+            .expect("word target");
         assert_eq!(word.example_sentence_id, "sent-plain");
         assert_eq!(word.example_surface_text, "학생");
         assert_eq!(word.example_count, 2);
         assert_eq!(word.repetitions, 0);
         assert_eq!(word.scheduler_engine, "fixed-interval");
 
-        let grammar = targets.iter().find(|target| target.id == "item-2").expect("grammar target");
+        let grammar = targets
+            .iter()
+            .find(|target| target.id == "item-2")
+            .expect("grammar target");
         assert_eq!(grammar.example_sentence_id, "sent-busy");
         assert_eq!(grammar.example_count, 1);
     }
@@ -1116,7 +1182,9 @@ mod tests {
 
         assert!(result.is_err());
         let row_count: i64 = conn
-            .query_row("SELECT COUNT(*) FROM item_review_states", [], |row| row.get(0))
+            .query_row("SELECT COUNT(*) FROM item_review_states", [], |row| {
+                row.get(0)
+            })
             .expect("count rows");
         assert_eq!(row_count, 0);
     }
@@ -1192,8 +1260,8 @@ mod tests {
         let mut conn = test_conn();
         seed_item_with_examples(&conn);
 
-        let updated =
-            update_review_item_inner(&mut conn, "sent-plain", "remembered").expect("grade sentence");
+        let updated = update_review_item_inner(&mut conn, "sent-plain", "remembered")
+            .expect("grade sentence");
 
         assert_eq!(updated.scheduler_engine, "fsrs");
         assert_eq!(updated.repetitions, 1);
@@ -1214,8 +1282,8 @@ mod tests {
         )
         .expect("insert graded row");
 
-        let updated =
-            update_review_item_inner(&mut conn, "sent-plain", "remembered").expect("grade sentence");
+        let updated = update_review_item_inner(&mut conn, "sent-plain", "remembered")
+            .expect("grade sentence");
 
         assert_eq!(updated.scheduler_engine, "fixed-interval");
         assert_eq!(updated.repetitions, 3);
@@ -1232,7 +1300,9 @@ mod tests {
         update_review_item_inner(&mut conn, "sent-plain", "easy").expect("sentence grade");
 
         let rows: Vec<(String, String, String, i64)> = conn
-            .prepare("SELECT target_kind, target_id, grade, was_new FROM review_events ORDER BY rowid")
+            .prepare(
+                "SELECT target_kind, target_id, grade, was_new FROM review_events ORDER BY rowid",
+            )
             .expect("prepare")
             .query_map([], |row| {
                 Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
@@ -1244,9 +1314,24 @@ mod tests {
         assert_eq!(
             rows,
             vec![
-                ("item".to_string(), "item-1".to_string(), "remembered".to_string(), 1),
-                ("item".to_string(), "item-1".to_string(), "forgot".to_string(), 0),
-                ("sentence".to_string(), "sent-plain".to_string(), "easy".to_string(), 1),
+                (
+                    "item".to_string(),
+                    "item-1".to_string(),
+                    "remembered".to_string(),
+                    1
+                ),
+                (
+                    "item".to_string(),
+                    "item-1".to_string(),
+                    "forgot".to_string(),
+                    0
+                ),
+                (
+                    "sentence".to_string(),
+                    "sent-plain".to_string(),
+                    "easy".to_string(),
+                    1
+                ),
             ]
         );
     }

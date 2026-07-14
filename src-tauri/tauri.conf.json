@@ -20,7 +20,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: data: blob:; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost https: http://localhost:* http://127.0.0.1:*; object-src 'none'; base-uri 'none'; frame-src 'none'"
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: data: blob:; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost https://fydor.vercel.app https://*.supabase.co http://localhost:* http://127.0.0.1:*; object-src 'none'; base-uri 'none'; frame-src 'none'"
     }
   },
   "bundle": {
@@ -33,6 +33,6 @@
       "icons/64x64.png",
       "icons/icon.ico"
     ],
-    "targets": ["dmg"]
+    "targets": ["dmg", "nsis"]
   }
 }

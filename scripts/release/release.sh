@@ -26,14 +26,17 @@ done
 echo "== Checking prerequisites =="
 check_release_env
 echo "desktop release origin: $FYDOR_RELEASE_WEB_ORIGIN"
+echo "updater endpoint: $FYDOR_UPDATER_ENDPOINT"
 MISSING=0
 if [ "$DO_MAC" = 1 ]; then
+  check_mac_release_env
   for tool in codesign hdiutil; do
     command -v "$tool" >/dev/null 2>&1 || { echo "missing (mac): $tool"; MISSING=1; }
   done
 fi
 if [ "$DO_WIN" = 1 ]; then
-  for tool in cargo-xwin llvm-rc makensis; do
+  check_windows_release_env
+  for tool in cargo-xwin llvm-rc makensis osslsigncode; do
     command -v "$tool" >/dev/null 2>&1 || [ -x "/opt/homebrew/bin/$tool" ] || { echo "missing (windows): $tool"; MISSING=1; }
   done
   rustup target list --installed | grep -q x86_64-pc-windows-msvc || { echo "missing (windows): rust target x86_64-pc-windows-msvc"; MISSING=1; }

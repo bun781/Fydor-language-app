@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod app_updates;
 mod db;
 mod external_links;
 mod lessons;
@@ -13,14 +14,15 @@ use tauri::Manager;
 
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             let app_data_dir = app.path().app_data_dir()?;
-            let _migrated_pglite_from = db::migrate_legacy_pglite_data(&app_data_dir)?;
             let conn = db::open_database(&app_data_dir)?;
             app.manage(db::AppState {
                 conn: std::sync::Mutex::new(conn),
             });
+            app_updates::check_on_startup(app.handle().clone());
 
             #[cfg(debug_assertions)]
             {

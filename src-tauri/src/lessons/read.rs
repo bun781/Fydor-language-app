@@ -104,7 +104,11 @@ pub(crate) fn export_lesson_inner(conn: &Connection, lesson_id: &str) -> Result<
         description: lesson.description.and_then(non_empty_string),
         source: lesson.source.and_then(non_empty_string),
         level: lesson.level.and_then(non_empty_string),
-        tags: if lesson.tags.is_empty() { None } else { Some(lesson.tags) },
+        tags: if lesson.tags.is_empty() {
+            None
+        } else {
+            Some(lesson.tags)
+        },
         sentences: lesson
             .sentences
             .into_iter()
@@ -215,7 +219,8 @@ fn load_words(conn: &Connection, sentence_id: &str) -> Result<Vec<StudyWord>> {
             canonical_key: row.get(5)?,
         })
     })?;
-    rows.collect::<rusqlite::Result<Vec<_>>>().map_err(Into::into)
+    rows.collect::<rusqlite::Result<Vec<_>>>()
+        .map_err(Into::into)
 }
 
 fn load_grammar(conn: &Connection, sentence_id: &str) -> Result<Vec<StudyGrammar>> {
@@ -238,7 +243,8 @@ fn load_grammar(conn: &Connection, sentence_id: &str) -> Result<Vec<StudyGrammar
             canonical_key: row.get(5)?,
         })
     })?;
-    rows.collect::<rusqlite::Result<Vec<_>>>().map_err(Into::into)
+    rows.collect::<rusqlite::Result<Vec<_>>>()
+        .map_err(Into::into)
 }
 
 fn load_chunks(conn: &Connection, sentence_id: &str) -> Result<Vec<StudyChunk>> {
@@ -259,7 +265,8 @@ fn load_chunks(conn: &Connection, sentence_id: &str) -> Result<Vec<StudyChunk>> 
             canonical_key: row.get(3)?,
         })
     })?;
-    rows.collect::<rusqlite::Result<Vec<_>>>().map_err(Into::into)
+    rows.collect::<rusqlite::Result<Vec<_>>>()
+        .map_err(Into::into)
 }
 
 // Chunk: import validation

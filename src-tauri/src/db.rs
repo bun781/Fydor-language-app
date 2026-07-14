@@ -16,81 +16,14 @@ pub fn database_path(app_data_dir: &Path) -> PathBuf {
     app_data_dir.join(SQLITE_FILE_NAME)
 }
 
-pub fn pglite_data_dir(app_data_dir: &Path) -> PathBuf {
-    app_data_dir.join("pglite")
-}
-
 pub fn prepare_app_data_dir(app_data_dir: &Path) -> Result<()> {
     // Runtime databases live in OS app data so the source repo stays source-only.
-    fs::create_dir_all(app_data_dir)
-        .with_context(|| format!("failed to create app data directory {}", app_data_dir.display()))
-}
-
-pub fn prepare_pglite_data_dir(app_data_dir: &Path) -> Result<PathBuf> {
-    let pglite_dir = pglite_data_dir(app_data_dir);
-    fs::create_dir_all(&pglite_dir)
-        .with_context(|| format!("failed to create PGlite data directory {}", pglite_dir.display()))?;
-    Ok(pglite_dir)
-}
-
-pub fn migrate_legacy_pglite_data(app_data_dir: &Path) -> Result<Option<PathBuf>> {
-    let pglite_dir = prepare_pglite_data_dir(app_data_dir)?;
-    if !is_empty_dir(&pglite_dir)? {
-        return Ok(None);
-    }
-
-    let Some(source) = legacy_pglite_dirs().into_iter().find(|candidate| candidate.exists()) else {
-        return Ok(None);
-    };
-
-    copy_dir_contents(&source, &pglite_dir)
-        .with_context(|| format!("failed to migrate PGlite data from {}", source.display()))?;
-    Ok(Some(source))
-}
-
-fn is_empty_dir(dir: &Path) -> Result<bool> {
-    Ok(!dir.exists() || fs::read_dir(dir)?.next().is_none())
-}
-
-fn legacy_pglite_dirs() -> Vec<PathBuf> {
-    #[cfg(debug_assertions)]
-    {
-        let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .parent()
-            .map(Path::to_path_buf)
-            .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")));
-
-        return vec![
-            repo_root.join("test-pglite"),
-            repo_root.join(".pglite-data"),
-            repo_root.join("src-tauri").join("next-standalone").join(".pglite-data"),
-        ];
-    }
-
-    #[cfg(not(debug_assertions))]
-    {
-        Vec::new()
-    }
-}
-
-fn copy_dir_contents(source: &Path, destination: &Path) -> Result<()> {
-    fs::create_dir_all(destination)?;
-    for entry in fs::read_dir(source)? {
-        let entry = entry?;
-        let source_path = entry.path();
-        let destination_path = destination.join(entry.file_name());
-
-        if entry.file_name() == "postmaster.pid" {
-            continue;
-        }
-
-        if source_path.is_dir() {
-            copy_dir_contents(&source_path, &destination_path)?;
-        } else if !destination_path.exists() {
-            fs::copy(&source_path, &destination_path)?;
-        }
-    }
-    Ok(())
+    fs::create_dir_all(app_data_dir).with_context(|| {
+        format!(
+            "failed to create app data directory {}",
+            app_data_dir.display()
+        )
+    })
 }
 
 pub fn open_database(app_data_dir: &Path) -> Result<Connection> {
@@ -120,7 +53,9 @@ pub(crate) fn migrate(conn: &Connection) -> Result<()> {
     )?;
 
     if current < 1 {
-        conn.execute_batch(
+        run_migration(
+            conn,
+            1,
             r#"
             CREATE TABLE lessons (
               id TEXT PRIMARY KEY,
@@ -222,14 +157,14 @@ pub(crate) fn migrate(conn: &Connection) -> Result<()> {
               value TEXT NOT NULL,
               updated_at TEXT NOT NULL
             );
-
-            INSERT INTO schema_migrations(version, applied_at) VALUES (1, datetime('now'));
             "#,
         )?;
     }
 
     if current < 2 {
-        conn.execute_batch(
+        run_migration(
+            conn,
+            2,
             r#"
             CREATE TABLE IF NOT EXISTS review_items (
               id TEXT PRIMARY KEY,
@@ -267,20 +202,18 @@ pub(crate) fn migrate(conn: &Connection) -> Result<()> {
               datetime('now'),
               datetime('now')
             FROM sentences;
-
-            INSERT INTO schema_migrations(version, applied_at) VALUES (2, datetime('now'));
             "#,
         )?;
     }
 
     if current < 3 {
-        conn.execute_batch(
+        run_migration(
+            conn,
+            3,
             r#"
             ALTER TABLE review_items
             ADD COLUMN scheduler_engine TEXT NOT NULL DEFAULT 'fixed-interval'
             CHECK (scheduler_engine IN ('fixed-interval', 'fsrs'));
-
-            INSERT INTO schema_migrations(version, applied_at) VALUES (3, datetime('now'));
             "#,
         )?;
     }
@@ -290,7 +223,9 @@ pub(crate) fn migrate(conn: &Connection) -> Result<()> {
         // sentence-shaped review_items (UNIQUE(sentence_id)). Rows are created lazily on
         // first grade; items without a row are treated as new/unreviewed. Existing
         // review_items rows are untouched, so fixed-interval sentence scheduling is preserved.
-        conn.execute_batch(
+        run_migration(
+            conn,
+            4,
             r#"
             CREATE TABLE item_review_states (
               id TEXT PRIMARY KEY,
@@ -307,8 +242,6 @@ pub(crate) fn migrate(conn: &Connection) -> Result<()> {
               UNIQUE(learning_item_id)
             );
             CREATE INDEX item_review_states_due_idx ON item_review_states(due_at);
-
-            INSERT INTO schema_migrations(version, applied_at) VALUES (4, datetime('now'));
             "#,
         )?;
     }
@@ -318,7 +251,9 @@ pub(crate) fn migrate(conn: &Connection) -> Result<()> {
         // daily new-card caps, streaks, and heatmaps. was_new marks the first-ever grade
         // of a card. Never updated or deleted by review flows; resets leave it intact so
         // history survives progress resets.
-        conn.execute_batch(
+        run_migration(
+            conn,
+            5,
             r#"
             CREATE TABLE review_events (
               id TEXT PRIMARY KEY,
@@ -329,8 +264,6 @@ pub(crate) fn migrate(conn: &Connection) -> Result<()> {
               reviewed_at TEXT NOT NULL
             );
             CREATE INDEX review_events_reviewed_idx ON review_events(reviewed_at);
-
-            INSERT INTO schema_migrations(version, applied_at) VALUES (5, datetime('now'));
             "#,
         )?;
     }
@@ -338,7 +271,9 @@ pub(crate) fn migrate(conn: &Connection) -> Result<()> {
     if current < 6 {
         // Public-library provenance is kept beside the local personal copy. The
         // desktop never stores contributor drafts or moderation state in study tables.
-        conn.execute_batch(
+        run_migration(
+            conn,
+            6,
             r#"
             ALTER TABLE lessons ADD COLUMN purpose TEXT NOT NULL DEFAULT 'personal'
               CHECK (purpose IN ('personal', 'contributor'));
@@ -348,12 +283,24 @@ pub(crate) fn migrate(conn: &Connection) -> Result<()> {
             ALTER TABLE lessons ADD COLUMN published_installed_at TEXT;
             CREATE UNIQUE INDEX lessons_published_stable_id_idx
               ON lessons(published_stable_id) WHERE published_stable_id IS NOT NULL;
-
-            INSERT INTO schema_migrations(version, applied_at) VALUES (6, datetime('now'));
             "#,
         )?;
     }
 
+    Ok(())
+}
+
+fn run_migration(conn: &Connection, version: i64, sql: &str) -> Result<()> {
+    let tx = conn.unchecked_transaction()?;
+    tx.execute_batch(sql)
+        .with_context(|| format!("failed to apply SQLite migration {version}"))?;
+    tx.execute(
+        "INSERT INTO schema_migrations(version, applied_at) VALUES (?1, datetime('now'))",
+        [version],
+    )
+    .with_context(|| format!("failed to record SQLite migration {version}"))?;
+    tx.commit()
+        .with_context(|| format!("failed to commit SQLite migration {version}"))?;
     Ok(())
 }
 
@@ -371,4 +318,51 @@ pub fn json_array<T: serde::Serialize>(value: &T) -> String {
 
 pub fn parse_json_array(value: String) -> Vec<String> {
     serde_json::from_str(&value).unwrap_or_default()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn failed_migration_rolls_back_schema_and_version() {
+        let conn = Connection::open_in_memory().expect("open database");
+        conn.execute_batch(
+            r#"
+            CREATE TABLE schema_migrations (
+              version INTEGER PRIMARY KEY,
+              applied_at TEXT NOT NULL
+            );
+            "#,
+        )
+        .expect("create migrations table");
+
+        let result = run_migration(
+            &conn,
+            99,
+            r#"
+            CREATE TABLE migration_atomicity_check (id TEXT PRIMARY KEY);
+            CREATE TABLE migration_atomicity_check (id TEXT PRIMARY KEY);
+            "#,
+        );
+
+        assert!(result.is_err());
+        let table_exists: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'migration_atomicity_check'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("query sqlite_master");
+        let version_exists: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM schema_migrations WHERE version = 99",
+                [],
+                |row| row.get(0),
+            )
+            .expect("query schema version");
+
+        assert_eq!(table_exists, 0);
+        assert_eq!(version_exists, 0);
+    }
 }

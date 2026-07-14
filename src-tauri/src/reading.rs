@@ -94,7 +94,8 @@ fn get_item_states(conn: &Connection) -> Result<Vec<ReadingItemStateInput>> {
             repetitions: row.get(2)?,
         })
     })?;
-    rows.collect::<rusqlite::Result<Vec<_>>>().map_err(Into::into)
+    rows.collect::<rusqlite::Result<Vec<_>>>()
+        .map_err(Into::into)
 }
 
 fn get_remembered_sentence_keys(conn: &Connection) -> Result<Vec<String>> {
@@ -115,7 +116,8 @@ fn get_remembered_sentence_keys(conn: &Connection) -> Result<Vec<String>> {
     );
     let mut stmt = conn.prepare(&sql)?;
     let rows = stmt.query_map([], |row| row.get::<_, String>(0))?;
-    rows.collect::<rusqlite::Result<Vec<_>>>().map_err(Into::into)
+    rows.collect::<rusqlite::Result<Vec<_>>>()
+        .map_err(Into::into)
 }
 
 #[cfg(test)]
@@ -125,7 +127,8 @@ mod tests {
 
     fn test_conn() -> Connection {
         let conn = Connection::open_in_memory().expect("open in-memory database");
-        conn.pragma_update(None, "foreign_keys", "ON").expect("enable foreign keys");
+        conn.pragma_update(None, "foreign_keys", "ON")
+            .expect("enable foreign keys");
         crate::db::migrate(&conn).expect("run migrations");
         conn
     }
