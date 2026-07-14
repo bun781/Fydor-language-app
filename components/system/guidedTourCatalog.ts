@@ -302,13 +302,13 @@ const tourCatalog: Record<string, TourStep[]> = {
     {
       route: "/study/imported-content",
       section: "Flashcards",
-      title: "Choose a lesson to study",
-      description: "Flashcards show one saved lesson at a time and let you switch between language groups and lesson sets.",
+      title: "Set your study scope",
+      description: "Choose the packs and lessons you want to include in your flashcard session.",
       details: [
-        "Use the selectors to move between languages and lessons.",
-        "The page opens to the currently selected lesson and remembers your last choice."
+        "Select packs first, then refine individual lessons if needed.",
+        "Flashcards continue through the lessons in your chosen scope."
       ],
-      targetSelectors: ['[data-tour="study-selector-bar"]'],
+      targetSelectors: ['[data-tour="study-scope-picker"]'],
       placement: "bottom"
     },
     {

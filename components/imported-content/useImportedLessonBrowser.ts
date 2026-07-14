@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { errorMessage } from "@/lib/errors";
 import { getLessonCached } from "@/lib/desktopApi";
-import { groupLessonsByLanguage } from "@/lib/language/importResources";
 import type { StudyLesson, StudyLessonMeta } from "@/lib/imported-content/types";
-import type { ChangeEvent } from "react";
 import { readSessionProgress, writeSessionProgress } from "@/lib/storage";
 import { z } from "zod";
 
@@ -17,7 +15,6 @@ export function useImportedLessonBrowser(initialLesson: StudyLesson | null, allL
     const allowed = new Set(allowedLessonIds);
     return allLessons.filter((item) => allowed.has(item.id));
   }, [allLessons, allowedLessonIds]);
-  const languageGroups = useMemo(() => groupLessonsByLanguage(availableLessons), [availableLessons]);
   const queryLessonId = getQueryLessonId();
   const [savedSelection] = useState(() => readSessionProgress(SELECTED_LESSON_KEY, selectedLessonSchema));
   const preferredLessonId = queryLessonId ?? savedSelection?.lessonId ?? null;
@@ -26,9 +23,6 @@ export function useImportedLessonBrowser(initialLesson: StudyLesson | null, allL
     : null;
   const [lesson, setLesson] = useState(initialLesson);
   const [selectedLessonId, setSelectedLessonId] = useState(initialLesson?.id ?? savedLesson?.id ?? availableLessons[0]?.id ?? "");
-  const [selectedLanguage, setSelectedLanguage] = useState(
-    initialLesson?.language ?? savedLesson?.language ?? availableLessons[0]?.language ?? ""
-  );
   const [loadingLesson, setLoadingLesson] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,7 +30,6 @@ export function useImportedLessonBrowser(initialLesson: StudyLesson | null, allL
     if (initialLesson) {
       setLesson(initialLesson);
       setSelectedLessonId(initialLesson.id);
-      setSelectedLanguage(initialLesson.language);
     }
   }, [initialLesson]);
 
@@ -44,7 +37,6 @@ export function useImportedLessonBrowser(initialLesson: StudyLesson | null, allL
     if (!availableLessons.length) {
       setLesson(null);
       setSelectedLessonId("");
-      setSelectedLanguage("");
       return;
     }
 
@@ -53,19 +45,9 @@ export function useImportedLessonBrowser(initialLesson: StudyLesson | null, allL
         ? availableLessons.find((item) => item.id === preferredLessonId) ?? availableLessons[0]
         : availableLessons[0];
       setSelectedLessonId(fallback.id);
-      setSelectedLanguage(fallback.language);
       writeSessionProgress(SELECTED_LESSON_KEY, { lessonId: fallback.id });
     }
   }, [availableLessons, preferredLessonId, selectedLessonId]);
-
-  const activeLanguageGroup = languageGroups.find((group) => group.language === selectedLanguage) ?? languageGroups[0] ?? null;
-  const languageLessons = activeLanguageGroup?.lessons ?? [];
-
-  useEffect(() => {
-    if (!selectedLanguage && languageGroups[0]) {
-      setSelectedLanguage(languageGroups[0].language);
-    }
-  }, [languageGroups, selectedLanguage]);
 
   useEffect(() => {
     if (!selectedLessonId || lesson?.id === selectedLessonId) return;
@@ -79,7 +61,6 @@ export function useImportedLessonBrowser(initialLesson: StudyLesson | null, allL
         if (cancelled) return;
         if (next) {
           setLesson(next);
-          setSelectedLanguage(next.language);
         } else {
           setLesson(null);
           setError("Selected lesson could not be loaded.");
@@ -103,27 +84,13 @@ export function useImportedLessonBrowser(initialLesson: StudyLesson | null, allL
   function switchLesson(lessonId: string) {
     setSelectedLessonId(lessonId);
     writeSessionProgress(SELECTED_LESSON_KEY, { lessonId });
-    const selectedMeta = availableLessons.find((item) => item.id === lessonId);
-    if (selectedMeta) setSelectedLanguage(selectedMeta.language);
-  }
-
-  function handleLanguageChange(event: ChangeEvent<HTMLSelectElement>) {
-    const language = event.target.value;
-    setSelectedLanguage(language);
-    const group = languageGroups.find((item) => item.language === language);
-    const nextLesson = group?.lessons[0];
-    if (nextLesson) void switchLesson(nextLesson.id);
   }
 
   return {
-    handleLanguageChange,
     error,
-    languageGroups,
-    languageLessons,
     lesson,
     loadingLesson,
     selectedLessonId,
-    selectedLanguage,
     switchLesson
   };
 }

@@ -6,8 +6,6 @@ import type {
   StudySentence
 } from "@/lib/imported-content/types";
 import { isEditableShortcutTarget } from "@/lib/dom";
-import type { ReviewDecision } from "@/lib/review/types";
-import { useLessonReview } from "@/lib/review/useLessonReview";
 import { CheckpointQuiz } from "./CheckpointQuiz";
 import { SentenceFlashcard } from "./SentenceFlashcard";
 import { readSessionProgress, writeSessionProgress } from "@/lib/storage";
@@ -44,7 +42,6 @@ const flashcardProgressSchema = z.object({
   }),
   sessionFamiliarity: entrySchema(z.enum(["known", "learning"])),
   cardGrades: entrySchema(z.enum(["easy", "correct", "hard", "failed"])),
-  reviewStates: entrySchema(z.enum(["forgot", "hard", "remembered", "easy", "forgotten"]))
 });
 
 type FlashcardProgress = z.infer<typeof flashcardProgressSchema>;
@@ -60,7 +57,6 @@ export function ImportedContentStudy({ lesson: initialLesson, loadingLesson = fa
   const [reveal, setReveal] = useState<RevealState>(DEFAULT_REVEAL);
   const [sessionFamiliarity, setSessionFamiliarity] = useState<Map<string, ItemFamiliarity>>(new Map());
   const [cardGrades, setCardGrades] = useState<Map<string, CardGrade>>(new Map());
-  const [reviewStates, setReviewStates] = useState<Map<string, ReviewDecision>>(new Map());
 
   const sentenceById = useMemo(
     () => new Map(lesson?.sentences.map((s) => [s.id, s]) ?? []),
@@ -175,19 +171,6 @@ export function ImportedContentStudy({ lesson: initialLesson, loadingLesson = fa
     resetPass(randomOrderEnabled ? shuffleIds(sourceOrder) : sourceOrder);
   }, [lesson, randomOrderEnabled, resetPass]);
 
-  const handleLessonReviewDecision = useCallback((reviewSentence: StudySentence, decision: ReviewDecision) => {
-    setReviewStates((prev) => new Map(prev).set(reviewSentence.id, decision));
-    applySentenceFamiliarity(reviewSentence, decision === "remembered" ? "known" : "learning");
-  }, [applySentenceFamiliarity]);
-
-  const review = useLessonReview(lesson?.sentences ?? [], {
-    onDecision: handleLessonReviewDecision,
-    onSaved: (reviewedSentenceId, decision) => {
-      setReviewStates((prev) => new Map(prev).set(reviewedSentenceId, decision));
-    }
-  });
-  const { finishReview } = review;
-
   useEffect(() => {
     setLesson(initialLesson);
     const restored = initialLesson ? restoreFlashcardProgress(initialLesson) : null;
@@ -198,9 +181,7 @@ export function ImportedContentStudy({ lesson: initialLesson, loadingLesson = fa
     setReveal(restored?.reveal ?? DEFAULT_REVEAL);
     setSessionFamiliarity(new Map(restored?.sessionFamiliarity ?? []));
     setCardGrades(new Map(restored?.cardGrades ?? []));
-    setReviewStates(new Map(restored?.reviewStates ?? []));
-    finishReview();
-  }, [finishReview, initialLesson]);
+  }, [initialLesson]);
 
   useEffect(() => {
     if (!lesson) return;
@@ -211,17 +192,15 @@ export function ImportedContentStudy({ lesson: initialLesson, loadingLesson = fa
       quizPendingAt,
       reveal,
       sessionFamiliarity: Array.from(sessionFamiliarity.entries()),
-      cardGrades: Array.from(cardGrades.entries()),
-      reviewStates: Array.from(reviewStates.entries())
+      cardGrades: Array.from(cardGrades.entries())
     } satisfies FlashcardProgress);
-  }, [cardGrades, cardIndex, cardOrder, lesson, quizPendingAt, randomOrderEnabled, reveal, reviewStates, sessionFamiliarity]);
+  }, [cardGrades, cardIndex, cardOrder, lesson, quizPendingAt, randomOrderEnabled, reveal, sessionFamiliarity]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (isEditableShortcutTarget(e.target)) return;
-      if (review.active && (e.key === "ArrowLeft" || e.key === "ArrowRight")) return;
       // Grade shortcuts (1-4) mirror the Review screen's ordering: Again, Hard, Good, Easy.
-      if (!review.active && quizPendingAt === null && /^[1-4]$/.test(e.key)) {
+      if (quizPendingAt === null && /^[1-4]$/.test(e.key)) {
         const grade = (["failed", "hard", "correct", "easy"] as const)[Number(e.key) - 1];
         handleGrade(grade);
         return;
@@ -237,11 +216,7 @@ export function ImportedContentStudy({ lesson: initialLesson, loadingLesson = fa
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [handlePrev, handleNext, handleRevealTranslation, handleToggleHint, handleToggleWordMeanings, handleToggleGrammar, handleGrade, quizPendingAt, review.active]);
-
-  useEffect(() => {
-    if (review.active) setReveal(DEFAULT_REVEAL);
-  }, [review.active, review.currentCard?.id]);
+  }, [handlePrev, handleNext, handleRevealTranslation, handleToggleHint, handleToggleWordMeanings, handleToggleGrammar, handleGrade, quizPendingAt]);
 
   if (!lesson) {
     return (
@@ -253,9 +228,6 @@ export function ImportedContentStudy({ lesson: initialLesson, loadingLesson = fa
     );
   }
 
-  const currentReviewState = sentenceId ? (reviewStates.get(sentenceId) ?? null) : null;
-  const activeSentence = review.active ? review.currentCard : sentence;
-  const activeReviewState = activeSentence ? (reviewStates.get(activeSentence.id) ?? null) : null;
   const recentSentences = cardOrder.slice(Math.max(0, cardIndex - 4), cardIndex + 1);
   const recentStudySentences = recentSentences
     .map((id) => sentenceById.get(id))
@@ -265,65 +237,21 @@ export function ImportedContentStudy({ lesson: initialLesson, loadingLesson = fa
     <div className="study-shell stack">
       <div className="lesson-selector-bar">
         <div className="session-stats">
-          {review.active ? (
-            <>
-              <span className="pill">Review {review.remaining} left</span>
-              {review.stats.remembered > 0 && <span className="pill review-state-remembered">Remembered {review.stats.remembered}</span>}
-              {review.stats.forgotten > 0 && <span className="pill review-state-forgotten">Forgotten {review.stats.forgotten}</span>}
-            </>
-          ) : (
-            <span className="pill">{summary.remaining > 0 ? `${summary.remaining} remaining` : "Done"}</span>
-          )}
+          <span className="pill">{summary.remaining > 0 ? `${summary.remaining} remaining` : "Done"}</span>
           {summary.easy > 0 && <span className="pill grade-stat-easy">Easy {summary.easy}</span>}
           {summary.correct > 0 && <span className="pill grade-stat-good">Good {summary.correct}</span>}
           {summary.hard > 0 && <span className="pill grade-stat-hard">Hard {summary.hard}</span>}
           {summary.failed > 0 && <span className="pill grade-stat-again">Again {summary.failed}</span>}
-          {lesson.sentences.length > 0 ? (
-            <button
-              type="button"
-              className="button secondary lesson-review-toggle"
-              data-tour="study-start-review"
-              disabled={loadingLesson}
-              onClick={() => {
-                setQuizPendingAt(null);
-                setReveal(DEFAULT_REVEAL);
-                if (review.active) review.finishReview();
-                else review.startReview();
-              }}
-            >
-              {review.active ? "End Review" : "Start Review"}
-            </button>
-          ) : null}
         </div>
       </div>
 
-      {review.active && review.finished ? (
-        <section className="card stack">
-          <div className="row">
-            <div>
-              <h2>Review complete</h2>
-              <p className="muted">You remembered every active card in this pass.</p>
-            </div>
-            <span className="pill">Done</span>
-          </div>
-          <div className="session-stats">
-            <span className="pill">Reviewed {review.stats.reviewed}</span>
-            <span className="pill review-state-remembered">Remembered {review.stats.remembered}</span>
-            {review.stats.forgotten > 0 && <span className="pill review-state-forgotten">Forgotten {review.stats.forgotten}</span>}
-          </div>
-          {review.error ? <p className="review-error">{review.error}</p> : null}
-          <div className="row compact-row" style={{ gap: 8 }}>
-            <button type="button" className="button secondary" onClick={review.finishReview}>Return to lesson</button>
-            <button type="button" className="button" onClick={review.startReview}>Review again</button>
-          </div>
-        </section>
-      ) : quizPendingAt !== null && !review.active ? (
+      {quizPendingAt !== null ? (
         <CheckpointQuiz
           sentences={recentStudySentences}
           allSentences={lesson.sentences}
           onComplete={handleQuizDone}
         />
-      ) : completed && !review.active ? (
+      ) : completed ? (
         <section className="card stack">
           <div className="row">
             <div>
@@ -359,22 +287,18 @@ export function ImportedContentStudy({ lesson: initialLesson, loadingLesson = fa
             {onNextLesson && nextLessonTitle ? <button type="button" className="button secondary" onClick={onNextLesson}>Next lesson: {nextLessonTitle}</button> : null}
           </div>
         </section>
-      ) : activeSentence ? (
+      ) : sentence ? (
         <SentenceFlashcard
-          key={`${lesson.id}:${activeSentence.id}:${review.active ? `review-${review.stats.reviewed}` : cardIndex}`}
-          sentence={activeSentence}
-          cardIndex={review.active ? review.stats.reviewed : cardIndex}
-          totalCards={review.active ? Math.max(1, review.stats.reviewed + review.remaining) : total}
+          key={`${lesson.id}:${sentence.id}:${cardIndex}`}
+          sentence={sentence}
+          cardIndex={cardIndex}
+          totalCards={total}
           lessonTitle={lesson.title}
           language={lesson.language}
           allSentences={lesson.sentences}
           reveal={reveal}
           sessionFamiliarity={sessionFamiliarity}
-          currentGrade={cardGrades.get(activeSentence.id) ?? null}
-          reviewMode={review.active}
-          reviewState={review.active ? activeReviewState : currentReviewState}
-          isSavingReview={review.saving}
-          reviewError={review.error}
+          currentGrade={cardGrades.get(sentence.id) ?? null}
           onRevealTranslation={handleRevealTranslation}
           onToggleWordMeanings={handleToggleWordMeanings}
           onToggleGrammar={handleToggleGrammar}
@@ -382,10 +306,6 @@ export function ImportedContentStudy({ lesson: initialLesson, loadingLesson = fa
           onGrade={handleGrade}
           randomOrderEnabled={randomOrderEnabled}
           onToggleRandomOrder={handleToggleRandomOrder}
-          onReview={(decision) => {
-            if (decision === "remembered") review.markRemembered(activeSentence.id);
-            else review.markNotRemembered(activeSentence.id);
-          }}
           onPrev={handlePrev}
           onNext={handleNext}
         />
@@ -426,8 +346,7 @@ function restoreFlashcardProgress(lesson: StudyLesson): FlashcardProgress | null
         ? null
         : Math.min(Math.max(0, saved.quizPendingAt), maxIndex),
     sessionFamiliarity: saved.sessionFamiliarity.filter(([key]) => Boolean(key)),
-    cardGrades: saved.cardGrades.filter(([id]) => sentenceIds.has(id)),
-    reviewStates: saved.reviewStates.filter(([id]) => sentenceIds.has(id))
+    cardGrades: saved.cardGrades.filter(([id]) => sentenceIds.has(id))
   };
 }
 

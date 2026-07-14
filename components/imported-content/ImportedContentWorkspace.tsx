@@ -112,51 +112,17 @@ export function ImportedContentWorkspace({ mode = "lesson" }: Props) {
       </div>
 
       {mode === "lesson" && packs.length ? (
-        <StudyScopePicker
-          packs={packs}
-          lessons={allLessons}
-          scope={scope}
-          onChange={(nextScope) => {
-            setScope(nextScope);
-            writeSessionProgress("study.scope", nextScope);
-          }}
-          title="Study scope"
-        />
-      ) : null}
-
-      {mode === "lesson" ? (
-        <div className="lesson-selector-bar" data-tour="study-selector-bar">
-          {browser.languageGroups.length > 1 ? (
-          <select
-            className="input selector-compact"
-            value={browser.selectedLanguage}
-            disabled={browser.loadingLesson}
-            onChange={browser.handleLanguageChange}
-          >
-            {browser.languageGroups.map((group) => (
-              <option key={group.language} value={group.language}>
-                {group.label}
-              </option>
-            ))}
-          </select>
-          ) : null}
-
-          {browser.languageLessons.length > 1 ? (
-          <select
-            className="input selector-compact"
-            value={browser.selectedLessonId}
-            disabled={browser.loadingLesson}
-            onChange={(event) => void browser.switchLesson(event.target.value)}
-          >
-            {browser.languageLessons.map((lesson) => (
-              <option key={lesson.id} value={lesson.id}>
-                {lesson.title}
-              </option>
-            ))}
-          </select>
-          ) : null}
-
-          {browser.loadingLesson ? <span className="pill">Loading lesson...</span> : null}
+        <div data-tour="study-scope-picker">
+          <StudyScopePicker
+            packs={packs}
+            lessons={allLessons}
+            scope={scope}
+            onChange={(nextScope) => {
+              setScope(nextScope);
+              writeSessionProgress("study.scope", nextScope);
+            }}
+            title="Study scope"
+          />
         </div>
       ) : null}
 
