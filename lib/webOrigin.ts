@@ -7,9 +7,8 @@ export function normalizeFydorWebOrigin(value: string): string {
   } catch {
     throw new Error("VITE_FYDOR_WEB_ORIGIN must be an absolute URL.");
   }
-  const local = ["localhost", "127.0.0.1", "::1"].includes(url.hostname);
-  if (url.protocol !== "https:" && !(local && url.protocol === "http:")) {
-    throw new Error("Fydor website origin must use HTTPS, except for localhost development.");
+  if (url.protocol !== "https:") {
+    throw new Error("Fydor website origin must use HTTPS.");
   }
   if (url.username || url.password || url.search || url.hash) {
     throw new Error("Fydor website origin cannot contain credentials, a query, or a fragment.");
@@ -19,7 +18,7 @@ export function normalizeFydorWebOrigin(value: string): string {
 }
 
 export function fydorWebOrigin(): string {
-  return normalizeFydorWebOrigin(import.meta.env.VITE_FYDOR_WEB_ORIGIN || DEFAULT_FYDOR_WEB_ORIGIN);
+  return DEFAULT_FYDOR_WEB_ORIGIN;
 }
 
 export function fydorWebUrl(path: string): string {

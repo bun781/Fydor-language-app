@@ -67,11 +67,7 @@ fn community_url(
     fragment: &str,
     source_lesson_id: Option<&str>,
 ) -> Result<String, String> {
-    let configured = std::env::var("FYDOR_WEB_ORIGIN")
-        .ok()
-        .or_else(|| option_env!("FYDOR_WEB_ORIGIN").map(str::to_string))
-        .unwrap_or_else(|| DEFAULT_WEB_ORIGIN.to_string());
-    let mut url = validate_web_origin(&configured)?;
+    let mut url = Url::parse(DEFAULT_WEB_ORIGIN).map_err(|error| error.to_string())?;
     url.set_path(&format!("{}/{}", url.path().trim_end_matches('/'), page));
     if let Some(lesson_id) = source_lesson_id {
         if !is_uuid(lesson_id) {
@@ -84,28 +80,6 @@ fn community_url(
     Ok(url.to_string())
 }
 
-fn validate_web_origin(value: &str) -> Result<Url, String> {
-    let url = Url::parse(value.trim())
-        .map_err(|_| "FYDOR_WEB_ORIGIN must be an absolute URL.".to_string())?;
-    let local = matches!(url.host_str(), Some("localhost" | "127.0.0.1" | "::1"));
-    if url.scheme() != "https" && !(local && url.scheme() == "http") {
-        return Err("FYDOR_WEB_ORIGIN must use HTTPS except on localhost.".to_string());
-    }
-    if !url.username().is_empty()
-        || url.password().is_some()
-        || url.query().is_some()
-        || url.fragment().is_some()
-    {
-        return Err(
-            "FYDOR_WEB_ORIGIN cannot contain credentials, a query, or a fragment.".to_string(),
-        );
-    }
-    if !url.path().chars().all(|character| character == '/') {
-        return Err("FYDOR_WEB_ORIGIN cannot contain a path.".to_string());
-    }
-    Ok(url)
-}
-
 fn is_uuid(value: &str) -> bool {
     uuid::Uuid::parse_str(value).is_ok()
 }
@@ -113,15 +87,6 @@ fn is_uuid(value: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn origin_rejects_unsafe_protocols_and_credentials() {
-        assert!(validate_web_origin("javascript:alert(1)").is_err());
-        assert!(validate_web_origin("http://example.com").is_err());
-        assert!(validate_web_origin("https://user:pass@example.com").is_err());
-        assert!(validate_web_origin("http://localhost:8080").is_ok());
-        assert!(validate_web_origin("https://preview.example.com/").is_ok());
-    }
 
     #[test]
     fn community_pages_are_fixed_and_conversion_ids_are_validated() {

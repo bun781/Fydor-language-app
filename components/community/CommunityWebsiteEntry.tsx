@@ -55,7 +55,7 @@ export function CommunityWebsiteEntry({ destination }: { destination: CommunityD
         <section className="card stack community-auth">
           <ExternalLink size={24} aria-hidden="true" />
           <p className="muted">{status}</p>
-          <p className="muted">The website keeps your sign-in in an HttpOnly session cookie and owns the contributor workflow for both Fydor surfaces.</p>
+          <p className="muted">Sign in directly with Supabase on fydor.vercel.app. The website owns the contributor workflow for both Fydor surfaces.</p>
         </section>
       </main>
     </AppShell>
