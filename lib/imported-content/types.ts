@@ -14,6 +14,8 @@ export interface StudyLessonMeta {
   packTitle?: string | null;
   packPosition?: number | null;
   packArchived?: boolean;
+  packUnitId?: string | null;
+  packUnitTitle?: string | null;
 }
 
 export interface StudyPackMeta {
@@ -34,6 +36,15 @@ export interface StudyPackMeta {
   archived: boolean;
   lessonCount: number;
   sentenceCount: number;
+}
+
+export interface StudyPackUnitMeta {
+  id: string;
+  packId: string;
+  title: string;
+  position: number;
+  lessonCount: number;
+  manifestId?: string | null;
 }
 
 export interface StudyWord {

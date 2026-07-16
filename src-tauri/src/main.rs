@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod annotations;
 #[cfg(feature = "auto-updates")]
 mod app_updates;
 mod curriculum;
@@ -52,6 +53,8 @@ fn main() {
             lessons::delete_lesson,
             lessons::preview_lesson_import,
             lessons::import_lesson,
+            annotations::search_annotations,
+            annotations::copy_annotation_to_lesson,
             curriculum::get_language_pairs,
             curriculum::get_active_language_pair,
             curriculum::set_active_language_pair,
@@ -61,6 +64,12 @@ fn main() {
             curriculum::add_lesson_to_unit,
             curriculum::create_collection,
             packs::get_packs,
+            packs::get_pack_units,
+            packs::create_pack_unit,
+            packs::rename_pack_unit,
+            packs::delete_pack_unit,
+            packs::move_lessons_to_pack_unit,
+            packs::sync_pack_unit_manifest,
             packs::upsert_pack,
             packs::update_pack,
             packs::move_lessons_to_pack,

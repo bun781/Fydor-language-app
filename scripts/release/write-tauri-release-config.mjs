@@ -44,6 +44,11 @@ const pubkey = (process.env.FYDOR_UPDATER_PUBKEY || "").trim();
 if (!pubkey) fail("FYDOR_UPDATER_PUBKEY is required.");
 
 const config = {
+  app: {
+    security: {
+      csp: `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: data: blob:; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost ${webOrigin} https://github.com; object-src 'none'; base-uri 'none'; frame-src 'none'`
+    }
+  },
   bundle: {
     createUpdaterArtifacts: true
   },
@@ -57,12 +62,6 @@ const config = {
     }
   }
 };
-
-if (process.env.FYDOR_MAC_SIGNING_IDENTITY) {
-  config.bundle.macOS = {
-    signingIdentity: process.env.FYDOR_MAC_SIGNING_IDENTITY
-  };
-}
 
 const dir = mkdtempSync(join(tmpdir(), "fydor-tauri-release-"));
 const path = join(dir, "tauri.release.conf.json");

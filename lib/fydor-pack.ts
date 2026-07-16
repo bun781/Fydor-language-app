@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { LessonImportInput } from "@/lib/language/types";
+import type { LessonGrammarInput, LessonImportInput, LessonSentenceInput } from "@/lib/language/types";
 import { parseStrictJson } from "@/lib/safeJson";
 
 const FYDOR_PACK_TYPE = "fydor_pack";
@@ -10,6 +10,42 @@ export interface FydorPackAuthor {
   organization?: string;
   url?: string;
 }
+
+export interface FydorPackUnitManifestItem {
+  id: string;
+  title: string;
+  position: number;
+  lessonIndexes: number[];
+}
+
+export interface FydorPackUnitManifest {
+  schemaVersion: 1;
+  units: FydorPackUnitManifestItem[];
+}
+
+export interface FydorGrammarGuideSituation {
+  title: string;
+  explanation: string;
+  unitIndexes: number[];
+}
+
+export interface FydorGrammarGuideRule {
+  id: string;
+  title: string;
+  overview: string;
+  situations: FydorGrammarGuideSituation[];
+  contrasts?: string[];
+  commonMistakes?: string[];
+}
+
+export interface FydorGrammarGuide {
+  schemaVersion: 1;
+  rules: FydorGrammarGuideRule[];
+}
+
+type FydorGrammarInput = LessonGrammarInput & { ruleId?: string };
+type FydorSentenceInput = Omit<LessonSentenceInput, "grammar"> & { grammar?: FydorGrammarInput[] };
+type FydorLessonInput = Omit<LessonImportInput, "sentences"> & { sentences: FydorSentenceInput[] };
 
 export interface FydorPack {
   type: typeof FYDOR_PACK_TYPE;
@@ -26,7 +62,9 @@ export interface FydorPack {
   tags?: string[];
   createdAt: string;
   updatedAt: string;
-  lessons: LessonImportInput[];
+  unitManifest?: FydorPackUnitManifest;
+  grammarGuide?: FydorGrammarGuide;
+  lessons: FydorLessonInput[];
 }
 
 export interface FydorPackValidation {
@@ -34,6 +72,7 @@ export interface FydorPackValidation {
   errors: string[];
   warnings: string[];
   lessonErrors: Array<{ index: number; title: string; errors: string[] }>;
+  annexErrors: string[];
   lessonCount: number;
   sentenceCount: number;
 }
@@ -63,7 +102,8 @@ const lessonGrammarSchema = z.object({
   pattern: z.string().trim().min(1),
   surface: z.string().trim().min(1).optional(),
   meaning: z.string().trim().min(1).optional(),
-  explanation: z.string().trim().min(1).optional()
+  explanation: z.string().trim().min(1).optional(),
+  ruleId: z.string().trim().min(1).optional()
 }).strict();
 
 const lessonChunkSchema = z.object({
@@ -117,6 +157,30 @@ const packSchema = z.object({
   tags: z.array(z.string().trim().min(1)).optional(),
   createdAt: z.string().trim().optional(),
   updatedAt: z.string().trim().optional(),
+  unitManifest: z.object({
+    schemaVersion: z.literal(1),
+    units: z.array(z.object({
+      id: z.string().trim().min(1),
+      title: z.string().trim().min(1),
+      position: z.number().int().nonnegative(),
+      lessonIndexes: z.array(z.number().int().nonnegative()).min(1)
+    }).strict()).min(1)
+  }).strict().optional(),
+  grammarGuide: z.object({
+    schemaVersion: z.literal(1),
+    rules: z.array(z.object({
+      id: z.string().trim().min(1),
+      title: z.string().trim().min(1),
+      overview: z.string().trim().min(1),
+      situations: z.array(z.object({
+        title: z.string().trim().min(1),
+        explanation: z.string().trim().min(1),
+        unitIndexes: z.array(z.number().int().nonnegative()).min(1)
+      }).strict()).min(1),
+      contrasts: z.array(z.string().trim().min(1)).optional(),
+      commonMistakes: z.array(z.string().trim().min(1)).optional()
+    }).strict()).min(1)
+  }).strict().optional(),
   lessons: z.array(z.unknown()).min(1)
 }).strict();
 
@@ -182,13 +246,27 @@ export function parseFydorPack(source: string): FydorPackValidation {
     lessons
   };
 
+  const annexErrors = validatePackAnnexes(pack, packResult.data.unitManifest, packResult.data.grammarGuide);
+  if (annexErrors.length) {
+    return {
+      pack,
+      errors: ["One or more pack annexes need attention."],
+      warnings,
+      lessonErrors,
+      lessonCount: lessons.length,
+      sentenceCount: countSentences(lessons),
+      annexErrors
+    };
+  }
+
   return {
     pack,
     errors: lessonErrors.length ? ["One or more lessons in this pack need attention."] : [],
     warnings,
     lessonErrors,
     lessonCount: lessons.length,
-    sentenceCount: countSentences(lessons)
+    sentenceCount: countSentences(lessons),
+    annexErrors: []
   };
 }
 
@@ -200,6 +278,8 @@ export function createFydorPack(input: {
   license?: string;
   tags?: string[];
   lessons: LessonImportInput[];
+  unitManifest?: FydorPackUnitManifest;
+  grammarGuide?: FydorGrammarGuide;
 }): FydorPack {
   const now = new Date().toISOString();
   const firstLesson = input.lessons[0];
@@ -218,8 +298,116 @@ export function createFydorPack(input: {
     tags: uniqueTags(input.tags),
     createdAt: now,
     updatedAt: now,
+    unitManifest: input.unitManifest,
+    grammarGuide: input.grammarGuide,
     lessons: input.lessons
   };
+}
+
+/**
+ * Expands pack-level grammar teaching into the existing sentence annotation
+ * shape. ruleId is deliberately removed before crossing into the Rust lesson
+ * importer, which keeps old lesson JSON and the database contract unchanged.
+ */
+export function prepareLessonsForImport(pack: FydorPack): LessonImportInput[] {
+  const rules = new Map((pack.grammarGuide?.rules ?? []).map((rule) => [rule.id, rule]));
+  const lessonUnitPositions = new Map<number, number>();
+  pack.unitManifest?.units.forEach((unit) => unit.lessonIndexes.forEach((lessonIndex) => lessonUnitPositions.set(lessonIndex, unit.position)));
+  const unitTitles = new Map((pack.unitManifest?.units ?? []).map((unit) => [unit.position, unit.title]));
+  return pack.lessons.map((lesson, lessonIndex) => ({
+    ...lesson,
+    sentences: lesson.sentences.map((sentence) => ({
+      ...sentence,
+      grammar: sentence.grammar?.map((grammar) => {
+        const { ruleId, ...plainGrammar } = grammar;
+        const rule = ruleId ? rules.get(ruleId) : undefined;
+        if (!rule) return plainGrammar;
+        return {
+          ...plainGrammar,
+          explanation: expandGrammarExplanation(rule, lessonUnitPositions.get(lessonIndex) ?? lessonIndex, unitTitles, grammar.explanation)
+        };
+      })
+    }))
+  }));
+}
+
+function validatePackAnnexes(
+  pack: FydorPack,
+  unitManifest: FydorPackUnitManifest | undefined,
+  grammarGuide: FydorGrammarGuide | undefined
+): string[] {
+  const errors: string[] = [];
+  if (unitManifest) {
+    const ids = new Set<string>();
+    const positions = new Set<number>();
+    const assigned = new Set<number>();
+    unitManifest.units.forEach((unit) => {
+      if (ids.has(unit.id)) errors.push(`Unit manifest repeats id "${unit.id}".`);
+      ids.add(unit.id);
+      if (positions.has(unit.position)) errors.push(`Unit manifest repeats position ${unit.position}.`);
+      positions.add(unit.position);
+      unit.lessonIndexes.forEach((lessonIndex) => {
+        if (lessonIndex >= pack.lessons.length) {
+          errors.push(`${unit.title} references missing lesson index ${lessonIndex}.`);
+        }
+        if (assigned.has(lessonIndex)) errors.push(`Lesson index ${lessonIndex} appears in more than one unit.`);
+        assigned.add(lessonIndex);
+      });
+    });
+    if (assigned.size !== pack.lessons.length) errors.push("Unit manifest must assign every lesson exactly once.");
+  }
+
+  if (grammarGuide) {
+    const ruleIds = new Set<string>();
+    const referencedRuleIds = new Set<string>();
+    grammarGuide.rules.forEach((rule) => {
+      if (ruleIds.has(rule.id)) errors.push(`Grammar guide repeats rule id "${rule.id}".`);
+      ruleIds.add(rule.id);
+      rule.situations.forEach((situation) => situation.unitIndexes.forEach((unitIndex) => {
+        if (unitManifest && !unitManifest.units.some((unit) => unit.position === unitIndex)) {
+          errors.push(`Grammar rule "${rule.id}" references missing unit position ${unitIndex}.`);
+        } else if (!unitManifest && unitIndex >= pack.lessons.length) {
+          errors.push(`Grammar rule "${rule.id}" references missing lesson index ${unitIndex}.`);
+        }
+      }));
+    });
+    pack.lessons.forEach((lesson) => lesson.sentences.forEach((sentence) => sentence.grammar?.forEach((grammar) => {
+      if (grammar.ruleId && !ruleIds.has(grammar.ruleId)) {
+        errors.push(`Grammar annotation references unknown rule "${grammar.ruleId}".`);
+      } else if (grammar.ruleId) {
+        referencedRuleIds.add(grammar.ruleId);
+      }
+    })));
+    grammarGuide.rules.forEach((rule) => {
+      if (!referencedRuleIds.has(rule.id)) errors.push(`Grammar rule "${rule.id}" has no sentence examples.`);
+    });
+  }
+  return errors;
+}
+
+function expandGrammarExplanation(
+  rule: FydorGrammarGuideRule,
+  lessonIndex: number,
+  unitTitles: Map<number, string>,
+  localExplanation: string | undefined
+): string {
+  const situations = rule.situations
+    .filter((situation) => situation.unitIndexes.includes(lessonIndex))
+    .map((situation) => `${situation.title}: ${situation.explanation}`);
+  const acrossCourse = rule.situations
+    .flatMap((situation) => situation.unitIndexes.map((index) => unitTitles.get(index) ?? `Unit ${index + 1}`))
+    .filter((title, index, values) => values.indexOf(title) === index)
+    .join(", ");
+  const sections = [
+    `Rule: ${rule.title}.`,
+    `Overview: ${rule.overview}`,
+    situations.length ? `Use in this lesson: ${situations.join(" ")}` : undefined,
+    acrossCourse ? `Across the course: ${acrossCourse}.` : undefined,
+    rule.contrasts?.length ? `Contrast: ${rule.contrasts.join(" ")}` : undefined,
+    rule.commonMistakes?.length ? `Common mistakes: ${rule.commonMistakes.join(" ")}` : undefined,
+    localExplanation ? `This sentence: ${localExplanation}` : undefined
+  ];
+  return sections.filter(Boolean).join(" ");
 }
 
 export function countSentences(lessons: LessonImportInput[]): number {
@@ -280,6 +468,7 @@ function canonicalizePack(pack: FydorPack) {
   return {
     language: pack.language,
     baseLanguage: pack.baseLanguage,
+    grammarGuide: pack.grammarGuide,
     lessons: pack.lessons.map((lesson) => ({
       language: lesson.language,
       baseLanguage: lesson.baseLanguage,
@@ -310,6 +499,7 @@ function emptyValidation(errors: string[]): FydorPackValidation {
     errors,
     warnings: [],
     lessonErrors: [],
+    annexErrors: [],
     lessonCount: 0,
     sentenceCount: 0
   };

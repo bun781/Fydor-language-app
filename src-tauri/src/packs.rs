@@ -1,10 +1,22 @@
-use crate::{db, models::StudyPackMeta};
+use crate::{
+    db,
+    models::{StudyPackMeta, StudyPackUnitMeta},
+};
 use anyhow::{anyhow, Result};
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::Deserialize;
 use tauri::State;
 
 const UNSORTED_PACK_ID: &str = "personal-unsorted";
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PackUnitManifestInput {
+    pub manifest_id: String,
+    pub title: String,
+    pub position: i64,
+    pub lesson_ids: Vec<String>,
+}
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -28,6 +40,271 @@ pub struct PackInput {
 pub fn get_packs(state: State<db::AppState>) -> Result<Vec<StudyPackMeta>, String> {
     let conn = state.conn.lock().map_err(|err| err.to_string())?;
     get_packs_inner(&conn).map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+pub fn get_pack_units(state: State<db::AppState>) -> Result<Vec<StudyPackUnitMeta>, String> {
+    let conn = state.conn.lock().map_err(|err| err.to_string())?;
+    let mut statement = conn
+        .prepare(
+            r#"
+        SELECT u.id, u.pack_id, u.title, u.position, COUNT(l.id), u.manifest_id
+        FROM pack_units u
+        LEFT JOIN lessons l ON l.pack_unit_id = u.id
+        GROUP BY u.id
+        ORDER BY u.pack_id, u.position
+        "#,
+        )
+        .map_err(|err| err.to_string())?;
+    let units = statement
+        .query_map([], |row| {
+            Ok(StudyPackUnitMeta {
+                id: row.get(0)?,
+                pack_id: row.get(1)?,
+                title: row.get(2)?,
+                position: row.get(3)?,
+                lesson_count: row.get(4)?,
+                manifest_id: row.get(5)?,
+            })
+        })
+        .map_err(|err| err.to_string())?
+        .collect::<rusqlite::Result<Vec<_>>>()
+        .map_err(|err| err.to_string())?;
+    Ok(units)
+}
+
+#[tauri::command]
+pub fn create_pack_unit(
+    pack_id: String,
+    title: String,
+    state: State<db::AppState>,
+) -> Result<StudyPackUnitMeta, String> {
+    let title = title.trim();
+    if title.is_empty() {
+        return Err("Unit name is required.".to_string());
+    }
+    let conn = state.conn.lock().map_err(|err| err.to_string())?;
+    let pack_exists: bool = conn
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM packs WHERE id = ?1)",
+            [&pack_id],
+            |row| row.get(0),
+        )
+        .map_err(|err| err.to_string())?;
+    if !pack_exists {
+        return Err("Selected pack was not found.".to_string());
+    }
+    let position: i64 = conn
+        .query_row(
+            "SELECT COALESCE(MAX(position), -1) + 1 FROM pack_units WHERE pack_id = ?1",
+            [&pack_id],
+            |row| row.get(0),
+        )
+        .map_err(|err| err.to_string())?;
+    let id = db::id();
+    conn.execute(
+        "INSERT INTO pack_units (id, pack_id, title, position, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?5)",
+        params![id, pack_id, title, position, db::now()],
+    ).map_err(|err| err.to_string())?;
+    Ok(StudyPackUnitMeta {
+        id,
+        pack_id,
+        title: title.to_string(),
+        position,
+        lesson_count: 0,
+        manifest_id: None,
+    })
+}
+
+#[tauri::command]
+pub fn rename_pack_unit(
+    unit_id: String,
+    title: String,
+    state: State<db::AppState>,
+) -> Result<(), String> {
+    let title = title.trim();
+    if title.is_empty() {
+        return Err("Unit name is required.".to_string());
+    }
+    let conn = state.conn.lock().map_err(|err| err.to_string())?;
+    let changed = conn
+        .execute(
+            "UPDATE pack_units SET title = ?1, updated_at = ?2 WHERE id = ?3",
+            params![title, db::now(), unit_id],
+        )
+        .map_err(|err| err.to_string())?;
+    if changed == 0 {
+        return Err("Selected unit was not found.".to_string());
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn sync_pack_unit_manifest(
+    pack_id: String,
+    units: Vec<PackUnitManifestInput>,
+    state: State<db::AppState>,
+) -> Result<(), String> {
+    let mut conn = state.conn.lock().map_err(|err| err.to_string())?;
+    sync_pack_unit_manifest_inner(&mut conn, &pack_id, &units).map_err(|err| err.to_string())
+}
+
+pub(crate) fn sync_pack_unit_manifest_inner(
+    conn: &mut Connection,
+    pack_id: &str,
+    units: &[PackUnitManifestInput],
+) -> Result<()> {
+    let pack_exists: bool = conn.query_row(
+        "SELECT EXISTS(SELECT 1 FROM packs WHERE id = ?1)",
+        [pack_id],
+        |row| row.get(0),
+    )?;
+    if !pack_exists {
+        return Err(anyhow!("Selected pack was not found."));
+    }
+
+    let mut manifest_ids = std::collections::HashSet::new();
+    let mut positions = std::collections::HashSet::new();
+    for unit in units {
+        if unit.manifest_id.trim().is_empty() || unit.title.trim().is_empty() {
+            return Err(anyhow!("Unit manifest IDs and titles are required."));
+        }
+        if !manifest_ids.insert(unit.manifest_id.as_str()) {
+            return Err(anyhow!("Unit manifest contains a duplicate ID."));
+        }
+        if !positions.insert(unit.position) {
+            return Err(anyhow!("Unit manifest contains a duplicate position."));
+        }
+        for lesson_id in &unit.lesson_ids {
+            let belongs: bool = conn.query_row(
+                "SELECT EXISTS(SELECT 1 FROM lessons WHERE id = ?1 AND pack_id = ?2)",
+                params![lesson_id, pack_id],
+                |row| row.get(0),
+            )?;
+            if !belongs {
+                return Err(anyhow!(
+                    "A manifest lesson does not belong to the selected pack."
+                ));
+            }
+        }
+    }
+
+    let tx = conn.transaction()?;
+    let managed_ids: Vec<(String, Option<String>)> = {
+        let mut statement = tx.prepare(
+            "SELECT id, manifest_id FROM pack_units WHERE pack_id = ?1 AND manifest_id IS NOT NULL",
+        )?;
+        let rows = statement
+            .query_map([pack_id], |row| Ok((row.get(0)?, row.get(1)?)))?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+        rows
+    };
+    for (_, manifest_id) in &managed_ids {
+        if let Some(manifest_id) = manifest_id {
+            if !manifest_ids.contains(manifest_id.as_str()) {
+                tx.execute(
+                    "DELETE FROM pack_units WHERE pack_id = ?1 AND manifest_id = ?2",
+                    params![pack_id, manifest_id],
+                )?;
+            }
+        }
+    }
+
+    let manual_unit_ids: Vec<String> = {
+        let mut statement = tx.prepare(
+            "SELECT id FROM pack_units WHERE pack_id = ?1 AND manifest_id IS NULL ORDER BY position, id",
+        )?;
+        let rows = statement
+            .query_map([pack_id], |row| row.get(0))?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+        rows
+    };
+    tx.execute(
+        "UPDATE pack_units SET position = 1000000 + rowid WHERE pack_id = ?1",
+        [pack_id],
+    )?;
+
+    let now = db::now();
+    for unit in units {
+        let existing_id: Option<String> = tx
+            .query_row(
+                "SELECT id FROM pack_units WHERE pack_id = ?1 AND manifest_id = ?2",
+                params![pack_id, unit.manifest_id],
+                |row| row.get(0),
+            )
+            .optional()?;
+        let id = existing_id.clone().unwrap_or_else(db::id);
+        if existing_id.is_some() {
+            tx.execute(
+                "UPDATE pack_units SET title = ?1, position = ?2, updated_at = ?3 WHERE id = ?4",
+                params![unit.title.trim(), unit.position, now, id],
+            )?;
+        } else {
+            tx.execute(
+                "INSERT INTO pack_units (id, pack_id, title, position, created_at, updated_at, manifest_id) VALUES (?1, ?2, ?3, ?4, ?5, ?5, ?6)",
+                params![id, pack_id, unit.title.trim(), unit.position, now, unit.manifest_id],
+            )?;
+        }
+        for lesson_id in &unit.lesson_ids {
+            tx.execute(
+                "UPDATE lessons SET pack_unit_id = ?1, updated_at = ?2 WHERE id = ?3 AND pack_id = ?4",
+                params![id, now, lesson_id, pack_id],
+            )?;
+        }
+    }
+    let next_manual_position = units.iter().map(|unit| unit.position).max().unwrap_or(-1) + 1;
+    for (offset, unit_id) in manual_unit_ids.iter().enumerate() {
+        tx.execute(
+            "UPDATE pack_units SET position = ?1, updated_at = ?2 WHERE id = ?3",
+            params![next_manual_position + offset as i64, now, unit_id],
+        )?;
+    }
+    tx.commit()?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn delete_pack_unit(unit_id: String, state: State<db::AppState>) -> Result<(), String> {
+    let conn = state.conn.lock().map_err(|err| err.to_string())?;
+    let changed = conn
+        .execute("DELETE FROM pack_units WHERE id = ?1", [&unit_id])
+        .map_err(|err| err.to_string())?;
+    if changed == 0 {
+        return Err("Selected unit was not found.".to_string());
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn move_lessons_to_pack_unit(
+    lesson_ids: Vec<String>,
+    pack_id: String,
+    unit_id: Option<String>,
+    state: State<db::AppState>,
+) -> Result<(), String> {
+    let mut conn = state.conn.lock().map_err(|err| err.to_string())?;
+    if let Some(ref unit_id) = unit_id {
+        let unit_matches: bool = conn
+            .query_row(
+                "SELECT EXISTS(SELECT 1 FROM pack_units WHERE id = ?1 AND pack_id = ?2)",
+                params![unit_id, pack_id],
+                |row| row.get(0),
+            )
+            .map_err(|err| err.to_string())?;
+        if !unit_matches {
+            return Err("Selected unit does not belong to this pack.".to_string());
+        }
+    }
+    move_lessons_to_pack_inner(&mut conn, &lesson_ids, &pack_id).map_err(|err| err.to_string())?;
+    let tx = conn.transaction().map_err(|err| err.to_string())?;
+    for lesson_id in lesson_ids {
+        tx.execute(
+            "UPDATE lessons SET pack_unit_id = ?1, updated_at = ?2 WHERE id = ?3",
+            params![unit_id, db::now(), lesson_id],
+        )
+        .map_err(|err| err.to_string())?;
+    }
+    tx.commit().map_err(|err| err.to_string())
 }
 
 #[tauri::command]
@@ -227,7 +504,7 @@ pub(crate) fn move_lessons_to_pack_inner(
     let tx = conn.transaction()?;
     for (offset, lesson_id) in lesson_ids.iter().enumerate() {
         tx.execute(
-            "UPDATE lessons SET pack_id = ?1, pack_position = ?2, updated_at = ?3 WHERE id = ?4",
+            "UPDATE lessons SET pack_id = ?1, pack_unit_id = NULL, pack_position = ?2, updated_at = ?3 WHERE id = ?4",
             params![pack_id, next_position + offset as i64, db::now(), lesson_id],
         )?;
     }
@@ -255,4 +532,78 @@ pub(crate) fn ensure_lesson_pack(conn: &mut Connection, lesson_id: &str) -> Resu
         assign_lesson_to_pack(conn, lesson_id, UNSORTED_PACK_ID)?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn manifest_sync_is_idempotent_and_assigns_lessons() {
+        let conn = Connection::open_in_memory().expect("open database");
+        conn.pragma_update(None, "foreign_keys", "ON")
+            .expect("enable foreign keys");
+        db::migrate(&conn).expect("migrate database");
+        let mut conn = conn;
+        let pack_id = upsert_pack_inner(
+            &mut conn,
+            PackInput {
+                stable_id: Some("manifest-test".to_string()),
+                title: "Manifest test".to_string(),
+                description: None,
+                author_name: None,
+                organization: None,
+                author_url: None,
+                language: Some("zh".to_string()),
+                base_language: Some("en".to_string()),
+                level: None,
+                tags: None,
+                version: None,
+                license: None,
+                source_type: None,
+            },
+        )
+        .expect("create pack");
+        for (index, lesson_id) in ["lesson-one", "lesson-two"].iter().enumerate() {
+            conn.execute(
+                "INSERT INTO lessons (id, target_language, base_language, title, source_hash, imported_at, created_at, updated_at, pack_id, pack_position) VALUES (?1, 'zh', 'en', ?2, ?3, ?4, ?4, ?4, ?5, ?6)",
+                params![lesson_id, lesson_id, format!("hash-{lesson_id}"), db::now(), pack_id, index as i64],
+            )
+            .expect("insert lesson");
+        }
+        let units = vec![
+            PackUnitManifestInput {
+                manifest_id: "unit-1".to_string(),
+                title: "First".to_string(),
+                position: 0,
+                lesson_ids: vec!["lesson-one".to_string()],
+            },
+            PackUnitManifestInput {
+                manifest_id: "unit-2".to_string(),
+                title: "Second".to_string(),
+                position: 1,
+                lesson_ids: vec!["lesson-two".to_string()],
+            },
+        ];
+
+        sync_pack_unit_manifest_inner(&mut conn, &pack_id, &units).expect("sync units");
+        sync_pack_unit_manifest_inner(&mut conn, &pack_id, &units).expect("resync units");
+
+        let unit_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM pack_units WHERE pack_id = ?1",
+                [&pack_id],
+                |row| row.get(0),
+            )
+            .expect("count units");
+        let assigned_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM lessons WHERE pack_id = ?1 AND pack_unit_id IS NOT NULL",
+                [&pack_id],
+                |row| row.get(0),
+            )
+            .expect("count assignments");
+        assert_eq!(unit_count, 2);
+        assert_eq!(assigned_count, 2);
+    }
 }

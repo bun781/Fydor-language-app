@@ -2391,88 +2391,231 @@ textarea.input {
 
 .lesson-library-shell {
   display: grid;
-  gap: 16px;
+  gap: 18px;
 }
 
 .lesson-library-header {
-  align-items: flex-start;
-  border-bottom: 1px solid var(--line);
-  padding-bottom: 16px;
-}
-
-.lesson-library-grid {
-  align-items: start;
-  display: grid;
-  gap: 16px;
-  grid-template-columns: minmax(260px, 0.85fr) minmax(0, 1.15fr);
-}
-
-.lesson-library-list,
-.lesson-library-detail {
-  min-height: 360px;
-}
-
-.lesson-library-items {
-  display: grid;
-  gap: 8px;
-  max-height: 560px;
-  overflow: auto;
-  padding-right: 2px;
-}
-
-.lesson-pack-filter {
-  display: grid;
-  gap: 6px;
-  max-height: 220px;
-  overflow: auto;
-}
-
-.lesson-pack-filter button {
   align-items: center;
+  display: flex;
+  gap: 20px;
+  justify-content: space-between;
+}
+
+.lesson-library-header p,
+.lesson-library-scope-header p {
+  margin-top: 4px;
+}
+
+.lesson-library-workspace {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  min-height: 580px;
+  overflow: hidden;
+}
+
+.lesson-organizer {
+  background: var(--surface-muted);
+  border-right: 1px solid var(--line);
+  padding: 16px 12px;
+}
+
+.lesson-organizer-title,
+.lesson-library-scope-header,
+.lesson-list-toolbar,
+.lesson-bulk-bar {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.lesson-organizer-title {
+  padding: 0 4px 10px;
+}
+
+.lesson-organizer-title h3,
+.lesson-library-scope-header h3 {
+  margin: 0;
+}
+
+.lesson-pack-tree {
+  display: grid;
+  gap: 3px;
+}
+
+.lesson-pack-tree-group {
+  display: grid;
+  gap: 2px;
+}
+
+.lesson-pack-tree button {
+  align-items: flex-start;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--ink);
+  cursor: pointer;
+  display: grid;
+  font: inherit;
+  gap: 8px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  padding: 9px 10px;
+  text-align: left;
+  width: 100%;
+}
+
+.lesson-pack-tree button:hover {
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+}
+
+.lesson-pack-tree button.active {
+  background: var(--surface);
+  border-color: var(--line);
+  font-weight: 650;
+}
+
+.lesson-pack-tree button small {
+  color: var(--muted);
+}
+
+.lesson-pack-tree .lesson-unit-link {
+  padding-left: 36px;
+}
+
+.lesson-pack-tree .lesson-unit-link span::before {
+  color: var(--muted);
+  content: "—";
+  margin-right: 7px;
+}
+
+.lesson-inline-form {
   background: var(--surface);
   border: 1px solid var(--line);
+  border-radius: 4px;
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 12px;
+}
+
+.lesson-inline-form label {
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.lesson-library-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 20px;
+}
+
+.lesson-library-scope-header {
+  align-items: flex-start;
+  border-bottom: 1px solid var(--line);
+  min-height: 58px;
+  padding-bottom: 14px;
+}
+
+.lesson-scope-actions {
+  display: flex;
+  position: relative;
+  gap: 8px;
+}
+
+.lesson-scope-menu {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  box-shadow: 0 12px 28px rgba(28, 25, 23, 0.12);
+  display: grid;
+  min-width: 170px;
+  padding: 5px;
+  position: absolute;
+  right: 0;
+  top: 38px;
+  z-index: 5;
+}
+
+.lesson-scope-menu button {
+  align-items: center;
+  background: transparent;
+  border: 0;
   border-radius: 3px;
   color: var(--ink);
   cursor: pointer;
   display: flex;
   font: inherit;
-  justify-content: space-between;
-  padding: 8px 10px;
+  gap: 8px;
+  padding: 9px 10px;
   text-align: left;
 }
 
-.lesson-pack-filter button.active {
+.lesson-scope-menu button:hover {
   background: var(--surface-muted);
-  border-color: var(--ink);
-  font-weight: 700;
 }
 
-.lesson-pack-filter button span {
-  color: var(--muted);
-  font-size: 12px;
+.lesson-list-toolbar {
+  padding: 14px 0;
 }
 
-.lesson-library-item {
-  background: var(--surface);
+.lesson-search {
+  align-items: center;
   border: 1px solid var(--line);
-  border-radius: 3px;
+  border-radius: 4px;
+  display: flex;
+  flex: 1;
+  gap: 8px;
+  max-width: 420px;
+  padding: 0 10px;
+}
+
+.lesson-search:focus-within {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ink) 12%, transparent);
+}
+
+.lesson-search input {
+  background: transparent;
+  border: 0;
   color: var(--ink);
-  cursor: pointer;
-  display: grid;
-  gap: 6px;
-  padding: 12px;
-  text-align: left;
-  transition: background 0.15s, border-color 0.15s, transform 0.12s;
+  font: inherit;
+  min-height: 38px;
+  outline: 0;
   width: 100%;
 }
 
+.lesson-select-all {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  font-size: 13px;
+  gap: 7px;
+  white-space: nowrap;
+}
+
+.lesson-library-items {
+  display: grid;
+  overflow: auto;
+}
+
 .lesson-library-item {
-  align-items: flex-start;
-  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 12px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  padding: 12px 4px;
+}
+
+.lesson-library-item.active {
+  background: color-mix(in srgb, var(--surface-muted) 72%, transparent);
 }
 
 .lesson-library-item > input {
-  margin-top: 4px;
+  margin-left: 6px;
 }
 
 .lesson-library-item-content {
@@ -2481,79 +2624,63 @@ textarea.input {
   color: inherit;
   cursor: pointer;
   display: grid;
-  gap: 6px;
+  gap: 4px;
+  min-width: 0;
   padding: 0;
   text-align: left;
-  width: 100%;
 }
 
-.lesson-pack-actions,
-.lesson-bulk-actions {
+.lesson-library-item-content span,
+.lesson-library-item-content p {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lesson-row-actions {
+  display: flex;
+  gap: 3px;
+}
+
+.danger-text {
+  color: #b91c1c !important;
+}
+
+.lesson-list-state {
   align-items: center;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  display: grid;
+  gap: 7px;
+  justify-items: center;
+  padding: 70px 20px;
+  text-align: center;
 }
 
-.lesson-bulk-actions {
-  border-top: 1px solid var(--line);
-  padding-top: 10px;
+.lesson-list-state p {
+  margin: 0;
 }
 
-.lesson-library-item:hover {
-  border-color: rgba(28, 25, 23, 0.35);
-  transform: translateY(-1px);
+.lesson-bulk-bar {
+  background: var(--ink);
+  border-radius: 5px;
+  bottom: 16px;
+  color: var(--surface);
+  justify-content: flex-start;
+  margin-top: auto;
+  padding: 10px 12px;
+  position: sticky;
 }
 
-.lesson-library-item.active {
-  background: var(--surface-muted);
-  border-color: var(--ink);
-}
-
-.lesson-library-item-top {
-  align-items: flex-start;
-  display: flex;
-  gap: 10px;
-  justify-content: space-between;
-}
-
-.lesson-library-item-top strong {
-  line-height: 1.3;
-}
-
-.lesson-library-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.lesson-library-actions .lesson-delete-button,
-.lesson-delete-button {
-  background: #b91c1c;
-  border-color: #991b1b;
-  color: #ffffff;
-}
-
-.lesson-library-actions .lesson-delete-button:hover,
-.lesson-delete-button:hover {
-  background: #991b1b;
-  border-color: #7f1d1d;
-  color: #ffffff;
-  opacity: 1;
+.lesson-bulk-bar strong {
+  margin-right: auto;
 }
 
 .lesson-delete-dialog .button.danger {
   background: #b91c1c;
   border-color: #991b1b;
   color: #ffffff;
-}
-
-.lesson-library-empty {
-  align-content: center;
-  display: grid;
-  gap: 6px;
-  min-height: 260px;
-  text-align: center;
 }
 
 /* ── Fydor Exchange ─────────────────────────────────────── */
@@ -3856,8 +3983,30 @@ textarea.input {
     grid-template-columns: 1fr;
   }
 
-  .lesson-library-grid {
+  .lesson-library-workspace {
     grid-template-columns: 1fr;
+  }
+
+  .lesson-organizer {
+    border-bottom: 1px solid var(--line);
+    border-right: 0;
+  }
+
+  .lesson-pack-tree {
+    max-height: 240px;
+    overflow: auto;
+  }
+
+  .lesson-library-header,
+  .lesson-library-scope-header,
+  .lesson-list-toolbar,
+  .lesson-bulk-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .lesson-row-actions {
+    grid-column: 2;
   }
 
   .exchange-grid,

@@ -103,6 +103,23 @@ mod tests {
             .expect("enable foreign keys");
         conn.execute_batch(
             r#"
+            CREATE TABLE languages (
+              id TEXT PRIMARY KEY,
+              code TEXT NOT NULL UNIQUE,
+              name TEXT NOT NULL,
+              created_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL
+            );
+
+            CREATE TABLE language_pairs (
+              id TEXT PRIMARY KEY,
+              target_language_id TEXT NOT NULL REFERENCES languages(id),
+              base_language_id TEXT NOT NULL REFERENCES languages(id),
+              created_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL,
+              UNIQUE(target_language_id, base_language_id)
+            );
+
             CREATE TABLE lessons (
               id TEXT PRIMARY KEY,
               target_language TEXT NOT NULL,
@@ -116,6 +133,7 @@ mod tests {
               imported_at TEXT NOT NULL,
               created_at TEXT NOT NULL,
               updated_at TEXT NOT NULL,
+              language_pair_id TEXT,
               purpose TEXT NOT NULL DEFAULT 'personal',
               published_stable_id TEXT,
               published_version TEXT,
@@ -195,6 +213,23 @@ mod tests {
               created_at TEXT NOT NULL,
               updated_at TEXT NOT NULL,
               UNIQUE(sentence_id, chunk_item_id, surface_text)
+            );
+
+            CREATE TABLE annotation_records (
+              id TEXT PRIMARY KEY,
+              lesson_id TEXT NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+              sentence_id TEXT NOT NULL REFERENCES sentences(id) ON DELETE CASCADE,
+              language_pair_id TEXT NOT NULL REFERENCES language_pairs(id) ON DELETE RESTRICT,
+              item_type TEXT NOT NULL,
+              canonical_key TEXT NOT NULL,
+              surface_text TEXT NOT NULL,
+              display_text TEXT NOT NULL,
+              meaning TEXT,
+              explanation TEXT,
+              source_annotation_id TEXT REFERENCES annotation_records(id) ON DELETE SET NULL,
+              created_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL,
+              UNIQUE(sentence_id, item_type, canonical_key, surface_text)
             );
 
             CREATE TABLE review_items (

@@ -39,6 +39,8 @@ export function ImportedContentWorkspace({ mode = "lesson" }: Props) {
   const [allLessons, setAllLessons] = useState<StudyLessonMeta[]>([]);
   const [packs, setPacks] = useState<StudyPackMeta[]>([]);
   const [scope, setScope] = useState<StudyScope>(() => readSessionProgress("study.scope", studyScopeSchema) ?? defaultStudyScope(true));
+  const [quizScope, setQuizScope] = useState<StudyScope>(() => readSessionProgress("study.quiz.scope", studyScopeSchema) ?? defaultStudyScope());
+  const [quizScopeInitialized, setQuizScopeInitialized] = useState(() => Boolean(readSessionProgress("study.quiz.scope", studyScopeSchema)));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -74,6 +76,14 @@ export function ImportedContentWorkspace({ mode = "lesson" }: Props) {
   const currentScopeIndex = selectedScopeLessonIds.indexOf(browser.selectedLessonId);
   const nextScopeLessonId = currentScopeIndex >= 0 ? selectedScopeLessonIds[currentScopeIndex + 1] : undefined;
   const nextScopeLesson = nextScopeLessonId ? allLessons.find((lesson) => lesson.id === nextScopeLessonId) : undefined;
+
+  useEffect(() => {
+    if (mode === "lesson" || quizScopeInitialized || !browser.selectedLessonId) return;
+    const nextScope = { ...defaultStudyScope(), lessonIds: [browser.selectedLessonId] };
+    setQuizScope(nextScope);
+    setQuizScopeInitialized(true);
+    writeSessionProgress("study.quiz.scope", nextScope);
+  }, [browser.selectedLessonId, mode, quizScopeInitialized]);
 
   if (loading) {
     return <PageState eyebrow="Loading" title="Loading flashcards" description="Opening your saved lessons." />;
@@ -136,9 +146,9 @@ export function ImportedContentWorkspace({ mode = "lesson" }: Props) {
           onNextLesson={nextScopeLessonId ? () => void browser.switchLesson(nextScopeLessonId) : undefined}
         />
       ) : mode === "fill-blank" ? (
-        <FillBlankMode lesson={browser.lesson} lessons={allLessons} packs={packs} studyScope={scope} onStudyScopeChange={(nextScope) => { setScope(nextScope); writeSessionProgress("study.scope", nextScope); }} />
+        <FillBlankMode lesson={browser.lesson} lessons={allLessons} packs={packs} studyScope={quizScope} onStudyScopeChange={(nextScope) => { setQuizScope(nextScope); setQuizScopeInitialized(true); writeSessionProgress("study.quiz.scope", nextScope); }} />
       ) : (
-        <MultipleChoiceMode lesson={browser.lesson} lessons={allLessons} packs={packs} studyScope={scope} onStudyScopeChange={(nextScope) => { setScope(nextScope); writeSessionProgress("study.scope", nextScope); }} />
+        <MultipleChoiceMode lesson={browser.lesson} lessons={allLessons} packs={packs} studyScope={quizScope} onStudyScopeChange={(nextScope) => { setQuizScope(nextScope); setQuizScopeInitialized(true); writeSessionProgress("study.quiz.scope", nextScope); }} />
       )}
     </div>
   );

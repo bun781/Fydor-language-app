@@ -13,11 +13,9 @@ pub fn open_generation_destination(
     let target = match destination.as_str() {
         "chatgpt" => "https://chatgpt.com/".to_string(),
         "claude" => "https://claude.ai/".to_string(),
-        "contributor" => {
-            community_url("contribute.html", "contribute", source_lesson_id.as_deref())?
-        }
-        "moderate" => community_url("moderate.html", "moderate", None)?,
-        "admin" => community_url("admin.html", "admin", None)?,
+        "contributor" => community_url("contribute", source_lesson_id.as_deref())?,
+        "moderate" => community_url("moderate", None)?,
+        "admin" => community_url("admin", None)?,
         _ => return Err("Unsupported external destination.".to_string()),
     };
     app.opener()
@@ -31,17 +29,13 @@ pub async fn open_community_workspace(
     source_lesson_id: Option<String>,
     app: AppHandle,
 ) -> Result<(), String> {
-    let (page, fragment, title) = match destination.as_str() {
-        "contributor" => (
-            "contribute.html",
-            "contribute",
-            "Fydor Contributor Workspace",
-        ),
-        "moderate" => ("moderate.html", "moderate", "Fydor Moderation Workspace"),
-        "admin" => ("admin.html", "admin", "Fydor Administration Workspace"),
+    let (path, title) = match destination.as_str() {
+        "contributor" => ("contribute", "Fydor Contributor Workspace"),
+        "moderate" => ("moderate", "Fydor Moderation Workspace"),
+        "admin" => ("admin", "Fydor Administration Workspace"),
         _ => return Err("Unsupported community workspace.".to_string()),
     };
-    let target = Url::parse(&community_url(page, fragment, source_lesson_id.as_deref())?)
+    let target = Url::parse(&community_url(path, source_lesson_id.as_deref())?)
         .map_err(|error| error.to_string())?;
     let label = format!("community-{}", destination);
 
@@ -62,13 +56,18 @@ pub async fn open_community_workspace(
         .map_err(|error| error.to_string())
 }
 
-fn community_url(
-    page: &str,
-    fragment: &str,
-    source_lesson_id: Option<&str>,
-) -> Result<String, String> {
-    let mut url = Url::parse(DEFAULT_WEB_ORIGIN).map_err(|error| error.to_string())?;
-    url.set_path(&format!("{}/{}", url.path().trim_end_matches('/'), page));
+fn community_url(path: &str, source_lesson_id: Option<&str>) -> Result<String, String> {
+    let mut url = Url::parse(web_origin()).map_err(|error| error.to_string())?;
+    if url.scheme() != "https"
+        || !url.username().is_empty()
+        || url.password().is_some()
+        || url.query().is_some()
+        || url.fragment().is_some()
+        || url.path() != "/"
+    {
+        return Err("Fydor website origin must be an HTTPS origin without a path.".to_string());
+    }
+    url.set_path(&format!("{}/{}", url.path().trim_end_matches('/'), path));
     if let Some(lesson_id) = source_lesson_id {
         if !is_uuid(lesson_id) {
             return Err("Invalid source lesson identifier.".to_string());
@@ -76,8 +75,11 @@ fn community_url(
         url.query_pairs_mut()
             .append_pair("conversionSource", lesson_id);
     }
-    url.set_fragment(Some(fragment));
     Ok(url.to_string())
+}
+
+fn web_origin() -> &'static str {
+    option_env!("FYDOR_WEB_ORIGIN").unwrap_or(DEFAULT_WEB_ORIGIN)
 }
 
 fn is_uuid(value: &str) -> bool {
@@ -90,13 +92,9 @@ mod tests {
 
     #[test]
     fn community_pages_are_fixed_and_conversion_ids_are_validated() {
-        let url = community_url(
-            "contribute.html",
-            "contribute",
-            Some("550e8400-e29b-41d4-a716-446655440000"),
-        )
-        .expect("valid community URL");
-        assert_eq!(url, "https://fydor.vercel.app/contribute.html?conversionSource=550e8400-e29b-41d4-a716-446655440000#contribute");
-        assert!(community_url("moderate.html", "moderate", Some("not-a-uuid")).is_err());
+        let url = community_url("contribute", Some("550e8400-e29b-41d4-a716-446655440000"))
+            .expect("valid community URL");
+        assert_eq!(url, "https://fydor.vercel.app/contribute?conversionSource=550e8400-e29b-41d4-a716-446655440000");
+        assert!(community_url("moderate", Some("not-a-uuid")).is_err());
     }
 }

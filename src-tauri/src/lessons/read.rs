@@ -12,10 +12,12 @@ pub(crate) fn get_lessons_inner(conn: &Connection) -> Result<Vec<StudyLessonMeta
         r#"
         SELECT l.id, l.target_language, l.base_language, l.title, l.description, l.level, l.tags,
                COUNT(ls.sentence_id) AS sentence_count, l.purpose, l.published_stable_id, l.published_version,
-               l.pack_id, p.title, l.pack_position, COALESCE(p.archived, 0)
+               l.pack_id, p.title, l.pack_position, COALESCE(p.archived, 0),
+               l.pack_unit_id, u.title
         FROM lessons l
         LEFT JOIN lesson_sentences ls ON ls.lesson_id = l.id
         LEFT JOIN packs p ON p.id = l.pack_id
+        LEFT JOIN pack_units u ON u.id = l.pack_unit_id
         GROUP BY l.id
         ORDER BY COALESCE(p.archived, 0), p.title, l.pack_position, l.imported_at DESC
         "#,
@@ -38,6 +40,8 @@ pub(crate) fn get_lessons_inner(conn: &Connection) -> Result<Vec<StudyLessonMeta
             pack_title: row.get(12)?,
             pack_position: row.get(13)?,
             pack_archived: row.get::<_, i64>(14)? != 0,
+            pack_unit_id: row.get(15)?,
+            pack_unit_title: row.get(16)?,
         })
     })?;
 
@@ -74,6 +78,8 @@ fn get_lessons_without_packs(conn: &Connection) -> Result<Vec<StudyLessonMeta>> 
             pack_title: None,
             pack_position: None,
             pack_archived: false,
+            pack_unit_id: None,
+            pack_unit_title: None,
         })
     })?;
 
@@ -253,6 +259,22 @@ fn non_empty_string(value: String) -> Option<String> {
 }
 
 fn load_words(conn: &Connection, sentence_id: &str) -> Result<Vec<StudyWord>> {
+    if table_exists(conn, "annotation_records")? {
+        let mut stmt = conn.prepare("SELECT surface_text,display_text,meaning,explanation,canonical_key FROM annotation_records WHERE sentence_id=?1 AND item_type='word' ORDER BY rowid")?;
+        let rows = stmt.query_map([sentence_id], |row| {
+            Ok(StudyWord {
+                surface: row.get(0)?,
+                display_text: row.get(1)?,
+                meaning: row.get(2)?,
+                explanation: row.get(3)?,
+                common_mistakes: Vec::new(),
+                canonical_key: row.get(4)?,
+            })
+        })?;
+        return rows
+            .collect::<rusqlite::Result<Vec<_>>>()
+            .map_err(Into::into);
+    }
     let mut stmt = conn.prepare(
         r#"
         SELECT svl.surface_text, li.display_text, li.meaning, li.explanation, li.common_mistakes, li.canonical_key
@@ -277,6 +299,22 @@ fn load_words(conn: &Connection, sentence_id: &str) -> Result<Vec<StudyWord>> {
 }
 
 fn load_grammar(conn: &Connection, sentence_id: &str) -> Result<Vec<StudyGrammar>> {
+    if table_exists(conn, "annotation_records")? {
+        let mut stmt = conn.prepare("SELECT surface_text,display_text,meaning,explanation,canonical_key FROM annotation_records WHERE sentence_id=?1 AND item_type='grammar' ORDER BY rowid")?;
+        let rows = stmt.query_map([sentence_id], |row| {
+            Ok(StudyGrammar {
+                surface_text: row.get(0)?,
+                pattern: row.get(1)?,
+                meaning: row.get(2)?,
+                explanation: row.get(3)?,
+                common_mistakes: Vec::new(),
+                canonical_key: row.get(4)?,
+            })
+        })?;
+        return rows
+            .collect::<rusqlite::Result<Vec<_>>>()
+            .map_err(Into::into);
+    }
     let mut stmt = conn.prepare(
         r#"
         SELECT sgl.surface_text, li.display_text, li.meaning, li.explanation, li.common_mistakes, li.canonical_key
@@ -301,6 +339,20 @@ fn load_grammar(conn: &Connection, sentence_id: &str) -> Result<Vec<StudyGrammar
 }
 
 fn load_chunks(conn: &Connection, sentence_id: &str) -> Result<Vec<StudyChunk>> {
+    if table_exists(conn, "annotation_records")? {
+        let mut stmt = conn.prepare("SELECT surface_text,meaning,explanation,canonical_key FROM annotation_records WHERE sentence_id=?1 AND item_type='chunk' ORDER BY rowid")?;
+        let rows = stmt.query_map([sentence_id], |row| {
+            Ok(StudyChunk {
+                surface_text: row.get(0)?,
+                meaning: row.get(1)?,
+                explanation: row.get(2)?,
+                canonical_key: row.get(3)?,
+            })
+        })?;
+        return rows
+            .collect::<rusqlite::Result<Vec<_>>>()
+            .map_err(Into::into);
+    }
     let mut stmt = conn.prepare(
         r#"
         SELECT scl.surface_text, li.meaning, li.explanation, li.canonical_key

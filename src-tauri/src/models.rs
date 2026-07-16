@@ -91,6 +91,8 @@ pub struct StudyLessonMeta {
     pub pack_title: Option<String>,
     pub pack_position: Option<i64>,
     pub pack_archived: bool,
+    pub pack_unit_id: Option<String>,
+    pub pack_unit_title: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -113,6 +115,17 @@ pub struct StudyPackMeta {
     pub archived: bool,
     pub lesson_count: i64,
     pub sentence_count: i64,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StudyPackUnitMeta {
+    pub id: String,
+    pub pack_id: String,
+    pub title: String,
+    pub position: i64,
+    pub lesson_count: i64,
+    pub manifest_id: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -170,6 +183,32 @@ pub struct StudyLesson {
     pub level: Option<String>,
     pub tags: Vec<String>,
     pub sentences: Vec<StudySentence>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AnnotationSearchInput {
+    pub language_pair_id: String,
+    pub query: Option<String>,
+    pub item_type: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AnnotationSearchResult {
+    pub id: String,
+    pub lesson_id: String,
+    pub sentence_id: String,
+    pub source_lesson_title: String,
+    pub language: String,
+    pub base_language: String,
+    pub item_type: String,
+    pub canonical_key: String,
+    pub surface_text: String,
+    pub display_text: String,
+    pub meaning: Option<String>,
+    pub explanation: Option<String>,
+    pub copied_from_id: Option<String>,
 }
 
 #[derive(Debug, Serialize)]

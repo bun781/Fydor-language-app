@@ -2,12 +2,13 @@ import { CheckCircle2, PackageOpen } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { AppShell } from "@/components/AppShell";
-import { exportLesson, getLessons, importLesson, moveLessonsToPack, openCommunityWorkspace, saveFydorPack, updateLesson, upsertPack } from "@/lib/desktopApi";
+import { exportLesson, getLessons, getPackUnits, importLesson, moveLessonsToPack, openCommunityWorkspace, saveFydorPack, syncPackUnitManifest, updateLesson, upsertPack } from "@/lib/desktopApi";
 import { errorMessage } from "@/lib/errors";
 import {
   createFydorPack,
   lessonKey,
   parseFydorPack,
+  prepareLessonsForImport,
   slugifyPackTitle,
   type FydorPack,
   type FydorPackValidation
@@ -35,6 +36,7 @@ const installSummarySchema = z.object({
   skipped: z.number(),
   replaced: z.number(),
   sentenceCount: z.number(),
+  unitCount: z.number().default(0),
   details: z.array(z.string())
 });
 export type InstallSummary = z.infer<typeof installSummarySchema>;
@@ -226,6 +228,7 @@ export function FydorExchangePage() {
       skipped: 0,
       replaced: 0,
       sentenceCount: 0,
+      unitCount: pack.unitManifest?.units.length ?? 0,
       details: []
     };
     try {
@@ -244,31 +247,52 @@ export function FydorExchangePage() {
         license: pack.license,
         sourceType: "exchange"
       });
+      const preparedLessons = prepareLessonsForImport(pack);
+      const installedLessonIds = new Map<number, string>();
       for (const { lesson, index } of lessonsToInstall) {
+        const preparedLesson = preparedLessons[index];
         const existing = existingLessonByKey.get(lessonKey(lesson));
         if (existing && duplicateMode === "skip") {
+          if (existing.packId === packRecord.id) installedLessonIds.set(index, existing.id);
           summary.skipped += 1;
           summary.details.push(`Skipped ${lesson.title}.`);
           continue;
         }
 
         if (existing && duplicateMode === "replace") {
-          const result = await updateLesson(existing.id, JSON.stringify(withPackSource(lesson, pack), null, 2));
+          const result = await updateLesson(existing.id, JSON.stringify(withPackSource(preparedLesson, pack), null, 2));
           if (result.errors.length) throw new Error(result.errors.join("\n"));
           await moveLessonsToPack([existing.id], packRecord.id);
+          installedLessonIds.set(index, existing.id);
           summary.replaced += 1;
           summary.sentenceCount += lesson.sentences.length;
           summary.details.push(`Replaced ${lesson.title}.`);
           continue;
         }
 
-        const lessonForImport = existing ? copyLessonTitle(lesson, index) : lesson;
+        const lessonForImport = existing ? copyLessonTitle(preparedLesson, index) : preparedLesson;
         const result = await importLesson(JSON.stringify(withPackSource(lessonForImport, pack), null, 2));
         if (result.errors.length) throw new Error(result.errors.join("\n"));
-        if (result.lessonId) await moveLessonsToPack([result.lessonId], packRecord.id);
+        if (result.lessonId) {
+          await moveLessonsToPack([result.lessonId], packRecord.id);
+          installedLessonIds.set(index, result.lessonId);
+        }
         summary.installed += result.lessonCreated || result.sentencesImported > 0 ? 1 : 0;
         summary.sentenceCount += lessonForImport.sentences.length;
         summary.details.push(`Installed ${lessonForImport.title}.`);
+      }
+
+      if (pack.unitManifest) {
+        await syncPackUnitManifest(packRecord.id, pack.unitManifest.units.map((unit) => ({
+          manifestId: unit.id,
+          title: unit.title,
+          position: unit.position,
+          lessonIds: unit.lessonIndexes.flatMap((index) => {
+            const lessonId = installedLessonIds.get(index);
+            return lessonId ? [lessonId] : [];
+          })
+        })));
+        summary.details.push(`Organized ${pack.unitManifest.units.length} prebundled units.`);
       }
 
       setLessons(await getLessons());
@@ -329,7 +353,23 @@ export function FydorExchangePage() {
     setStatus("");
     try {
       if (exportIds.size !== ids.size) setSelectedLessonIds(exportIds);
-      const exportedLessons = await Promise.all([...exportIds].map((lessonId) => exportLesson(lessonId)));
+      const exportIdList = [...exportIds];
+      const exportedLessons = await Promise.all(exportIdList.map((lessonId) => exportLesson(lessonId)));
+      const selectedLessonMeta = new Map(lessons.map((lesson) => [lesson.id, lesson]));
+      const packUnits = await getPackUnits();
+      const unitManifestUnits = packUnits
+        .filter((unit) => unit.manifestId && exportIdList.some((id) => selectedLessonMeta.get(id)?.packUnitId === unit.id))
+        .map((unit) => ({
+          id: unit.manifestId as string,
+          title: unit.title,
+          position: unit.position,
+          lessonIndexes: exportIdList.flatMap((id, index) => selectedLessonMeta.get(id)?.packUnitId === unit.id ? [index] : [])
+        }))
+        .filter((unit) => unit.lessonIndexes.length);
+      const allLessonsHaveManagedUnits = exportIdList.every((id) => {
+        const unitId = selectedLessonMeta.get(id)?.packUnitId;
+        return Boolean(unitId && packUnits.some((unit) => unit.id === unitId && unit.manifestId));
+      });
       const pack = createFydorPack({
         title: metadata.title,
         description: metadata.description,
@@ -340,7 +380,8 @@ export function FydorExchangePage() {
         version: metadata.version,
         license: metadata.license,
         tags: splitTags(metadata.tags),
-        lessons: exportedLessons
+        lessons: exportedLessons,
+        unitManifest: allLessonsHaveManagedUnits && unitManifestUnits.length ? { schemaVersion: 1, units: unitManifestUnits } : undefined
       });
       setExportPreview(pack);
       setStatus("Export preview ready.");

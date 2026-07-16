@@ -501,6 +501,93 @@ pub(crate) fn migrate(conn: &Connection) -> Result<()> {
         )?;
     }
 
+    if current < 12 {
+        // Packs are the user-facing lesson collections. Optional units provide one
+        // lightweight level of organization inside a pack without duplicating lessons.
+        run_migration(
+            conn,
+            12,
+            r#"
+            CREATE TABLE pack_units (
+              id TEXT PRIMARY KEY,
+              pack_id TEXT NOT NULL REFERENCES packs(id) ON DELETE CASCADE,
+              title TEXT NOT NULL,
+              position INTEGER NOT NULL,
+              created_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL,
+              UNIQUE(pack_id, position)
+            );
+            CREATE INDEX pack_units_pack_idx ON pack_units(pack_id, position);
+            ALTER TABLE lessons ADD COLUMN pack_unit_id TEXT REFERENCES pack_units(id) ON DELETE SET NULL;
+            CREATE INDEX lessons_pack_unit_idx ON lessons(pack_unit_id, pack_position);
+            "#,
+        )?;
+    }
+
+    if current < 13 {
+        // Annotation content is a lesson-local snapshot. Shared reuse is resolved
+        // at read time from this table, never by mutating the source record.
+        run_migration(
+            conn,
+            13,
+            r#"
+            CREATE TABLE annotation_records (
+              id TEXT PRIMARY KEY,
+              lesson_id TEXT NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+              sentence_id TEXT NOT NULL REFERENCES sentences(id) ON DELETE CASCADE,
+              language_pair_id TEXT NOT NULL REFERENCES language_pairs(id) ON DELETE RESTRICT,
+              item_type TEXT NOT NULL CHECK (item_type IN ('word', 'grammar', 'chunk')),
+              canonical_key TEXT NOT NULL,
+              surface_text TEXT NOT NULL,
+              display_text TEXT NOT NULL,
+              meaning TEXT,
+              explanation TEXT,
+              source_annotation_id TEXT REFERENCES annotation_records(id) ON DELETE SET NULL,
+              created_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL,
+              UNIQUE(sentence_id, item_type, canonical_key, surface_text)
+            );
+            CREATE INDEX annotation_records_pair_lookup_idx
+              ON annotation_records(language_pair_id, item_type, canonical_key, surface_text);
+            CREATE INDEX annotation_records_sentence_idx ON annotation_records(sentence_id);
+            INSERT OR IGNORE INTO annotation_records
+              (id, lesson_id, sentence_id, language_pair_id, item_type, canonical_key, surface_text, display_text, meaning, explanation, created_at, updated_at)
+            SELECT lower(hex(randomblob(16))), s.lesson_id, s.id, l.language_pair_id,
+                   'word', li.canonical_key, link.surface_text, li.display_text, li.meaning, li.explanation, datetime('now'), datetime('now')
+            FROM sentence_vocabulary_links link JOIN sentences s ON s.id=link.sentence_id
+            JOIN lessons l ON l.id=s.lesson_id JOIN learning_items li ON li.id=link.vocabulary_item_id
+            WHERE l.language_pair_id IS NOT NULL;
+            INSERT OR IGNORE INTO annotation_records
+              (id, lesson_id, sentence_id, language_pair_id, item_type, canonical_key, surface_text, display_text, meaning, explanation, created_at, updated_at)
+            SELECT lower(hex(randomblob(16))), s.lesson_id, s.id, l.language_pair_id,
+                   'grammar', li.canonical_key, link.surface_text, li.display_text, li.meaning, li.explanation, datetime('now'), datetime('now')
+            FROM sentence_grammar_links link JOIN sentences s ON s.id=link.sentence_id
+            JOIN lessons l ON l.id=s.lesson_id JOIN learning_items li ON li.id=link.grammar_item_id
+            WHERE l.language_pair_id IS NOT NULL;
+            INSERT OR IGNORE INTO annotation_records
+              (id, lesson_id, sentence_id, language_pair_id, item_type, canonical_key, surface_text, display_text, meaning, explanation, created_at, updated_at)
+            SELECT lower(hex(randomblob(16))), s.lesson_id, s.id, l.language_pair_id,
+                   'chunk', li.canonical_key, link.surface_text, li.display_text, li.meaning, li.explanation, datetime('now'), datetime('now')
+            FROM sentence_chunk_links link JOIN sentences s ON s.id=link.sentence_id
+            JOIN lessons l ON l.id=s.lesson_id JOIN learning_items li ON li.id=link.chunk_item_id
+            WHERE l.language_pair_id IS NOT NULL;
+        "#,
+        )?;
+    }
+
+    if current < 14 {
+        run_migration(
+            conn,
+            14,
+            r#"
+            ALTER TABLE pack_units ADD COLUMN manifest_id TEXT;
+            CREATE UNIQUE INDEX pack_units_manifest_idx
+              ON pack_units(pack_id, manifest_id)
+              WHERE manifest_id IS NOT NULL;
+            "#,
+        )?;
+    }
+
     Ok(())
 }
 
@@ -578,5 +665,39 @@ mod tests {
 
         assert_eq!(table_exists, 0);
         assert_eq!(version_exists, 0);
+    }
+
+    #[test]
+    fn latest_migration_adds_pack_units_and_lesson_membership() {
+        let conn = Connection::open_in_memory().expect("open database");
+        conn.pragma_update(None, "foreign_keys", "ON")
+            .expect("enable foreign keys");
+
+        migrate(&conn).expect("run migrations");
+        migrate(&conn).expect("migrations remain idempotent");
+
+        let version: i64 = conn
+            .query_row("SELECT MAX(version) FROM schema_migrations", [], |row| {
+                row.get(0)
+            })
+            .expect("read migration version");
+        let unit_table_exists: bool = conn
+            .query_row(
+                "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'pack_units')",
+                [],
+                |row| row.get(0),
+            )
+            .expect("find pack_units table");
+        let lesson_unit_column_exists: bool = conn
+            .query_row(
+                "SELECT EXISTS(SELECT 1 FROM pragma_table_info('lessons') WHERE name = 'pack_unit_id')",
+                [],
+                |row| row.get(0),
+            )
+            .expect("find lesson unit column");
+
+        assert_eq!(version, 14);
+        assert!(unit_table_exists);
+        assert!(lesson_unit_column_exists);
     }
 }

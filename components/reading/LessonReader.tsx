@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnnotatedSentence } from "@/components/imported-content/AnnotatedSentence";
 import { PageState } from "@/components/system/PageState";
 import { AudioButton } from "@/components/ui/AudioButton";
+import { AnnotationSearchPanel } from "@/components/reading/AnnotationSearchPanel";
 import { errorMessage } from "@/lib/errors";
 import { getLessonCached, getLessons, getPacks } from "@/lib/desktopApi";
 import type { StudyLesson, StudyLessonMeta, StudyPackMeta } from "@/lib/imported-content/types";
@@ -231,6 +232,8 @@ export function LessonReader() {
       </div>
 
       {error ? <p className="muted" role="alert">{error}</p> : null}
+
+      <AnnotationSearchPanel lesson={lesson} sentenceId={lesson.sentences[sentenceIndex].id} onCopied={() => void openLesson(lesson.id)} />
 
       <ol className="reading-sentence-list" aria-label="Lesson sentences">
         {lesson.sentences.map((sentence, index) => {

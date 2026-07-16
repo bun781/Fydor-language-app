@@ -23,19 +23,24 @@ import { errorMessage } from "@/lib/errors";
 import { clearLocal, readLocal, readSessionProgress, writeSessionProgress } from "@/lib/storage";
 import {
   deleteLesson as deleteLessonApi,
+  createPackUnit,
+  deletePackUnit,
   exportLesson as exportLessonApi,
   getLessons,
+  getPackUnits,
   getPacks,
   importLesson as importLessonApi,
   moveLessonsToPack,
+  moveLessonsToPackUnit,
   openCommunityWorkspace,
   previewLessonImport,
+  renamePackUnit,
   deletePack,
   upsertPack,
   updatePack,
   updateLesson as updateLessonApi
 } from "@/lib/desktopApi";
-import type { StudyLessonMeta, StudyPackMeta } from "@/lib/imported-content/types";
+import type { StudyLessonMeta, StudyPackMeta, StudyPackUnitMeta } from "@/lib/imported-content/types";
 import type {
   LessonChunkInput,
   LessonGrammarInput,
@@ -92,6 +97,7 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
   const [summary, setSummary] = useState<LessonImportSummary | null>(null);
   const [lessonOptions, setLessonOptions] = useState<StudyLessonMeta[]>([]);
   const [packOptions, setPackOptions] = useState<StudyPackMeta[]>([]);
+  const [packUnitOptions, setPackUnitOptions] = useState<StudyPackUnitMeta[]>([]);
   const [lessonsLoading, setLessonsLoading] = useState(true);
   const [targetLessonId, setTargetLessonId] = useState(savedProgress?.targetLessonId ?? "new");
   const [editorLessonId, setEditorLessonId] = useState<string | null>(savedProgress?.editorLessonId ?? null);
@@ -199,9 +205,10 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
 
   async function refreshLessons() {
     try {
-      const [items, packs] = await Promise.all([getLessons(), getPacks()]);
+      const [items, packs, units] = await Promise.all([getLessons(), getPacks(), getPackUnits()]);
       setLessonOptions(items);
       setPackOptions(packs);
+      setPackUnitOptions(units);
     } catch (error) {
       setErrors([errorMessage(error, "Unable to load lessons.")]);
     }
@@ -602,10 +609,10 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
     <AppShell>
       <div className="topbar">
         <div>
-          <h1>Lesson Manager</h1>
-          <p className="muted">Add, import, export, rename, edit, and delete lessons from one place.</p>
+          <h1>{mode === "lessons" ? "Lessons" : "Lesson editor"}</h1>
+          <p className="muted">{mode === "lessons" ? "Keep your learning path clear with packs and units." : "Build a lesson manually or import structured JSON."}</p>
         </div>
-        <div className="row compact-row">
+        {mode !== "lessons" ? <div className="row compact-row">
           <button className="button secondary" type="button" data-tour="lesson-sample" onClick={loadSample}>
             <Sparkles size={18} />
             Sample lesson
@@ -624,7 +631,7 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
               }}
             />
           </label>
-        </div>
+        </div> : null}
       </div>
 
       <section className="card lesson-builder-top">
@@ -729,6 +736,7 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
         <LessonLibraryPanel
           lessons={lessonOptions}
           packs={packOptions}
+          units={packUnitOptions}
           loading={lessonsLoading}
           selectedLessonId={selectedLibraryLessonId}
           onSelectLesson={setSelectedLibraryLessonId}
@@ -737,8 +745,9 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
           onExportLesson={exportLessonToFile}
           onDeleteLesson={requestDeleteLesson}
           onConvertLesson={(lessonId) => void convertToContributorDraft(lessonId)}
-          onMoveLessons={async (lessonIds, packId) => {
-            await moveLessonsToPack(lessonIds, packId);
+          onMoveLessons={async (lessonIds, packId, unitId) => {
+            if (unitId) await moveLessonsToPackUnit(lessonIds, packId, unitId);
+            else await moveLessonsToPack(lessonIds, packId);
             await refreshLessons();
           }}
           onCreatePack={async (title) => {
@@ -757,6 +766,18 @@ export default function LessonImportsPage({ initialMode = "builder" }: LessonImp
           }}
           onDeletePack={async (packId) => {
             await deletePack(packId);
+            await refreshLessons();
+          }}
+          onCreateUnit={async (packId, title) => {
+            await createPackUnit(packId, title);
+            await refreshLessons();
+          }}
+          onRenameUnit={async (unitId, title) => {
+            await renamePackUnit(unitId, title);
+            await refreshLessons();
+          }}
+          onDeleteUnit={async (unitId) => {
+            await deletePackUnit(unitId);
             await refreshLessons();
           }}
         />

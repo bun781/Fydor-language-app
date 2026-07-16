@@ -1,0 +1,133 @@
+name: Release desktop app
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Semantic version to publish (for example 4.0.0)
+        required: true
+        type: string
+      notes:
+        description: Optional release notes
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.value }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: version
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          test "$REQUESTED_VERSION" = "$(node -p "require('./package.json').version")"
+          test "$REQUESTED_VERSION" = "$(node -p "require('./src-tauri/tauri.conf.json').version")"
+          test "$REQUESTED_VERSION" = "$(sed -n 's/^version = "\(.*\)"$/\1/p' src-tauri/Cargo.toml | head -1)"
+          case "$REQUESTED_VERSION" in [0-9]*.[0-9]*.[0-9]*) ;; *) exit 1 ;; esac
+          echo "value=$REQUESTED_VERSION" >> "$GITHUB_OUTPUT"
+
+  macos:
+    needs: validate
+    runs-on: macos-14
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: npm ci
+      - name: Build unsigned macOS release and signed updater artifact
+        env:
+          FYDOR_RELEASE_WEB_ORIGIN: https://fydor.vercel.app
+          FYDOR_UPDATER_ENDPOINT: https://github.com/bun781/Triolinga/releases/latest/download/latest.json
+          FYDOR_UPDATER_PUBKEY: ${{ secrets.FYDOR_UPDATER_PUBKEY }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          source scripts/release/env.sh
+          CONFIG="$(write_release_config)"
+          npm run tauri -- build --features auto-updates --bundles dmg --config "$CONFIG"
+          mkdir release-assets
+          cp "$(find src-tauri/target/release/bundle/dmg -name '*.dmg' -type f | head -1)" release-assets/fydor-mac.dmg
+          cp "$(find src-tauri/target/release/bundle -name '*.tar.gz' -type f | head -1)" release-assets/fydor-mac-updater.tar.gz
+          cp "$(find src-tauri/target/release/bundle -name '*.tar.gz.sig' -type f | head -1)" release-assets/fydor-mac-updater.tar.gz.sig
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-release
+          path: release-assets/
+          if-no-files-found: error
+
+  windows:
+    needs: validate
+    runs-on: windows-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: npm ci
+      - name: Build unsigned Windows release and signed updater artifact
+        shell: pwsh
+        env:
+          FYDOR_RELEASE_WEB_ORIGIN: https://fydor.vercel.app
+          FYDOR_UPDATER_ENDPOINT: https://github.com/bun781/Triolinga/releases/latest/download/latest.json
+          FYDOR_UPDATER_PUBKEY: ${{ secrets.FYDOR_UPDATER_PUBKEY }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          node scripts/release/write-tauri-release-config.mjs | Out-File -FilePath release-config-path.txt
+          $config = Get-Content release-config-path.txt -Raw
+          npm run tauri -- build --features auto-updates --bundles nsis --config $config.Trim()
+          New-Item -ItemType Directory -Force release-assets
+          Copy-Item (Get-ChildItem src-tauri/target/release/bundle/nsis -Filter *.exe -Recurse | Select-Object -First 1).FullName release-assets/fydor-windows.exe
+          Copy-Item (Get-ChildItem src-tauri/target/release/bundle/nsis -Filter *.exe.sig -Recurse | Select-Object -First 1).FullName release-assets/fydor-windows-updater.exe.sig
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-release
+          path: release-assets/
+          if-no-files-found: error
+
+  publish:
+    needs: [validate, macos, windows]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+      - name: Generate updater manifest
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          set -euo pipefail
+          MAC_SIGNATURE="$(cat release-assets/fydor-mac-updater.tar.gz.sig)"
+          WINDOWS_SIGNATURE="$(cat release-assets/fydor-windows-updater.exe.sig)"
+          cat > release-assets/latest.json <<EOF
+          {"version":"$VERSION","notes":"Fydor $VERSION","pub_date":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","platforms":{"darwin-aarch64":{"signature":"$MAC_SIGNATURE","url":"https://github.com/bun781/Triolinga/releases/latest/download/fydor-mac-updater.tar.gz"},"windows-x86_64":{"signature":"$WINDOWS_SIGNATURE","url":"https://github.com/bun781/Triolinga/releases/latest/download/fydor-windows.exe"}}}
+          EOF
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.validate.outputs.version }}
+          NOTES: ${{ inputs.notes }}
+        run: |
+          set -euo pipefail
+          gh release create "v$VERSION" release-assets/* --title "Fydor v$VERSION" --notes "${NOTES:-Fydor v$VERSION}" --latest

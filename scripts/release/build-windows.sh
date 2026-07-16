@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Cross-compiles the Windows binary, bundles it with NSIS, and signs it.
-# Requires Windows certificate env vars plus Tauri updater signing env vars.
+# Cross-compiles the Windows binary and bundles it with NSIS. The installer is
+# intentionally unsigned; Tauri updater artifacts remain separately signed.
 # Prints one final line:
 #   OK <path-to-exe>
 # or
@@ -10,7 +10,6 @@ cd "$(dirname "$0")/../.." || exit 1
 export PATH="/opt/homebrew/opt/llvm/bin:/opt/homebrew/bin:$PATH"
 . scripts/release/env.sh
 check_release_env
-check_windows_release_env
 
 TARGET="x86_64-pc-windows-msvc"
 RELEASE_CONFIG="$(write_release_config)" || exit 1
@@ -52,27 +51,6 @@ fi
 
 if ! file "$EXE" | grep -q "Nullsoft Installer"; then
   echo "FAIL $EXE is not a Nullsoft installer"
-  exit 1
-fi
-
-SIGNED_EXE="$NSIS_DIR/nsis-output-signed.exe"
-TIMESTAMP_URL="${FYDOR_WINDOWS_TIMESTAMP_URL:-http://timestamp.sectigo.com}"
-"$(command -v osslsigncode || echo /opt/homebrew/bin/osslsigncode)" sign \
-  -pkcs12 "$FYDOR_WINDOWS_CERT_PATH" \
-  -pass "$FYDOR_WINDOWS_CERT_PASSWORD" \
-  -n "Fydor" \
-  -i "$FYDOR_RELEASE_WEB_ORIGIN" \
-  -t "$TIMESTAMP_URL" \
-  -in "$EXE" \
-  -out "$SIGNED_EXE" >/tmp/fydor-win-build.log 2>&1
-if [ $? -ne 0 ] || [ ! -f "$SIGNED_EXE" ]; then
-  echo "FAIL osslsigncode did not sign $EXE (see /tmp/fydor-win-build.log)"
-  exit 1
-fi
-mv "$SIGNED_EXE" "$EXE"
-"$(command -v osslsigncode || echo /opt/homebrew/bin/osslsigncode)" verify "$EXE" >/tmp/fydor-win-build.log 2>&1
-if [ $? -ne 0 ]; then
-  echo "FAIL signed Windows installer did not verify (see /tmp/fydor-win-build.log)"
   exit 1
 fi
 

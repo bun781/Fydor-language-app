@@ -538,6 +538,8 @@ pub(crate) fn build_preview(plan: &ImportPlan) -> LessonImportPreviewResult {
 pub(crate) fn import_plan(conn: &mut Connection, plan: ImportPlan) -> Result<LessonImportSummary> {
     let tx = conn.transaction()?;
     let now = db::now();
+    let language_pair_id =
+        ensure_language_pair(&tx, &plan.lesson.language, &plan.lesson.base_language)?;
     let lesson_id = if let Some(target_lesson) = &plan.target_lesson {
         target_lesson.id.clone()
     } else {
@@ -545,13 +547,14 @@ pub(crate) fn import_plan(conn: &mut Connection, plan: ImportPlan) -> Result<Les
         tx.execute(
             r#"
             INSERT INTO lessons
-            (id, target_language, base_language, description, source, level, title, source_hash, tags, imported_at, created_at, updated_at)
-            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?10, ?10)
+            (id, target_language, base_language, language_pair_id, description, source, level, title, source_hash, tags, imported_at, created_at, updated_at)
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?11, ?11)
             "#,
             params![
                 lesson_id,
                 plan.lesson.language,
                 plan.lesson.base_language,
+                language_pair_id,
                 plan.lesson.description,
                 plan.lesson.source,
                 plan.lesson.level,
@@ -697,6 +700,14 @@ pub(crate) fn import_plan(conn: &mut Connection, plan: ImportPlan) -> Result<Les
             sentence,
             &item_id_by_key,
         )?;
+        snapshot_annotation_records(
+            &tx,
+            &language_pair_id,
+            &lesson_id,
+            &sentence_id,
+            &plan.lesson.language,
+            sentence,
+        )?;
     }
 
     tx.commit()?;
@@ -718,6 +729,51 @@ pub(crate) fn import_plan(conn: &mut Connection, plan: ImportPlan) -> Result<Les
     })
 }
 
+fn ensure_language_pair(
+    tx: &Transaction<'_>,
+    language: &str,
+    base_language: &str,
+) -> Result<String> {
+    for code in [language, base_language] {
+        tx.execute("INSERT OR IGNORE INTO languages(id,code,name,created_at,updated_at) VALUES(?1,?2,?3,?4,?4)", params![format!("language:{code}"), code.to_lowercase(), code, db::now()])?;
+    }
+    let id = format!(
+        "pair:language:{}:language:{}",
+        language.to_lowercase(),
+        base_language.to_lowercase()
+    );
+    tx.execute("INSERT OR IGNORE INTO language_pairs(id,target_language_id,base_language_id,created_at,updated_at) VALUES(?1,?2,?3,?4,?4)", params![id, format!("language:{}", language.to_lowercase()), format!("language:{}", base_language.to_lowercase()), db::now()])?;
+    Ok(id)
+}
+
+fn snapshot_annotation_records(
+    tx: &Transaction<'_>,
+    pair_id: &str,
+    lesson_id: &str,
+    sentence_id: &str,
+    language: &str,
+    sentence: &LessonSentenceInput,
+) -> Result<()> {
+    let now = db::now();
+    for word in sentence.words.as_deref().unwrap_or(&[]) {
+        let key = normalize::build_canonical_key(
+            language,
+            word.lemma.as_deref().unwrap_or(&word.surface),
+        );
+        tx.execute("INSERT INTO annotation_records(id,lesson_id,sentence_id,language_pair_id,item_type,canonical_key,surface_text,display_text,meaning,explanation,created_at,updated_at) VALUES(?1,?2,?3,?4,'word',?5,?6,?7,?8,?9,?10,?10) ON CONFLICT(sentence_id,item_type,canonical_key,surface_text) DO UPDATE SET display_text=excluded.display_text,meaning=excluded.meaning,explanation=excluded.explanation,updated_at=excluded.updated_at", params![db::id(),lesson_id,sentence_id,pair_id,key,word.surface,word.lemma.as_deref().unwrap_or(&word.surface),word.meaning,word.explanation,now])?;
+    }
+    for grammar in sentence.grammar.as_deref().unwrap_or(&[]) {
+        let surface = grammar.surface.as_deref().unwrap_or(&grammar.pattern);
+        let key = normalize::build_canonical_key(language, &grammar.pattern);
+        tx.execute("INSERT INTO annotation_records(id,lesson_id,sentence_id,language_pair_id,item_type,canonical_key,surface_text,display_text,meaning,explanation,created_at,updated_at) VALUES(?1,?2,?3,?4,'grammar',?5,?6,?7,?8,?9,?10,?10) ON CONFLICT(sentence_id,item_type,canonical_key,surface_text) DO UPDATE SET display_text=excluded.display_text,meaning=excluded.meaning,explanation=excluded.explanation,updated_at=excluded.updated_at", params![db::id(),lesson_id,sentence_id,pair_id,key,surface,grammar.pattern,grammar.meaning,grammar.explanation,now])?;
+    }
+    for chunk in sentence.chunks.as_deref().unwrap_or(&[]) {
+        let key = normalize::build_canonical_key(language, &chunk.surface);
+        tx.execute("INSERT INTO annotation_records(id,lesson_id,sentence_id,language_pair_id,item_type,canonical_key,surface_text,display_text,meaning,explanation,created_at,updated_at) VALUES(?1,?2,?3,?4,'chunk',?5,?6,?6,?7,?8,?9,?9) ON CONFLICT(sentence_id,item_type,canonical_key,surface_text) DO UPDATE SET meaning=excluded.meaning,explanation=excluded.explanation,updated_at=excluded.updated_at", params![db::id(),lesson_id,sentence_id,pair_id,key,chunk.surface,chunk.meaning,chunk.explanation,now])?;
+    }
+    Ok(())
+}
+
 pub(crate) fn replace_lesson(
     conn: &mut Connection,
     lesson_id: &str,
@@ -725,6 +781,8 @@ pub(crate) fn replace_lesson(
 ) -> Result<LessonImportSummary> {
     let tx = conn.transaction()?;
     let now = db::now();
+    let language_pair_id =
+        ensure_language_pair(&tx, &plan.lesson.language, &plan.lesson.base_language)?;
     let previous_sentence_ids = plan
         .target_lesson
         .as_ref()
@@ -736,18 +794,20 @@ pub(crate) fn replace_lesson(
         UPDATE lessons
         SET target_language = ?1,
             base_language = ?2,
-            description = ?3,
-            source = ?4,
-            level = ?5,
-            title = ?6,
-            source_hash = ?7,
-            tags = ?8,
-            updated_at = ?9
-        WHERE id = ?10
+            language_pair_id = ?3,
+            description = ?4,
+            source = ?5,
+            level = ?6,
+            title = ?7,
+            source_hash = ?8,
+            tags = ?9,
+            updated_at = ?10
+        WHERE id = ?11
         "#,
         params![
             plan.lesson.language,
             plan.lesson.base_language,
+            language_pair_id,
             plan.lesson.description,
             plan.lesson.source,
             plan.lesson.level,
@@ -900,6 +960,10 @@ pub(crate) fn replace_lesson(
             "DELETE FROM sentence_chunk_links WHERE sentence_id = ?1",
             [&sentence_id],
         )?;
+        tx.execute(
+            "DELETE FROM annotation_records WHERE sentence_id = ?1",
+            [&sentence_id],
+        )?;
         tx.execute("INSERT INTO lesson_sentences (id, lesson_id, sentence_id, position, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?5)", params![db::id(), lesson_id, sentence_id, index as i64, now])?;
         kept_sentence_ids.insert(sentence_id.clone());
         links_created += create_sentence_item_links(
@@ -908,6 +972,14 @@ pub(crate) fn replace_lesson(
             &sentence_id,
             sentence,
             &item_id_by_key,
+        )?;
+        snapshot_annotation_records(
+            &tx,
+            &language_pair_id,
+            lesson_id,
+            &sentence_id,
+            &plan.lesson.language,
+            sentence,
         )?;
     }
 

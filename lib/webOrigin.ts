@@ -1,4 +1,5 @@
 const DEFAULT_FYDOR_WEB_ORIGIN = "https://fydor.vercel.app";
+const configuredFydorWebOrigin = import.meta.env.VITE_FYDOR_WEB_ORIGIN ?? DEFAULT_FYDOR_WEB_ORIGIN;
 
 export function normalizeFydorWebOrigin(value: string): string {
   let url: URL;
@@ -19,5 +20,5 @@ export function normalizeFydorWebOrigin(value: string): string {
 
 export function fydorWebUrl(path: string): string {
   if (!path.startsWith("/") || path.startsWith("//")) throw new Error("Fydor website path must be root-relative.");
-  return new URL(path, `${DEFAULT_FYDOR_WEB_ORIGIN}/`).toString();
+  return new URL(path, `${normalizeFydorWebOrigin(configuredFydorWebOrigin)}/`).toString();
 }

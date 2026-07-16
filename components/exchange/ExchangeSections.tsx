@@ -112,6 +112,7 @@ export function InstallPackSection({
                 <span><strong>{installSummary.skipped}</strong> skipped</span>
                 <span><strong>{installSummary.replaced}</strong> replaced</span>
                 <span><strong>{installSummary.sentenceCount}</strong> sentences</span>
+                {installSummary.unitCount ? <span><strong>{installSummary.unitCount}</strong> units</span> : null}
               </div>
               <div className="exchange-actions">
                 <Link className="button secondary" to="/lessons/manage">Go to Lessons</Link>
@@ -343,6 +344,8 @@ function PackPreview({
         {pack.level ? <span>{pack.level}</span> : null}
         <span>{validation.lessonCount} lessons</span>
         <span>{validation.sentenceCount} sentences</span>
+        {pack.unitManifest ? <span>{pack.unitManifest.units.length} prebundled units</span> : null}
+        {pack.grammarGuide ? <span>{pack.grammarGuide.rules.length} grammar rules</span> : null}
       </div>
 
       {pack.tags?.length ? <div className="inline-tags">{pack.tags.map((tag) => <span className="tag-chip static" key={tag}>{tag}</span>)}</div> : null}
@@ -356,6 +359,12 @@ function PackPreview({
           {duplicateIndexes.size} duplicate warning{duplicateIndexes.size === 1 ? "" : "s"}
         </span>
       </div>
+
+      {validation.annexErrors.length ? (
+        <div className="notice error-card exchange-warning-list">
+          <div>{validation.annexErrors.map((error) => <p key={error}>{error}</p>)}</div>
+        </div>
+      ) : null}
 
       {validation.warnings.length ? (
         <div className="notice warn exchange-warning-list">

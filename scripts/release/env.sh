@@ -2,11 +2,13 @@
 set -u
 
 FYDOR_RELEASE_WEB_ORIGIN="${FYDOR_RELEASE_WEB_ORIGIN:-https://fydor.vercel.app}"
-FYDOR_UPDATER_ENDPOINT="${FYDOR_UPDATER_ENDPOINT:-$FYDOR_RELEASE_WEB_ORIGIN/downloads/latest.json}"
+FYDOR_RELEASE_REPOSITORY="${FYDOR_RELEASE_REPOSITORY:-bun781/Triolinga}"
+FYDOR_UPDATER_ENDPOINT="${FYDOR_UPDATER_ENDPOINT:-https://github.com/$FYDOR_RELEASE_REPOSITORY/releases/latest/download/latest.json}"
 
 export VITE_FYDOR_WEB_ORIGIN="$FYDOR_RELEASE_WEB_ORIGIN"
 export FYDOR_WEB_ORIGIN="$FYDOR_RELEASE_WEB_ORIGIN"
 export FYDOR_UPDATER_ENDPOINT
+export FYDOR_RELEASE_REPOSITORY
 
 check_release_env() {
   case "$FYDOR_RELEASE_WEB_ORIGIN" in
@@ -66,32 +68,6 @@ check_release_env() {
   }
 
   return 0
-}
-
-check_mac_release_env() {
-  if [ -z "${FYDOR_MAC_SIGNING_IDENTITY:-}" ]; then
-    echo "FAIL FYDOR_MAC_SIGNING_IDENTITY is required. Ad-hoc signing is not allowed for release builds."
-    exit 1
-  fi
-}
-
-check_windows_release_env() {
-  if [ -z "${FYDOR_WINDOWS_CERT_PATH:-}" ]; then
-    echo "FAIL FYDOR_WINDOWS_CERT_PATH is required to sign the Windows installer."
-    exit 1
-  fi
-  if [ ! -f "$FYDOR_WINDOWS_CERT_PATH" ]; then
-    echo "FAIL FYDOR_WINDOWS_CERT_PATH does not point to a file."
-    exit 1
-  fi
-  if [ -z "${FYDOR_WINDOWS_CERT_PASSWORD:-}" ]; then
-    echo "FAIL FYDOR_WINDOWS_CERT_PASSWORD is required to sign the Windows installer."
-    exit 1
-  fi
-  if ! command -v osslsigncode >/dev/null 2>&1 && [ ! -x /opt/homebrew/bin/osslsigncode ]; then
-    echo "FAIL missing required tool: osslsigncode"
-    exit 1
-  fi
 }
 
 write_release_config() {

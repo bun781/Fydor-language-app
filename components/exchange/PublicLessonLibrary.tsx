@@ -83,7 +83,7 @@ export function PublicLessonLibrary() {
         <Globe2 size={20} />
         <div>
           <h2>Published Lesson Library</h2>
-          <p className="muted">Browse administrator-published lessons. Each card shows the key pack data and can send the lesson straight into the import screen.</p>
+          <p className="muted">Type a language to start searching, then refine by translation language or level.</p>
         </div>
       </div>
       <div className="exchange-filter-row">

@@ -1,6 +1,6 @@
 // Single point of contact between the frontend and Tauri Rust commands. All invoke() calls live here. Command name strings must match #[tauri::command] names in src-tauri/src/.
 import { invoke } from "@tauri-apps/api/core";
-import type { StudyLesson, StudyLessonMeta, StudyPackMeta } from "@/lib/imported-content/types";
+import type { StudyLesson, StudyLessonMeta, StudyPackMeta, StudyPackUnitMeta } from "@/lib/imported-content/types";
 import { resolveLessonAnnotations } from "@/lib/imported-content/annotation-resolution";
 import type { LessonImportInput, LessonImportPreviewResult, LessonImportSummary } from "@/lib/language/types";
 import type { ReadingInputs } from "@/lib/reading/analyzer";
@@ -35,6 +35,12 @@ export interface CollectionInput {
 }
 
 export interface Collection extends CollectionInput { id: string; }
+export interface AnnotationSearchResult {
+  id: string; lessonId: string; sentenceId: string; sourceLessonTitle: string;
+  language: string; baseLanguage: string; itemType: "word" | "grammar" | "chunk";
+  canonicalKey: string; surfaceText: string; displayText: string;
+  meaning: string | null; explanation: string | null; copiedFromId: string | null;
+}
 
 export async function getLanguagePairs(): Promise<LanguagePair[]> { return invoke("get_language_pairs"); }
 export async function getActiveLanguagePair(): Promise<string> { return invoke("get_active_language_pair"); }
@@ -46,6 +52,8 @@ export async function createCourseUnit(courseId: string, title: string, descript
 export async function addLessonToUnit(unitId: string, lessonId: string): Promise<void> { return invoke("add_lesson_to_unit", { unitId, lessonId }); }
 export async function reorderUnitLessons(unitId: string, lessonIds: string[]): Promise<void> { return invoke("reorder_unit_lessons", { unitId, lessonIds }); }
 export async function createCollection(input: CollectionInput): Promise<Collection> { return invoke("create_collection", { input }); }
+export async function searchAnnotations(input: { languagePairId: string; query?: string; itemType?: "word" | "grammar" | "chunk" }): Promise<AnnotationSearchResult[]> { return invoke("search_annotations", { input }); }
+export async function copyAnnotationToLesson(annotationId: string, lessonId: string, sentenceId: string): Promise<string> { invalidateLessonCache(); return invoke("copy_annotation_to_lesson", { annotationId, lessonId, sentenceId }); }
 
 export async function getLessons(): Promise<StudyLessonMeta[]> {
   return invoke("get_lessons");
@@ -69,6 +77,37 @@ export interface PackInput {
 
 export async function getPacks(): Promise<StudyPackMeta[]> {
   return invoke("get_packs");
+}
+
+export async function getPackUnits(): Promise<StudyPackUnitMeta[]> {
+  return invoke("get_pack_units");
+}
+
+export async function createPackUnit(packId: string, title: string): Promise<StudyPackUnitMeta> {
+  return invoke("create_pack_unit", { packId, title });
+}
+
+export async function renamePackUnit(unitId: string, title: string): Promise<void> {
+  return invoke("rename_pack_unit", { unitId, title });
+}
+
+export async function deletePackUnit(unitId: string): Promise<void> {
+  return invoke("delete_pack_unit", { unitId });
+}
+
+export async function moveLessonsToPackUnit(lessonIds: string[], packId: string, unitId: string | null): Promise<void> {
+  return invoke("move_lessons_to_pack_unit", { lessonIds, packId, unitId });
+}
+
+export interface PackUnitManifestInstall {
+  manifestId: string;
+  title: string;
+  position: number;
+  lessonIds: string[];
+}
+
+export async function syncPackUnitManifest(packId: string, units: PackUnitManifestInstall[]): Promise<void> {
+  return invoke("sync_pack_unit_manifest", { packId, units });
 }
 
 export async function upsertPack(input: PackInput): Promise<StudyPackMeta> {

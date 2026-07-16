@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { computeFydorPackChecksum, parseFydorPack } from "@/lib/fydor-pack";
+import { readFileSync } from "node:fs";
+import { computeFydorPackChecksum, parseFydorPack, prepareLessonsForImport } from "@/lib/fydor-pack";
 
 const source = {
   type: "fydor_pack",
@@ -37,5 +38,40 @@ describe("Fydor Pack Exchange integrity", () => {
     expect(first).toBeDefined();
     expect(second).toBeDefined();
     await expect(computeFydorPackChecksum(first!)).resolves.toBe(await computeFydorPackChecksum(second!));
+  });
+
+  it("accepts the Humongous Mandarin pack with all units and grammar links", () => {
+    const packResult = parseFydorPack(readFileSync("packs/humongous-mandarin-v1.fydorpack", "utf8"));
+
+    expect(packResult.errors).toEqual([]);
+    expect(packResult.annexErrors).toEqual([]);
+    expect(packResult.lessonCount).toBe(20);
+    expect(packResult.sentenceCount).toBe(440);
+    expect(packResult.pack?.unitManifest?.units).toHaveLength(20);
+    expect(packResult.pack?.grammarGuide?.rules.length).toBeGreaterThan(10);
+
+    const prepared = prepareLessonsForImport(packResult.pack!);
+    expect(prepared).toHaveLength(20);
+    expect(prepared.flatMap((lesson) => lesson.sentences)).toHaveLength(440);
+    expect(JSON.stringify(prepared)).not.toContain("ruleId");
+    expect(prepared.flatMap((lesson) => lesson.sentences).every((sentence) => sentence.chunks?.some((chunk) => chunk.type === "pinyin"))).toBe(true);
+  });
+
+  it("rejects overlapping or incomplete unit manifests", () => {
+    const result = parseFydorPack(JSON.stringify({
+      ...source,
+      lessons: [...source.lessons, { ...source.lessons[0], title: "Second" }],
+      unitManifest: {
+        schemaVersion: 1,
+        units: [
+          { id: "one", title: "One", position: 0, lessonIndexes: [0] },
+          { id: "two", title: "Two", position: 1, lessonIndexes: [0] }
+        ]
+      }
+    }));
+
+    expect(result.errors).toEqual(["One or more pack annexes need attention."]);
+    expect(result.annexErrors).toContain("Lesson index 0 appears in more than one unit.");
+    expect(result.annexErrors).toContain("Unit manifest must assign every lesson exactly once.");
   });
 });
