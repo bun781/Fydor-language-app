@@ -1,4 +1,4 @@
-use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
+use tauri::AppHandle;
 use tauri_plugin_opener::OpenerExt;
 use url::Url;
 
@@ -24,35 +24,22 @@ pub fn open_generation_destination(
 }
 
 #[tauri::command]
-pub async fn open_community_workspace(
+pub fn open_community_workspace(
     destination: String,
     source_lesson_id: Option<String>,
     app: AppHandle,
 ) -> Result<(), String> {
-    let (path, title) = match destination.as_str() {
-        "contributor" => ("contribute", "Fydor Contributor Workspace"),
-        "moderate" => ("moderate", "Fydor Moderation Workspace"),
-        "admin" => ("admin", "Fydor Administration Workspace"),
+    let path = match destination.as_str() {
+        "contributor" => "contribute",
+        "moderate" => "moderate",
+        "admin" => "admin",
         _ => return Err("Unsupported community workspace.".to_string()),
     };
-    let target = Url::parse(&community_url(path, source_lesson_id.as_deref())?)
-        .map_err(|error| error.to_string())?;
-    let label = format!("community-{}", destination);
-
-    if let Some(window) = app.get_webview_window(&label) {
-        window.navigate(target).map_err(|error| error.to_string())?;
-        window.show().map_err(|error| error.to_string())?;
-        window.set_focus().map_err(|error| error.to_string())?;
-        return Ok(());
-    }
-
-    WebviewWindowBuilder::new(&app, label, WebviewUrl::External(target))
-        .title(title)
-        .inner_size(1200.0, 900.0)
-        .resizable(true)
-        .center()
-        .build()
-        .map(|_| ())
+    let target = community_url(path, source_lesson_id.as_deref())?;
+    // Remote website content must never run inside a Tauri webview: a website
+    // compromise must not gain access to this app's IPC surface.
+    app.opener()
+        .open_url(target, None::<&str>)
         .map_err(|error| error.to_string())
 }
 
