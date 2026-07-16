@@ -1,9 +1,14 @@
 // Single point of contact between the frontend and Tauri Rust commands. All invoke() calls live here. Command name strings must match #[tauri::command] names in src-tauri/src/.
 import { invoke } from "@tauri-apps/api/core";
 import type { StudyLesson, StudyLessonMeta, StudyPackMeta } from "@/lib/imported-content/types";
+import { resolveLessonAnnotations } from "@/lib/imported-content/annotation-resolution";
 import type { LessonImportInput, LessonImportPreviewResult, LessonImportSummary } from "@/lib/language/types";
 import type { ReadingInputs } from "@/lib/reading/analyzer";
 import type { ReviewDecision, ReviewItemTarget, ReviewProgressSnapshot, ReviewResetScope, ReviewSentence } from "@/lib/review/types";
+export interface LanguagePair { id: string; targetLanguage: string; baseLanguage: string; }
+export async function getLanguagePairs(): Promise<LanguagePair[]> { return invoke("get_language_pairs"); }
+export async function getActiveLanguagePair(): Promise<string> { return invoke("get_active_language_pair"); }
+export async function setActiveLanguagePair(languagePairId: string): Promise<void> { return invoke("set_active_language_pair", { languagePairId }); }
 
 export async function getLessons(): Promise<StudyLessonMeta[]> {
   return invoke("get_lessons");
@@ -57,8 +62,15 @@ export async function getLessonCached(lessonId: string): Promise<StudyLesson | n
   const cached = lessonCache.get(lessonId);
   if (cached) return cached;
   const lesson = await getLesson(lessonId);
-  if (lesson) lessonCache.set(lessonId, lesson);
-  return lesson;
+  if (!lesson) return null;
+  lessonCache.set(lessonId, lesson);
+  // Re-resolve all loaded lessons as the local cache grows. The resolver receives
+  // a batch and includes the full directional pair in every eligibility check.
+  const cachedLessons = [...lessonCache.values()];
+  for (const cachedLesson of cachedLessons) {
+    lessonCache.set(cachedLesson.id, resolveLessonAnnotations(cachedLesson, cachedLessons));
+  }
+  return lessonCache.get(lessonId) ?? null;
 }
 
 function invalidateLessonCache() {

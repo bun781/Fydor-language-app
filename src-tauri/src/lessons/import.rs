@@ -667,6 +667,8 @@ pub(crate) fn import_plan(conn: &mut Connection, plan: ImportPlan) -> Result<Les
             sentence_id
         };
 
+        ensure_sentence_review_item(&tx, &sentence_id, &lesson_id, &now)?;
+
         let should_link_sentence = plan
             .target_lesson
             .as_ref()
@@ -884,6 +886,8 @@ pub(crate) fn replace_lesson(
             sentence_id
         };
 
+        ensure_sentence_review_item(&tx, &sentence_id, lesson_id, &now)?;
+
         tx.execute(
             "DELETE FROM sentence_vocabulary_links WHERE sentence_id = ?1",
             [&sentence_id],
@@ -935,6 +939,23 @@ pub(crate) fn replace_lesson(
         links_created,
         errors: Vec::new(),
     })
+}
+
+fn ensure_sentence_review_item(
+    tx: &Transaction<'_>,
+    sentence_id: &str,
+    lesson_id: &str,
+    now: &str,
+) -> Result<()> {
+    tx.execute(
+        r#"
+        INSERT OR IGNORE INTO review_items
+        (id, sentence_id, lesson_id, import_id, due_at, last_reviewed_at, repetitions, lapses, difficulty, stability, recall_mode, scheduler_engine, created_at, updated_at)
+        VALUES (?1, ?2, ?3, ?3, ?4, NULL, 0, 0, 0.3, 0, 'full_support', 'fixed-interval', ?4, ?4)
+        "#,
+        params![db::id(), sentence_id, lesson_id, now],
+    )?;
+    Ok(())
 }
 
 pub(crate) fn delete_lesson_inner(conn: &mut Connection, lesson_id: &str) -> Result<()> {

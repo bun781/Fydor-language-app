@@ -3,6 +3,7 @@
 #[cfg(feature = "auto-updates")]
 mod app_updates;
 mod db;
+mod curriculum;
 mod external_links;
 mod lessons;
 mod models;
@@ -51,6 +52,14 @@ fn main() {
             lessons::delete_lesson,
             lessons::preview_lesson_import,
             lessons::import_lesson,
+            curriculum::get_language_pairs,
+            curriculum::get_active_language_pair,
+            curriculum::set_active_language_pair,
+            curriculum::create_course,
+            curriculum::create_course_unit,
+            curriculum::reorder_unit_lessons,
+            curriculum::add_lesson_to_unit,
+            curriculum::create_collection,
             packs::get_packs,
             packs::upsert_pack,
             packs::update_pack,

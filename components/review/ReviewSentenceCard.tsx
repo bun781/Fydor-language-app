@@ -1,5 +1,8 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { AudioButton } from "@/components/ui/AudioButton";
+import { AnnotatedSentence } from "@/components/imported-content/AnnotatedSentence";
+import type { StudySentence } from "@/lib/imported-content/types";
+import { getLessonCached } from "@/lib/desktopApi";
 import { getFillBlankPrompt, getRecallModeLabel } from "@/lib/review/recallModes";
 import type { ReviewSentence } from "@/lib/review/types";
 
@@ -18,6 +21,7 @@ interface ReviewSentenceCardProps {
 }
 
 export function ReviewSentenceCard({ sentence, index, total, revealed, onReveal }: ReviewSentenceCardProps) {
+  const [annotatedSentence, setAnnotatedSentence] = useState<StudySentence | null>(null);
   const revealInstruction = "Recall first, then click or press Space to reveal";
   const recallMode = sentence.recallMode ?? "full_support";
   const blank = recallMode === "fill_blank" ? getFillBlankPrompt(sentence.text, sentence.focusText) : null;
@@ -25,6 +29,22 @@ export function ReviewSentenceCard({ sentence, index, total, revealed, onReveal 
   const showTargetBeforeReveal = recallMode !== "reverse_translate";
   const showTranslationBeforeReveal = recallMode === "full_support";
   const showAnnotationsBeforeReveal = recallMode === "full_support";
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!sentence.lessonId || !sentence.sentenceId) {
+      setAnnotatedSentence(null);
+      return;
+    }
+    getLessonCached(sentence.lessonId)
+      .then((lesson) => {
+        if (!cancelled) setAnnotatedSentence(lesson?.sentences.find((candidate) => candidate.id === sentence.sentenceId) ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setAnnotatedSentence(null);
+      });
+    return () => { cancelled = true; };
+  }, [sentence.lessonId, sentence.sentenceId]);
 
   return (
     <section className="review-card">
@@ -36,7 +56,9 @@ export function ReviewSentenceCard({ sentence, index, total, revealed, onReveal 
       </div>
       {showTargetBeforeReveal || revealed ? (
         <div className="review-sentence-row">
-          <p className="review-sentence">{renderTargetText(sentence, revealed ? sentence.text : prompt)}</p>
+          {annotatedSentence && !blank && (showTargetBeforeReveal || revealed) ? (
+            <AnnotatedSentence sentence={annotatedSentence} className="review-sentence" />
+          ) : <p className="review-sentence">{renderTargetText(sentence, revealed ? sentence.text : prompt)}</p>}
           <AudioButton sentence={sentence.text} language={sentence.language} compact />
         </div>
       ) : (

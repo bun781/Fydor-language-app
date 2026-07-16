@@ -15,6 +15,10 @@ export interface AnnotationRange extends TextSpan {
   answerText: string;
   meaning: string | null;
   explanation: string | null;
+  origin?: "local" | "shared";
+  sourceLessonId?: string | null;
+  sourceLessonTitle?: string | null;
+  matchReason?: "local" | "canonical" | "normalized-surface" | "lemma" | "alias";
 }
 
 interface NormalizedChar {
@@ -57,7 +61,11 @@ export function buildAnnotationRanges(sentence: StudySentence): AnnotationRange[
         displayText: word.displayText,
         answerText: word.surface,
         meaning: word.meaning,
-        explanation: word.explanation
+        explanation: word.explanation,
+        origin: word.annotationOrigin ?? "local",
+        sourceLessonId: word.sourceLessonId ?? null,
+        sourceLessonTitle: word.sourceLessonTitle ?? null,
+        matchReason: word.matchReason ?? "local"
       });
     }
   });
@@ -71,7 +79,11 @@ export function buildAnnotationRanges(sentence: StudySentence): AnnotationRange[
         displayText: grammar.pattern,
         answerText: grammar.surfaceText,
         meaning: grammar.meaning,
-        explanation: grammar.explanation
+        explanation: grammar.explanation,
+        origin: grammar.annotationOrigin ?? "local",
+        sourceLessonId: grammar.sourceLessonId ?? null,
+        sourceLessonTitle: grammar.sourceLessonTitle ?? null,
+        matchReason: grammar.matchReason ?? "local"
       });
     }
   });
@@ -85,7 +97,11 @@ export function buildAnnotationRanges(sentence: StudySentence): AnnotationRange[
         displayText: chunk.surfaceText,
         answerText: chunk.surfaceText,
         meaning: chunk.meaning,
-        explanation: chunk.explanation
+        explanation: chunk.explanation,
+        origin: chunk.annotationOrigin ?? "local",
+        sourceLessonId: chunk.sourceLessonId ?? null,
+        sourceLessonTitle: chunk.sourceLessonTitle ?? null,
+        matchReason: chunk.matchReason ?? "local"
       });
     }
   });

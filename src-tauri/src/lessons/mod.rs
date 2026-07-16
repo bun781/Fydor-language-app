@@ -209,6 +209,7 @@ mod tests {
               difficulty REAL NOT NULL DEFAULT 0.3,
               stability REAL NOT NULL DEFAULT 0,
               recall_mode TEXT NOT NULL DEFAULT 'full_support',
+              scheduler_engine TEXT NOT NULL DEFAULT 'fixed-interval',
               created_at TEXT NOT NULL,
               updated_at TEXT NOT NULL,
               UNIQUE(sentence_id)
@@ -286,6 +287,22 @@ mod tests {
     }
 
     #[test]
+    fn importing_a_sentence_creates_its_review_row() {
+        let mut conn = test_conn();
+        let summary = import_test_lesson(&mut conn, lesson("Review row", "복습해요"), None);
+        let lesson_id = summary.lesson_id.expect("lesson id");
+
+        assert_eq!(
+            scalar_count(
+                &conn,
+                "SELECT COUNT(*) FROM review_items WHERE lesson_id = ?1",
+                &lesson_id
+            ),
+            1
+        );
+    }
+
+    #[test]
     fn delete_lesson_removes_owned_sentences_and_links() {
         let mut conn = test_conn();
         let summary = import_test_lesson(&mut conn, lesson("Lesson A", "안녕하세요"), None);
@@ -355,7 +372,7 @@ mod tests {
         let now = db::now();
         conn.execute(
             r#"
-            INSERT INTO review_items
+            INSERT OR REPLACE INTO review_items
             (id, sentence_id, lesson_id, import_id, due_at, created_at, updated_at)
             VALUES (?1, ?2, ?3, ?3, ?4, ?4, ?4)
             "#,

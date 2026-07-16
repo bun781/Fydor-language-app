@@ -53,26 +53,32 @@ export function buildAnnotatedSentenceRuns(sentence: StudySentence): Run[] {
   return runs;
 }
 
-export function AnnotatedSentence({ sentence }: { sentence: StudySentence }) {
+export function AnnotatedSentence({ sentence, className }: { sentence: StudySentence; className?: string }) {
   const baseId = useId();
   const runs = buildAnnotatedSentenceRuns(sentence);
   const hasAnnotations = runs.some((r) => r.kind === "annotated");
 
   if (!hasAnnotations) {
-    return <p className="sentence-text">{sentence.text}</p>;
+    return <p className={["sentence-text", className].filter(Boolean).join(" ")}>{sentence.text}</p>;
   }
 
   return (
-    <p className="sentence-text">
+    <p className={["sentence-text", className].filter(Boolean).join(" ")}>
       {runs.map((run, i) => {
         if (run.kind === "plain") return <span key={i}>{run.text}</span>;
 
         const tipId = `${baseId}-t${i}`;
         return (
           <span key={i} className="tooltip-wrap tooltip-bottom sentence-annotated-wrap">
-            <span className={annotationClassName(run.annotations)} aria-describedby={tipId}>
+            <button
+              type="button"
+              className={annotationClassName(run.annotations)}
+              aria-describedby={tipId}
+              onClick={(event) => event.stopPropagation()}
+              onKeyDown={(event) => event.stopPropagation()}
+            >
               {run.text}
-            </span>
+            </button>
             <span className="tooltip-bubble" role="tooltip" id={tipId}>
               <span className="tooltip-stack">
                 {run.annotations.map((annotation) => (
@@ -80,6 +86,7 @@ export function AnnotatedSentence({ sentence }: { sentence: StudySentence }) {
                     <strong>{annotation.displayText}</strong>
                     {annotation.meaning ? <span>{annotation.meaning}</span> : null}
                     {annotation.explanation ? <span className="muted">{annotation.explanation}</span> : null}
+                    {annotation.origin === "shared" ? <span className="muted">From another lesson{annotation.sourceLessonTitle ? `: ${annotation.sourceLessonTitle}` : ""}</span> : null}
                   </span>
                 ))}
               </span>

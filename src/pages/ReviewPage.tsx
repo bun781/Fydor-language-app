@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { AppShell } from "@/components/AppShell";
 import { ReviewDeck } from "@/components/review/ReviewDeck";
 import { PageState } from "@/components/system/PageState";
@@ -19,6 +19,7 @@ const reviewSelectionSchema = z.object({
 });
 
 export default function ReviewPage() {
+  const [searchParams] = useSearchParams();
   const [sentences, setSentences] = useState<ReviewSentence[]>([]);
   const [itemTargets, setItemTargets] = useState<ReviewItemTarget[]>([]);
   const [lessons, setLessons] = useState<StudyLessonMeta[]>([]);
@@ -53,7 +54,8 @@ export default function ReviewPage() {
           ...defaultStudyScope(false),
           lessonIds: savedSelection.lessonIds
         } : defaultStudyScope(true));
-        const restoredLessonIds = resolveStudyScope(restoredScope, lessonList, packList).filter((id) => availableLessonIds.includes(id));
+        const routeLessonIds = (searchParams.get("lessonIds") ?? "").split(",").filter(Boolean);
+        const restoredLessonIds = (routeLessonIds.length ? routeLessonIds : resolveStudyScope(restoredScope, lessonList, packList)).filter((id) => availableLessonIds.includes(id));
 
         setSentences(queue);
         setLessons(lessonList);
@@ -80,7 +82,7 @@ export default function ReviewPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [searchParams]);
 
   async function handleResetProgress(scope: ReviewResetScope) {
     await resetReviewProgress(scope);

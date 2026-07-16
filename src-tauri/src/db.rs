@@ -331,6 +331,164 @@ pub(crate) fn migrate(conn: &Connection) -> Result<()> {
         )?;
     }
 
+    if current < 8 {
+        // Earlier releases created missing review rows as a side effect of opening
+        // the queue. Backfill once during migration so reads remain read-only.
+        run_migration(
+            conn,
+            8,
+            r#"
+            INSERT OR IGNORE INTO review_items
+            (id, sentence_id, lesson_id, import_id, due_at, last_reviewed_at, repetitions, lapses, difficulty, stability, recall_mode, scheduler_engine, created_at, updated_at)
+            SELECT
+              lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))), 2) || '-' || substr('89ab', abs(random()) % 4 + 1, 1) || substr(lower(hex(randomblob(2))), 2) || '-' || lower(hex(randomblob(6))),
+              id, lesson_id, lesson_id, COALESCE(reviewed_at, datetime('now')), reviewed_at,
+              review_streak, CASE WHEN review_state = 'forgotten' THEN 1 ELSE 0 END,
+              0.3, review_streak, 'full_support', 'fixed-interval', datetime('now'), datetime('now')
+            FROM sentences;
+            "#,
+        )?;
+    }
+
+    if current < 9 {
+        // Language identity is deliberately separate from display strings.  Legacy
+        // values are retained on lessons for export compatibility, while all new
+        // scoping uses these canonical records and directional pairs.
+        run_migration(conn, 9, r#"
+            CREATE TABLE languages (
+              id TEXT PRIMARY KEY,
+              code TEXT NOT NULL UNIQUE,
+              name TEXT NOT NULL,
+              is_unknown INTEGER NOT NULL DEFAULT 0 CHECK (is_unknown IN (0, 1)),
+              created_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL
+            );
+            INSERT INTO languages (id, code, name, is_unknown, created_at, updated_at)
+              VALUES ('language-unknown', 'und', 'Unknown Language', 1, datetime('now'), datetime('now'));
+            INSERT OR IGNORE INTO languages (id, code, name, created_at, updated_at)
+              SELECT 'language:' || lower(trim(target_language)), lower(trim(target_language)), trim(target_language), datetime('now'), datetime('now')
+              FROM lessons WHERE trim(target_language) <> '';
+            INSERT OR IGNORE INTO languages (id, code, name, created_at, updated_at)
+              SELECT 'language:' || lower(trim(base_language)), lower(trim(base_language)), trim(base_language), datetime('now'), datetime('now')
+              FROM lessons WHERE trim(base_language) <> '';
+            CREATE TABLE language_pairs (
+              id TEXT PRIMARY KEY,
+              target_language_id TEXT NOT NULL REFERENCES languages(id) ON DELETE RESTRICT,
+              base_language_id TEXT NOT NULL REFERENCES languages(id) ON DELETE RESTRICT,
+              created_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL,
+              UNIQUE(target_language_id, base_language_id)
+            );
+            INSERT INTO language_pairs (id, target_language_id, base_language_id, created_at, updated_at)
+              VALUES ('pair:language-unknown:language-unknown', 'language-unknown', 'language-unknown', datetime('now'), datetime('now'));
+            ALTER TABLE lessons ADD COLUMN language_pair_id TEXT REFERENCES language_pairs(id);
+            INSERT OR IGNORE INTO language_pairs (id, target_language_id, base_language_id, created_at, updated_at)
+              SELECT 'pair:' || COALESCE(t.id, 'language-unknown') || ':' || COALESCE(b.id, 'language-unknown'),
+                     COALESCE(t.id, 'language-unknown'), COALESCE(b.id, 'language-unknown'), datetime('now'), datetime('now')
+              FROM lessons l
+              LEFT JOIN languages t ON t.code = lower(trim(l.target_language))
+              LEFT JOIN languages b ON b.code = lower(trim(l.base_language));
+            UPDATE lessons SET language_pair_id = (
+              SELECT p.id FROM language_pairs p
+              JOIN languages t ON t.id = p.target_language_id
+              JOIN languages b ON b.id = p.base_language_id
+              WHERE t.code = COALESCE(NULLIF(lower(trim(lessons.target_language)), ''), 'und')
+                AND b.code = COALESCE(NULLIF(lower(trim(lessons.base_language)), ''), 'und')
+            );
+            CREATE INDEX lessons_language_pair_idx ON lessons(language_pair_id);
+            INSERT OR REPLACE INTO user_settings(key, value, updated_at)
+              SELECT 'active_language_pair_id', COALESCE((SELECT language_pair_id FROM lessons ORDER BY imported_at DESC LIMIT 1), 'pair:language-unknown:language-unknown'), datetime('now')
+              WHERE NOT EXISTS (SELECT 1 FROM user_settings WHERE key = 'active_language_pair_id');
+        "#)?;
+    }
+
+    if current < 10 {
+        run_migration(conn, 10, r#"
+            CREATE TABLE courses (
+              id TEXT PRIMARY KEY,
+              language_pair_id TEXT NOT NULL REFERENCES language_pairs(id) ON DELETE RESTRICT,
+              title TEXT NOT NULL,
+              description TEXT,
+              created_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL
+            );
+            CREATE INDEX courses_language_pair_idx ON courses(language_pair_id);
+            CREATE TABLE course_units (
+              id TEXT PRIMARY KEY,
+              course_id TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+              title TEXT NOT NULL,
+              description TEXT,
+              position INTEGER NOT NULL,
+              created_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL,
+              UNIQUE(course_id, position)
+            );
+            CREATE TABLE unit_lessons (
+              unit_id TEXT NOT NULL REFERENCES course_units(id) ON DELETE CASCADE,
+              lesson_id TEXT NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+              position INTEGER NOT NULL,
+              created_at TEXT NOT NULL,
+              PRIMARY KEY(unit_id, lesson_id), UNIQUE(unit_id, position)
+            );
+            CREATE INDEX unit_lessons_lesson_idx ON unit_lessons(lesson_id);
+            CREATE TABLE course_lessons (
+              course_id TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+              lesson_id TEXT NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+              position INTEGER NOT NULL,
+              created_at TEXT NOT NULL,
+              PRIMARY KEY(course_id, lesson_id), UNIQUE(course_id, position)
+            );
+            CREATE TABLE collections (
+              id TEXT PRIMARY KEY,
+              language_pair_id TEXT NOT NULL REFERENCES language_pairs(id) ON DELETE RESTRICT,
+              title TEXT NOT NULL,
+              kind TEXT NOT NULL CHECK (kind IN ('manual', 'smart')),
+              query_json TEXT,
+              created_at TEXT NOT NULL,
+              updated_at TEXT NOT NULL
+            );
+            CREATE TABLE collection_lessons (
+              collection_id TEXT NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
+              lesson_id TEXT NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+              position INTEGER NOT NULL,
+              created_at TEXT NOT NULL,
+              PRIMARY KEY(collection_id, lesson_id), UNIQUE(collection_id, position)
+            );
+        "#)?;
+    }
+
+    if current < 11 {
+        // These nullable additions preserve every historical event verbatim. New
+        // writes populate the normalized response while legacy grade remains the
+        // compatibility field used by existing clients.
+        run_migration(conn, 11, r#"
+            ALTER TABLE review_events ADD COLUMN response TEXT;
+            ALTER TABLE review_events ADD COLUMN hint_used INTEGER NOT NULL DEFAULT 0 CHECK (hint_used IN (0, 1));
+            ALTER TABLE review_events ADD COLUMN session_id TEXT;
+            ALTER TABLE review_events ADD COLUMN mode TEXT;
+            ALTER TABLE review_events ADD COLUMN language_pair_id TEXT REFERENCES language_pairs(id);
+            CREATE INDEX review_events_pair_reviewed_idx ON review_events(language_pair_id, reviewed_at);
+            CREATE TABLE annotation_aliases (
+              id TEXT PRIMARY KEY, learning_item_id TEXT NOT NULL REFERENCES learning_items(id) ON DELETE CASCADE,
+              alias_key TEXT NOT NULL, language_pair_id TEXT REFERENCES language_pairs(id) ON DELETE CASCADE,
+              created_at TEXT NOT NULL, UNIQUE(learning_item_id, alias_key, language_pair_id)
+            );
+            CREATE INDEX annotation_aliases_lookup_idx ON annotation_aliases(alias_key, language_pair_id);
+            CREATE TABLE annotation_provenance (
+              learning_item_id TEXT PRIMARY KEY REFERENCES learning_items(id) ON DELETE CASCADE,
+              source_lesson_id TEXT REFERENCES lessons(id) ON DELETE SET NULL,
+              source_sentence_id TEXT REFERENCES sentences(id) ON DELETE SET NULL,
+              reuse_eligible INTEGER NOT NULL DEFAULT 1 CHECK (reuse_eligible IN (0, 1)),
+              promoted_at TEXT, updated_at TEXT NOT NULL
+            );
+            CREATE TABLE annotation_suppressions (
+              language_pair_id TEXT NOT NULL REFERENCES language_pairs(id) ON DELETE CASCADE,
+              normalized_text TEXT NOT NULL, item_type TEXT NOT NULL,
+              created_at TEXT NOT NULL, PRIMARY KEY(language_pair_id, normalized_text, item_type)
+            );
+        "#)?;
+    }
+
     Ok(())
 }
 

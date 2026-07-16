@@ -43,6 +43,10 @@ export interface StudyWord {
   explanation: string | null;
   commonMistakes: string[];
   canonicalKey: string;
+  annotationOrigin?: "local" | "shared";
+  sourceLessonId?: string | null;
+  sourceLessonTitle?: string | null;
+  matchReason?: "local" | "canonical" | "normalized-surface" | "lemma" | "alias";
 }
 
 export interface StudyGrammar {
@@ -52,6 +56,10 @@ export interface StudyGrammar {
   explanation: string | null;
   commonMistakes: string[];
   canonicalKey: string;
+  annotationOrigin?: "local" | "shared";
+  sourceLessonId?: string | null;
+  sourceLessonTitle?: string | null;
+  matchReason?: "local" | "canonical" | "normalized-surface" | "lemma" | "alias";
 }
 
 export interface StudyChunk {
@@ -59,6 +67,10 @@ export interface StudyChunk {
   meaning: string | null;
   explanation: string | null;
   canonicalKey: string;
+  annotationOrigin?: "local" | "shared";
+  sourceLessonId?: string | null;
+  sourceLessonTitle?: string | null;
+  matchReason?: "local" | "canonical" | "normalized-surface" | "lemma" | "alias";
 }
 
 export interface StudySentence {

@@ -174,6 +174,55 @@ pub struct StudyLesson {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct LanguagePair {
+    pub id: String,
+    pub target_language: String,
+    pub base_language: String,
+}
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Course {
+    pub id: String,
+    pub language_pair_id: String,
+    pub title: String,
+    pub description: Option<String>,
+}
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CourseInput {
+    pub language_pair_id: String,
+    pub title: String,
+    pub description: Option<String>,
+}
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CourseUnit {
+    pub id: String,
+    pub course_id: String,
+    pub title: String,
+    pub description: Option<String>,
+    pub position: i64,
+}
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Collection {
+    pub id: String,
+    pub language_pair_id: String,
+    pub title: String,
+    pub kind: String,
+    pub query_json: Option<String>,
+}
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CollectionInput {
+    pub language_pair_id: String,
+    pub title: String,
+    pub kind: String,
+    pub query_json: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ReviewSentence {
     pub id: String,
     pub sentence_id: String,

@@ -47,13 +47,16 @@ pub fn get_review_queue(state: State<db::AppState>) -> Result<Vec<ReviewSentence
 pub fn update_review_item(
     sentence_id: String,
     decision: String,
+    hint_used: Option<bool>,
+    session_id: Option<String>,
+    mode: Option<String>,
     state: State<db::AppState>,
 ) -> Result<ReviewSentence, String> {
     let grade = normalize_grade(&decision)
         .ok_or_else(|| "Missing sentenceId or valid review decision.".to_string())?;
 
     let mut conn = state.conn.lock().map_err(|err| err.to_string())?;
-    update_review_item_inner(&mut conn, &sentence_id, &grade).map_err(|err| err.to_string())
+    update_review_item_with_context(&mut conn, &sentence_id, &grade, hint_used.unwrap_or(false), session_id.as_deref(), mode.as_deref()).map_err(|err| err.to_string())
 }
 
 fn update_review_item_inner(
@@ -61,7 +64,12 @@ fn update_review_item_inner(
     sentence_id: &str,
     grade: &str,
 ) -> Result<ReviewSentence> {
-    ensure_review_items(conn)?;
+    update_review_item_with_context(conn, sentence_id, grade, false, None, None)
+}
+
+fn update_review_item_with_context(
+    conn: &mut Connection, sentence_id: &str, grade: &str, hint_used: bool, session_id: Option<&str>, mode: Option<&str>,
+) -> Result<ReviewSentence> {
     let current =
         get_sentence(conn, sentence_id)?.ok_or_else(|| anyhow::anyhow!("Sentence not found."))?;
 
@@ -120,7 +128,7 @@ fn update_review_item_inner(
         "UPDATE sentences SET review_state = ?1, review_streak = ?2, reviewed_at = ?3, updated_at = ?3 WHERE id = ?4",
         params![review_state, review_streak, reviewed_at, sentence_id],
     )?;
-    record_review_event(&tx, "sentence", sentence_id, grade, was_new, &reviewed_at)?;
+    record_review_event(&tx, "sentence", sentence_id, grade, was_new, hint_used, session_id, mode, &reviewed_at)?;
     tx.commit()?;
 
     get_sentence(conn, sentence_id)?.ok_or_else(|| anyhow::anyhow!("Sentence not found."))
@@ -131,13 +139,12 @@ pub fn reset_review_progress(
     scope: ReviewResetScope,
     state: State<db::AppState>,
 ) -> Result<(), String> {
-    let conn = state.conn.lock().map_err(|err| err.to_string())?;
-    ensure_review_items(&conn).map_err(|err| err.to_string())?;
+    let mut conn = state.conn.lock().map_err(|err| err.to_string())?;
 
     match scope {
-        ReviewResetScope::Lesson { lesson_id } => reset_lesson_progress(&conn, &lesson_id),
+        ReviewResetScope::Lesson { lesson_id } => reset_lesson_progress(&mut conn, &lesson_id),
         ReviewResetScope::Sentence { sentence_id } => {
-            reset_sentences_progress(&conn, &[sentence_id])
+            reset_sentences_progress(&mut conn, &[sentence_id])
         }
         ReviewResetScope::Item {
             item_type,
@@ -147,8 +154,7 @@ pub fn reset_review_progress(
             let sentence_ids =
                 get_item_sentence_ids(&conn, &item_type, &canonical_key, lesson_id.as_deref())
                     .map_err(|err| err.to_string())?;
-            reset_sentences_progress(&conn, &sentence_ids)
-                .and_then(|()| reset_item_review_state(&conn, &item_type, &canonical_key))
+            reset_item_progress(&mut conn, &sentence_ids, &item_type, &canonical_key)
         }
     }
     .map_err(|err| err.to_string())
@@ -170,8 +176,8 @@ pub fn update_item_review(
 ) -> Result<ReviewItemTarget, String> {
     let grade = normalize_grade(&decision)
         .ok_or_else(|| "Missing learningItemId or valid review decision.".to_string())?;
-    let conn = state.conn.lock().map_err(|err| err.to_string())?;
-    update_item_review_inner(&conn, &learning_item_id, &grade).map_err(|err| err.to_string())
+    let mut conn = state.conn.lock().map_err(|err| err.to_string())?;
+    update_item_review_inner(&mut conn, &learning_item_id, &grade).map_err(|err| err.to_string())
 }
 
 #[tauri::command]
@@ -199,17 +205,25 @@ fn record_review_event(
     target_id: &str,
     grade: &str,
     was_new: bool,
+    hint_used: bool,
+    session_id: Option<&str>,
+    mode: Option<&str>,
     reviewed_at: &str,
 ) -> Result<()> {
     conn.execute(
-        "INSERT INTO review_events (id, target_kind, target_id, grade, was_new, reviewed_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        "INSERT INTO review_events (id, target_kind, target_id, grade, response, was_new, hint_used, session_id, mode, language_pair_id, reviewed_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9,
+           CASE WHEN ?2='sentence' THEN (SELECT language_pair_id FROM lessons l JOIN sentences s ON s.lesson_id=l.id WHERE s.id=?3) ELSE NULL END, ?10)",
         params![
             db::id(),
             target_kind,
             target_id,
             grade,
+            response_grade(grade),
             was_new as i64,
+            hint_used as i64,
+            session_id,
+            mode,
             reviewed_at
         ],
     )?;
@@ -408,7 +422,7 @@ fn get_item_review_targets_inner(
 }
 
 fn update_item_review_inner(
-    conn: &Connection,
+    conn: &mut Connection,
     learning_item_id: &str,
     grade: &str,
 ) -> Result<ReviewItemTarget> {
@@ -424,7 +438,8 @@ fn update_item_review_inner(
         scheduler_state.scheduler_engine = NEW_CARD_SCHEDULER_ENGINE.to_string();
     }
     let schedule = schedule_review(&scheduler_state, grade, &reviewed_at);
-    conn.execute(
+    let tx = conn.transaction()?;
+    tx.execute(
         r#"
         INSERT INTO item_review_states
         (id, learning_item_id, due_at, last_reviewed_at, repetitions, lapses, difficulty, stability, scheduler_engine, created_at, updated_at)
@@ -451,7 +466,8 @@ fn update_item_review_inner(
             scheduler_state.scheduler_engine,
         ],
     )?;
-    record_review_event(conn, "item", learning_item_id, grade, was_new, &reviewed_at)?;
+    record_review_event(&tx, "item", learning_item_id, grade, was_new, false, None, None, &reviewed_at)?;
+    tx.commit()?;
 
     get_item_review_targets_inner(conn, Some(learning_item_id))?
         .into_iter()
@@ -460,8 +476,12 @@ fn update_item_review_inner(
 }
 
 // Deleting the row returns the item to lazy new-item defaults on the next read.
-fn reset_item_review_state(conn: &Connection, item_type: &str, canonical_key: &str) -> Result<()> {
-    conn.execute(
+fn reset_item_review_state(
+    tx: &rusqlite::Transaction<'_>,
+    item_type: &str,
+    canonical_key: &str,
+) -> Result<()> {
+    tx.execute(
         r#"
         DELETE FROM item_review_states
         WHERE learning_item_id IN (
@@ -489,7 +509,6 @@ const REVIEW_SENTENCE_SELECT: &str = r#"
 "#;
 
 fn get_review_queue_inner(conn: &Connection) -> Result<Vec<ReviewSentence>> {
-    ensure_review_items(conn)?;
     let mut stmt = conn.prepare(&format!(
         "{REVIEW_SENTENCE_SELECT} ORDER BY ri.due_at ASC, s.text ASC"
     ))?;
@@ -499,7 +518,6 @@ fn get_review_queue_inner(conn: &Connection) -> Result<Vec<ReviewSentence>> {
 }
 
 fn get_sentence(conn: &Connection, sentence_id: &str) -> Result<Option<ReviewSentence>> {
-    ensure_review_items(conn)?;
     conn.query_row(
         &format!("{REVIEW_SENTENCE_SELECT} WHERE s.id = ?1"),
         [sentence_id],
@@ -509,21 +527,46 @@ fn get_sentence(conn: &Connection, sentence_id: &str) -> Result<Option<ReviewSen
     .map_err(Into::into)
 }
 
-fn reset_lesson_progress(conn: &Connection, lesson_id: &str) -> Result<()> {
-    let mut stmt = conn.prepare("SELECT id FROM sentences WHERE lesson_id = ?1")?;
-    let rows = stmt.query_map([lesson_id], |row| row.get::<_, String>(0))?;
-    let sentence_ids = rows.collect::<rusqlite::Result<Vec<_>>>()?;
+fn reset_lesson_progress(conn: &mut Connection, lesson_id: &str) -> Result<()> {
+    let sentence_ids = {
+        let mut stmt = conn.prepare("SELECT id FROM sentences WHERE lesson_id = ?1")?;
+        let rows = stmt.query_map([lesson_id], |row| row.get::<_, String>(0))?;
+        rows.collect::<rusqlite::Result<Vec<_>>>()?
+    };
     reset_sentences_progress(conn, &sentence_ids)
 }
 
-fn reset_sentences_progress(conn: &Connection, sentence_ids: &[String]) -> Result<()> {
+fn reset_item_progress(
+    conn: &mut Connection,
+    sentence_ids: &[String],
+    item_type: &str,
+    canonical_key: &str,
+) -> Result<()> {
+    let tx = conn.transaction()?;
+    reset_sentences_progress_in_transaction(&tx, sentence_ids)?;
+    reset_item_review_state(&tx, item_type, canonical_key)?;
+    tx.commit()?;
+    Ok(())
+}
+
+fn reset_sentences_progress(conn: &mut Connection, sentence_ids: &[String]) -> Result<()> {
+    let tx = conn.transaction()?;
+    reset_sentences_progress_in_transaction(&tx, sentence_ids)?;
+    tx.commit()?;
+    Ok(())
+}
+
+fn reset_sentences_progress_in_transaction(
+    tx: &rusqlite::Transaction<'_>,
+    sentence_ids: &[String],
+) -> Result<()> {
     let now = db::now();
     for sentence_id in sentence_ids {
-        conn.execute(
+        tx.execute(
             "UPDATE sentences SET review_state = 'unknown', review_streak = 0, reviewed_at = NULL, updated_at = ?1 WHERE id = ?2",
             params![now, sentence_id],
         )?;
-        conn.execute(
+        tx.execute(
             r#"
             UPDATE review_items
             SET due_at = ?1,
@@ -584,22 +627,6 @@ fn get_item_sentence_ids(
     }
 }
 
-fn ensure_review_items(conn: &Connection) -> Result<()> {
-    let now = db::now();
-    conn.execute(
-        r#"
-        INSERT OR IGNORE INTO review_items
-        (id, sentence_id, lesson_id, import_id, due_at, last_reviewed_at, repetitions, lapses, difficulty, stability, recall_mode, created_at, updated_at)
-        SELECT id, id, lesson_id, lesson_id, ?1, reviewed_at, review_streak,
-               CASE WHEN review_state = 'forgotten' THEN 1 ELSE 0 END,
-               0.3, review_streak, 'full_support', ?1, ?1
-        FROM sentences
-        "#,
-        [now],
-    )?;
-    Ok(())
-}
-
 fn map_review_sentence(row: &rusqlite::Row<'_>) -> rusqlite::Result<ReviewSentence> {
     Ok(ReviewSentence {
         id: row.get(0)?,
@@ -630,12 +657,16 @@ fn map_review_sentence(row: &rusqlite::Row<'_>) -> rusqlite::Result<ReviewSenten
 
 fn normalize_grade(decision: &str) -> Option<String> {
     match decision {
-        "forgot" | "forgotten" => Some("forgot".to_string()),
+        "forgot" | "forgotten" | "again" | "Again" => Some("forgot".to_string()),
         "hard" => Some("hard".to_string()),
-        "remembered" => Some("remembered".to_string()),
-        "easy" => Some("easy".to_string()),
+        "remembered" | "good" | "Good" => Some("remembered".to_string()),
+        "easy" | "Easy" => Some("easy".to_string()),
         _ => None,
     }
+}
+
+fn response_grade(legacy_grade: &str) -> &'static str {
+    match legacy_grade { "forgot" => "again", "hard" => "hard", "remembered" => "good", "easy" => "easy", _ => "again" }
 }
 
 #[derive(Debug, PartialEq)]
@@ -908,7 +939,7 @@ fn next_recall_mode(current: &str, grade: &str) -> String {
 mod tests {
     use super::{
         get_item_review_targets_inner, get_review_progress_inner, legacy_review_state,
-        next_recall_mode, normalize_grade, reset_item_review_state, schedule_review,
+        next_recall_mode, normalize_grade, reset_item_progress, schedule_review,
         update_item_review_inner, update_review_item_inner, ReviewResetScope, SchedulerState,
     };
     use rusqlite::Connection;
@@ -1084,6 +1115,10 @@ mod tests {
             VALUES ('sent-busy', 'lesson-1', 'ko', '저는 학생이에요.', '저는 학생이에요.', 'I am a student.', '2026-07-01', '2026-07-01'),
                    ('sent-plain', 'lesson-1', 'ko', '학생 왔어요.', '학생 왔어요.', 'The student came.', '2026-07-01', '2026-07-01');
 
+            INSERT INTO review_items (id, sentence_id, lesson_id, import_id, due_at, created_at, updated_at)
+            VALUES ('review-busy', 'sent-busy', 'lesson-1', 'lesson-1', '2026-07-01', '2026-07-01', '2026-07-01'),
+                   ('review-plain', 'sent-plain', 'lesson-1', 'lesson-1', '2026-07-01', '2026-07-01', '2026-07-01');
+
             INSERT INTO sentence_vocabulary_links (id, sentence_id, vocabulary_item_id, surface_text, created_at, updated_at)
             VALUES ('link-1', 'sent-busy', 'item-1', '학생', '2026-07-01', '2026-07-01'),
                    ('link-2', 'sent-plain', 'item-1', '학생', '2026-07-01', '2026-07-01');
@@ -1139,10 +1174,11 @@ mod tests {
 
     #[test]
     fn grading_a_new_item_starts_it_on_fsrs_and_survives_reload() {
-        let conn = test_conn();
+        let mut conn = test_conn();
         seed_item_with_examples(&conn);
 
-        let updated = update_item_review_inner(&conn, "item-1", "remembered").expect("grade item");
+        let updated =
+            update_item_review_inner(&mut conn, "item-1", "remembered").expect("grade item");
 
         assert_eq!(updated.repetitions, 1);
         assert_eq!(updated.lapses, 0);
@@ -1162,11 +1198,11 @@ mod tests {
 
     #[test]
     fn grading_forgot_counts_a_lapse_without_touching_other_items() {
-        let conn = test_conn();
+        let mut conn = test_conn();
         seed_item_with_examples(&conn);
-        update_item_review_inner(&conn, "item-1", "remembered").expect("first grade");
+        update_item_review_inner(&mut conn, "item-1", "remembered").expect("first grade");
 
-        let lapsed = update_item_review_inner(&conn, "item-1", "forgot").expect("lapse");
+        let lapsed = update_item_review_inner(&mut conn, "item-1", "forgot").expect("lapse");
 
         assert_eq!(lapsed.repetitions, 1);
         assert_eq!(lapsed.lapses, 1);
@@ -1180,10 +1216,10 @@ mod tests {
 
     #[test]
     fn grading_an_unknown_item_fails_cleanly() {
-        let conn = test_conn();
+        let mut conn = test_conn();
         seed_item_with_examples(&conn);
 
-        let result = update_item_review_inner(&conn, "missing-item", "remembered");
+        let result = update_item_review_inner(&mut conn, "missing-item", "remembered");
 
         assert!(result.is_err());
         let row_count: i64 = conn
@@ -1196,11 +1232,11 @@ mod tests {
 
     #[test]
     fn resetting_an_item_returns_it_to_new_defaults() {
-        let conn = test_conn();
+        let mut conn = test_conn();
         seed_item_with_examples(&conn);
-        update_item_review_inner(&conn, "item-1", "easy").expect("grade item");
+        update_item_review_inner(&mut conn, "item-1", "easy").expect("grade item");
 
-        reset_item_review_state(&conn, "word", "ko:학생").expect("reset item");
+        reset_item_progress(&mut conn, &[], "word", "ko:학생").expect("reset item");
 
         let target = get_item_review_targets_inner(&conn, Some("item-1"))
             .expect("reload target")
@@ -1219,7 +1255,7 @@ mod tests {
         seed_item_with_examples(&conn);
         conn.execute(
             r#"
-            INSERT INTO review_items
+            INSERT OR REPLACE INTO review_items
             (id, sentence_id, lesson_id, import_id, due_at, last_reviewed_at, repetitions, lapses, difficulty, stability, recall_mode, created_at, updated_at)
             VALUES ('ri-1', 'sent-busy', 'lesson-1', 'lesson-1', '2026-07-05T10:00:00+00:00', '2026-07-02T10:00:00+00:00', 2, 0, 0.26, 5.0, 'sentence_only', '2026-07-01', '2026-07-02')
             "#,
@@ -1244,7 +1280,7 @@ mod tests {
 
     #[test]
     fn previously_graded_items_keep_their_fixed_interval_engine() {
-        let conn = test_conn();
+        let mut conn = test_conn();
         seed_item_with_examples(&conn);
         conn.execute(
             "INSERT INTO item_review_states (id, learning_item_id, due_at, last_reviewed_at, repetitions, lapses, difficulty, stability, scheduler_engine, created_at, updated_at)
@@ -1253,7 +1289,8 @@ mod tests {
         )
         .expect("insert graded row");
 
-        let updated = update_item_review_inner(&conn, "item-1", "remembered").expect("grade item");
+        let updated =
+            update_item_review_inner(&mut conn, "item-1", "remembered").expect("grade item");
 
         assert_eq!(updated.scheduler_engine, "fixed-interval");
         assert_eq!(updated.repetitions, 3);
@@ -1279,7 +1316,7 @@ mod tests {
         seed_item_with_examples(&conn);
         conn.execute(
             r#"
-            INSERT INTO review_items
+            INSERT OR REPLACE INTO review_items
             (id, sentence_id, lesson_id, import_id, due_at, last_reviewed_at, repetitions, lapses, difficulty, stability, recall_mode, created_at, updated_at)
             VALUES ('ri-1', 'sent-plain', 'lesson-1', 'lesson-1', '2026-07-05T10:00:00+00:00', '2026-07-02T10:00:00+00:00', 2, 0, 0.26, 5.0, 'sentence_only', '2026-07-01', '2026-07-02')
             "#,
@@ -1300,8 +1337,8 @@ mod tests {
         let mut conn = test_conn();
         seed_item_with_examples(&conn);
 
-        update_item_review_inner(&conn, "item-1", "remembered").expect("first item grade");
-        update_item_review_inner(&conn, "item-1", "forgot").expect("second item grade");
+        update_item_review_inner(&mut conn, "item-1", "remembered").expect("first item grade");
+        update_item_review_inner(&mut conn, "item-1", "forgot").expect("second item grade");
         update_review_item_inner(&mut conn, "sent-plain", "easy").expect("sentence grade");
 
         let rows: Vec<(String, String, String, i64)> = conn
@@ -1345,7 +1382,7 @@ mod tests {
     fn review_progress_aggregates_daily_activity_and_mastery_counts() {
         let mut conn = test_conn();
         seed_item_with_examples(&conn);
-        update_item_review_inner(&conn, "item-1", "remembered").expect("grade item");
+        update_item_review_inner(&mut conn, "item-1", "remembered").expect("grade item");
         update_review_item_inner(&mut conn, "sent-plain", "remembered").expect("grade sentence");
 
         let progress = get_review_progress_inner(&conn).expect("load progress");

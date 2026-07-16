@@ -22,7 +22,7 @@ DMG_STAGE="$(mktemp -d /private/tmp/fydor-dmg-stage.XXXXXX)"
 DMG_MOUNT="$(mktemp -d /private/tmp/fydor-dmg-check.XXXXXX)"
 trap 'hdiutil detach "$DMG_MOUNT" >/dev/null 2>&1 || true; rm -rf "$DMG_STAGE" "$DMG_MOUNT"' EXIT
 
-npm run tauri:build -- --bundles app --config "$RELEASE_CONFIG" >/tmp/fydor-mac-build.log 2>&1
+npm run tauri:build -- --features auto-updates --bundles app --config "$RELEASE_CONFIG" >/tmp/fydor-mac-build.log 2>&1
 if [ $? -ne 0 ] || [ ! -d "$APP_BUNDLE" ]; then
   echo "FAIL tauri build did not produce $APP_BUNDLE (see /tmp/fydor-mac-build.log)"
   exit 1

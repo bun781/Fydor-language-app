@@ -25,7 +25,7 @@ if ! rustup target list --installed | grep -q "$TARGET"; then
   exit 1
 fi
 
-(cd src-tauri && cargo xwin build --release --target "$TARGET") >/tmp/fydor-win-build.log 2>&1
+(cd src-tauri && cargo xwin build --release --features auto-updates --target "$TARGET") >/tmp/fydor-win-build.log 2>&1
 BIN="src-tauri/target/$TARGET/release/fydor.exe"
 if [ $? -ne 0 ] || [ ! -f "$BIN" ]; then
   echo "FAIL cargo xwin build did not produce $BIN (see /tmp/fydor-win-build.log)"
@@ -36,7 +36,7 @@ NSIS_DIR="src-tauri/target/$TARGET/release/nsis/x64"
 if [ ! -f "$NSIS_DIR/installer.nsi" ]; then
   # First build on this machine: scaffold the NSIS script via a Tauri build that
   # will fail at the (already-compiled) binary step but still generate installer.nsi.
-  npm run tauri -- build --target "$TARGET" --bundles nsis --config "$RELEASE_CONFIG" >/tmp/fydor-win-build.log 2>&1
+  npm run tauri -- build --features auto-updates --target "$TARGET" --bundles nsis --config "$RELEASE_CONFIG" >/tmp/fydor-win-build.log 2>&1
 fi
 if [ ! -f "$NSIS_DIR/installer.nsi" ]; then
   echo "FAIL no installer.nsi at $NSIS_DIR (see /tmp/fydor-win-build.log)"
