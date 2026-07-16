@@ -1,6 +1,5 @@
 import { fydorWebUrl } from "@/lib/webOrigin";
-import type { FydorPack } from "@/lib/fydor-pack";
-import type { LessonImportInput } from "@/lib/language/types";
+import { computeFydorPackChecksum, parseFydorPack, type FydorPack } from "@/lib/fydor-pack";
 
 export interface PublishedLessonSummary {
   id: string;
@@ -18,12 +17,6 @@ export interface PublishedLessonSummary {
   checksum: string;
   license: string;
   compatibility: string;
-}
-
-export interface PublishedLessonEnvelope {
-  manifest: PublishedLessonSummary;
-  lesson: LessonImportInput & { schemaVersion: 1 };
-  checksum: string;
 }
 
 export interface PublishedLessonQuery {
@@ -62,9 +55,22 @@ export async function listPublishedLessons(query: PublishedLessonQuery = {}): Pr
   return fetchJson(fydorWebUrl(`/api/library?${params}`));
 }
 
-export async function downloadPublishedLesson(id: string): Promise<PublishedLessonEnvelope> {
-  if (!/^lesson-[0-9a-f-]{36}$/i.test(id)) throw new Error("Invalid published lesson identifier.");
-  return fetchJson(fydorWebUrl(`/api/library?id=${encodeURIComponent(id)}&download=1`));
+export async function downloadPublishedLesson(id: string, expectedChecksum: string): Promise<FydorPack> {
+  if (!id.trim() || !expectedChecksum.match(/^[a-f0-9]{64}$/i)) throw new Error("Invalid published lesson metadata.");
+  const response = await fetch(fydorWebUrl(`/api/library?id=${encodeURIComponent(id)}&download=1`), {
+    headers: { Accept: "application/vnd.fydor-pack+json, application/json" },
+    cache: "no-store"
+  });
+  const source = await response.text();
+  if (!response.ok) throw new Error(readError(source, response.status));
+
+  const validation = parseFydorPack(source);
+  if (!validation.pack || validation.errors.length || validation.lessonErrors.length) {
+    throw new Error(validation.errors[0] || validation.lessonErrors[0]?.errors[0] || "Downloaded package is invalid.");
+  }
+  const checksum = await computeFydorPackChecksum(validation.pack);
+  if (checksum !== expectedChecksum.toLowerCase()) throw new Error("The downloaded package failed its integrity check.");
+  return validation.pack;
 }
 
 export async function publishFydorPack(pack: FydorPack): Promise<PublishedPackResult> {
@@ -84,4 +90,13 @@ async function fetchJson<T>(url: string, init: RequestInit = {}): Promise<T> {
   const data = await response.json().catch(() => null) as T | { error?: { message?: string } } | null;
   if (!response.ok) throw new Error((data as { error?: { message?: string } } | null)?.error?.message || `Library request failed (${response.status}).`);
   return data as T;
+}
+
+function readError(source: string, status: number): string {
+  try {
+    const value = JSON.parse(source) as { error?: { message?: string } };
+    return value.error?.message || `Library request failed (${status}).`;
+  } catch {
+    return `Library request failed (${status}).`;
+  }
 }

@@ -15,7 +15,7 @@ import {
 import type { StudyLessonMeta } from "@/lib/imported-content/types";
 import type { LessonImportInput } from "@/lib/language/types";
 import { publishFydorPack } from "@/lib/public-library";
-import { readSessionProgress, writeSessionProgress } from "@/lib/storage";
+import { clearLocal, readLocal, readSessionProgress, writeSessionProgress } from "@/lib/storage";
 import { z } from "zod";
 import { InstallPackSection, SharePackSection } from "./ExchangeSections";
 
@@ -41,6 +41,7 @@ const installSummarySchema = z.object({
 export type InstallSummary = z.infer<typeof installSummarySchema>;
 
 const EXCHANGE_PROGRESS_KEY = "fydor.exchange.workspace";
+export const EXCHANGE_PACK_DRAFT_KEY = "fydor:exchange-pack-draft";
 
 const exchangeProgressSchema = z.object({
   packSource: z.string(),
@@ -97,6 +98,22 @@ export function FydorExchangePage() {
     license: "CC BY",
     tags: ""
   });
+
+  useEffect(() => {
+    const downloadedPack = readLocal(EXCHANGE_PACK_DRAFT_KEY, z.string());
+    if (!downloadedPack) return;
+    clearLocal(EXCHANGE_PACK_DRAFT_KEY);
+    setPackSource(downloadedPack);
+    const validation = parseFydorPack(downloadedPack);
+    setPackPreview(validation);
+    if (validation.pack) {
+      setSelectedInstallLessons(new Set(validation.pack.lessons.map((_, index) => index)));
+      setStatus(validation.errors.length ? "" : "Verified Exchange package ready to install.");
+    } else {
+      setSelectedInstallLessons(new Set());
+      setErrors(validation.errors);
+    }
+  }, []);
 
   useEffect(() => {
     refreshLessons();

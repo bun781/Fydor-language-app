@@ -2,16 +2,17 @@ import { Download, Globe2, RefreshCw, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { KeyboardEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { LESSON_IMPORT_DRAFT_KEY } from "@/components/admin-imports/lesson-import-utils";
 import { errorMessage } from "@/lib/errors";
 import { downloadPublishedLesson, listPublishedLessons, type PublishedLessonSummary } from "@/lib/public-library";
 import { writeLocal } from "@/lib/storage";
+import { EXCHANGE_PACK_DRAFT_KEY } from "./FydorExchangePage";
 
 export function PublicLessonLibrary() {
   const navigate = useNavigate();
   const [lessons, setLessons] = useState<PublishedLessonSummary[]>([]);
   const [query, setQuery] = useState("");
   const [language, setLanguage] = useState("");
+  const [baseLanguage, setBaseLanguage] = useState("");
   const [level, setLevel] = useState("");
   const [loading, setLoading] = useState(true);
   const [openingId, setOpeningId] = useState<string | null>(null);
@@ -41,7 +42,7 @@ export function PublicLessonLibrary() {
     setLoading(true);
     setError("");
     try {
-      const result = await listPublishedLessons({ q: query, language, level, pageSize: 50 });
+      const result = await listPublishedLessons({ q: query, language, baseLanguage, level, pageSize: 50 });
       setLessons(result.lessons);
       setStatus(result.lessons.length ? `${result.lessons.length} published lesson${result.lessons.length === 1 ? "" : "s"}.` : "No published lessons match these filters.");
     } catch (cause) {
@@ -56,14 +57,8 @@ export function PublicLessonLibrary() {
     setError("");
     setStatus("");
     try {
-      const envelope = await downloadPublishedLesson(lesson.id);
-      if (envelope.checksum !== lesson.checksum || envelope.manifest.checksum !== lesson.checksum) {
-        throw new Error("The lesson metadata changed during download. Refresh the library and try again.");
-      }
-
-      const lessonSource = { ...envelope.lesson };
-      delete (lessonSource as { schemaVersion?: number }).schemaVersion;
-      writeLocal(LESSON_IMPORT_DRAFT_KEY, JSON.stringify(lessonSource, null, 2));
+      const pack = await downloadPublishedLesson(lesson.id, lesson.checksum);
+      writeLocal(EXCHANGE_PACK_DRAFT_KEY, JSON.stringify(pack, null, 2));
       navigate("/fydor-exchange/import");
     } catch (cause) {
       setError(errorMessage(cause, "Unable to prepare this published lesson for import."));
@@ -93,7 +88,8 @@ export function PublicLessonLibrary() {
       </div>
       <div className="exchange-filter-row">
         <label className="exchange-search"><Search size={16} /><input value={query} placeholder="Search lessons" aria-label="Search published lessons" onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void load(); }} /></label>
-        <label className="exchange-select-filter"><span className="sr-only">Target language</span><input className="input public-library-filter" value={language} placeholder="Language code" onChange={(event) => setLanguage(event.target.value)} /></label>
+        <label className="exchange-select-filter"><span className="sr-only">Source language</span><input className="input public-library-filter" value={language} placeholder="Source code" onChange={(event) => setLanguage(event.target.value)} /></label>
+        <label className="exchange-select-filter"><span className="sr-only">Target language</span><input className="input public-library-filter" value={baseLanguage} placeholder="Target code" onChange={(event) => setBaseLanguage(event.target.value)} /></label>
         <label className="exchange-select-filter"><span className="sr-only">Level</span><input className="input public-library-filter" value={level} placeholder="Level" onChange={(event) => setLevel(event.target.value)} /></label>
         <button className="button secondary" type="button" disabled={loading} onClick={() => void load()}><RefreshCw size={16} />{loading ? "Loading…" : "Search"}</button>
       </div>

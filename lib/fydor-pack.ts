@@ -38,6 +38,19 @@ export interface FydorPackValidation {
   sentenceCount: number;
 }
 
+/**
+ * Produces the content checksum used by Exchange. Only learning content and
+ * the directional language pair participate in this value, so timestamps and
+ * presentation metadata cannot make an immutable published version appear to
+ * be a different lesson.
+ */
+export async function computeFydorPackChecksum(pack: FydorPack): Promise<string> {
+  const canonical = canonicalizePack(pack);
+  const bytes = new TextEncoder().encode(stableStringify(canonical));
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
 const lessonWordSchema = z.object({
   surface: z.string().trim().min(1),
   lemma: z.string().trim().min(1).optional(),
@@ -145,7 +158,12 @@ export function parseFydorPack(source: string): FydorPackValidation {
     }
 
     if (lesson.language !== packResult.data.language || lesson.baseLanguage !== packResult.data.baseLanguage) {
-      warnings.push(`${lesson.title} uses ${lesson.language} to ${lesson.baseLanguage}, which differs from the pack language.`);
+      lessonErrors.push({
+        index,
+        title: lesson.title,
+        errors: [`${lesson.title} uses ${lesson.language} → ${lesson.baseLanguage}, not the pack direction ${packResult.data.language} → ${packResult.data.baseLanguage}.`]
+      });
+      continue;
     }
 
     const duplicateKey = lessonKey(lesson);
@@ -256,6 +274,31 @@ function validateLessonContents(lesson: LessonImportInput): string[] {
   });
 
   return errors;
+}
+
+function canonicalizePack(pack: FydorPack) {
+  return {
+    language: pack.language,
+    baseLanguage: pack.baseLanguage,
+    lessons: pack.lessons.map((lesson) => ({
+      language: lesson.language,
+      baseLanguage: lesson.baseLanguage,
+      sentences: lesson.sentences.map((sentence) => {
+        const output: Record<string, unknown> = { text: sentence.text, translation: sentence.translation };
+        for (const key of ["words", "grammar", "chunks"] as const) {
+          if (sentence[key]?.length) output[key] = sentence[key];
+        }
+        return output;
+      })
+    }))
+  };
+}
+
+function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record).sort().map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`).join(",")}}`;
 }
 
 function containsSurface(sentenceText: string, surface: string): boolean {
