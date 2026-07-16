@@ -1,8 +1,8 @@
 import { FileText, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { errorMessage } from "@/lib/errors";
-import { getLessonCached, getLessons, getReadingInputs, getReviewQueue } from "@/lib/desktopApi";
-import type { StudyLesson, StudySentence } from "@/lib/imported-content/types";
+import { getLessonsCached, getLessons, getReadingInputs, getReviewQueue } from "@/lib/desktopApi";
+import type { StudySentence } from "@/lib/imported-content/types";
 import {
   analyzeReadingText,
   buildReadingLexicon,
@@ -169,8 +169,7 @@ async function loadReadingKnowledge(): Promise<ReadingKnowledge> {
 
 async function loadLegacyReadingKnowledge(): Promise<ReadingKnowledge> {
   const [lessonMetas, queue] = await Promise.all([getLessons(), getReviewQueue()]);
-  const lessons = (await Promise.all(lessonMetas.map((lesson) => getLessonCached(lesson.id))))
-    .filter((lesson): lesson is StudyLesson => Boolean(lesson));
+  const lessons = await getLessonsCached(lessonMetas.map((lesson) => lesson.id));
   const sentences = lessons.flatMap((lesson) => lesson.sentences);
   const { knownCanonicalKeys, learningCanonicalKeys } = inferItemStatusFromReviewedSentences(sentences, queue);
   return { lexicon: buildReadingLexicon(sentences), knownCanonicalKeys, learningCanonicalKeys };

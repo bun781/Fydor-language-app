@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { errorMessage } from "@/lib/errors";
-import { getLessonCached } from "@/lib/desktopApi";
+import { getLessonsCached } from "@/lib/desktopApi";
 import { isEditableShortcutTarget } from "@/lib/dom";
 import { clearSessionProgress, readLocal, writeLocal, writeSessionProgress } from "@/lib/storage";
 import { stableShuffle } from "@/lib/imported-content/stableShuffle";
@@ -106,8 +106,13 @@ function useQuizLessonSelection({
       setLoadingLessons(true);
       setLoadError(null);
       try {
-        const loaded = await Promise.all(ids.map((id) => lesson?.id === id ? lesson : getLessonCached(id)));
-        if (!cancelled) setLoadedLessons(loaded.filter((item): item is StudyLesson => Boolean(item)));
+        const requestedIds = ids.filter((id) => lesson?.id !== id);
+        const fetched = await getLessonsCached(requestedIds);
+        const byId = new Map(fetched.map((item) => [item.id, item]));
+        if (!cancelled) setLoadedLessons(ids.flatMap((id) => {
+          const loaded = lesson?.id === id ? lesson : byId.get(id);
+          return loaded ? [loaded] : [];
+        }));
       } catch (err) {
         if (!cancelled) setLoadError(errorMessage(err, "Unable to load selected lessons."));
       } finally {

@@ -4,7 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { ReviewDeck } from "@/components/review/ReviewDeck";
 import { PageState } from "@/components/system/PageState";
 import { errorMessage } from "@/lib/errors";
-import { getItemReviewTargets, getLessonCached, getLessons, getPacks, getReviewQueue, resetReviewProgress } from "@/lib/desktopApi";
+import { getItemReviewTargets, getLessons, getLessonsCached, getPacks, getReviewQueue, resetReviewProgress } from "@/lib/desktopApi";
 import { readSessionProgress, writeSessionProgress } from "@/lib/storage";
 import type { StudyLesson, StudyLessonMeta, StudyPackMeta } from "@/lib/imported-content/types";
 import { defaultStudyScope, resolveStudyScope, studyScopeSchema, type StudyScope } from "@/lib/studyScope";
@@ -64,9 +64,9 @@ export default function ReviewPage() {
         setSelectedLessonIds(restoredLessonIds.length ? restoredLessonIds : availableLessonIds);
 
         // Full lesson bodies are only needed by the stats browser; load them without blocking first paint.
-        void Promise.all(lessonList.map((item) => getLessonCached(item.id)))
+        void getLessonsCached(lessonList.map((item) => item.id))
           .then((loadedLessons) => {
-            if (!cancelled) setFullLessons(loadedLessons.filter((item): item is StudyLesson => Boolean(item)));
+            if (!cancelled) setFullLessons(loadedLessons);
           })
           .catch(() => {
             // Stats browsing degrades gracefully without full lessons; the queue itself already loaded.

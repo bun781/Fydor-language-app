@@ -91,27 +91,70 @@ async function getLesson(lessonId: string): Promise<StudyLesson | null> {
   return invoke("get_lesson", { lessonId });
 }
 
-// In-memory cache for full lesson bodies. Lesson content only changes through the
-// mutation commands below, which clear it — review grading never alters lesson content.
-const lessonCache = new Map<string, StudyLesson>();
+// Keep imported lesson bodies separate from their derived annotation view. The derived
+// view changes whenever another lesson in the same pair becomes available, while the
+// imported body does not. Previously every cache miss re-resolved every cached lesson;
+// loading N lessons therefore repeated N full annotation passes. A cache miss now only
+// invalidates derived views, and bulk callers resolve each requested lesson once.
+const lessonSourceCache = new Map<string, StudyLesson>();
+const resolvedLessonCache = new Map<string, StudyLesson>();
+const pendingLessonLoads = new Map<string, Promise<StudyLesson | null>>();
 
 export async function getLessonCached(lessonId: string): Promise<StudyLesson | null> {
-  const cached = lessonCache.get(lessonId);
+  await loadLessonSource(lessonId);
+  return resolveCachedLesson(lessonId);
+}
+
+/**
+ * Fetches lesson bodies concurrently, then resolves annotations from one stable source
+ * snapshot. Use this for list screens and prefetching; it avoids the repeated complete
+ * cache re-resolution that individual concurrent calls used to trigger.
+ */
+export async function getLessonsCached(lessonIds: readonly string[]): Promise<StudyLesson[]> {
+  const ids = [...new Set(lessonIds)];
+  const before = lessonSourceCache.size;
+  await Promise.all(ids.map(loadLessonSource));
+  if (lessonSourceCache.size !== before) resolvedLessonCache.clear();
+  return ids.flatMap((lessonId) => {
+    const lesson = resolveCachedLesson(lessonId);
+    return lesson ? [lesson] : [];
+  });
+}
+
+function resolveCachedLesson(lessonId: string): StudyLesson | null {
+  const source = lessonSourceCache.get(lessonId);
+  if (!source) return null;
+  const resolved = resolvedLessonCache.get(lessonId);
+  if (resolved) return resolved;
+
+  const next = resolveLessonAnnotations(source, [...lessonSourceCache.values()]);
+  resolvedLessonCache.set(lessonId, next);
+  return next;
+}
+
+async function loadLessonSource(lessonId: string): Promise<StudyLesson | null> {
+  const cached = lessonSourceCache.get(lessonId);
   if (cached) return cached;
-  const lesson = await getLesson(lessonId);
-  if (!lesson) return null;
-  lessonCache.set(lessonId, lesson);
-  // Re-resolve all loaded lessons as the local cache grows. The resolver receives
-  // a batch and includes the full directional pair in every eligibility check.
-  const cachedLessons = [...lessonCache.values()];
-  for (const cachedLesson of cachedLessons) {
-    lessonCache.set(cachedLesson.id, resolveLessonAnnotations(cachedLesson, cachedLessons));
-  }
-  return lessonCache.get(lessonId) ?? null;
+  const pending = pendingLessonLoads.get(lessonId);
+  if (pending) return pending;
+
+  const request = getLesson(lessonId)
+    .then((lesson) => {
+      if (lesson) {
+        lessonSourceCache.set(lessonId, lesson);
+        resolvedLessonCache.clear();
+      }
+      return lesson;
+    })
+    .finally(() => pendingLessonLoads.delete(lessonId));
+  pendingLessonLoads.set(lessonId, request);
+  return request;
 }
 
 function invalidateLessonCache() {
-  lessonCache.clear();
+  lessonSourceCache.clear();
+  resolvedLessonCache.clear();
+  pendingLessonLoads.clear();
 }
 
 export async function exportLesson(lessonId: string): Promise<LessonImportInput> {
