@@ -6,9 +6,46 @@ import type { LessonImportInput, LessonImportPreviewResult, LessonImportSummary 
 import type { ReadingInputs } from "@/lib/reading/analyzer";
 import type { ReviewDecision, ReviewItemTarget, ReviewProgressSnapshot, ReviewResetScope, ReviewSentence } from "@/lib/review/types";
 export interface LanguagePair { id: string; targetLanguage: string; baseLanguage: string; }
+export interface CourseInput {
+  languagePairId: string;
+  title: string;
+  description?: string | null;
+}
+
+export interface Course {
+  id: string;
+  languagePairId: string;
+  title: string;
+  description?: string | null;
+}
+
+export interface CourseUnit {
+  id: string;
+  courseId: string;
+  title: string;
+  description?: string | null;
+  position: number;
+}
+
+export interface CollectionInput {
+  languagePairId: string;
+  title: string;
+  kind: "manual" | "smart";
+  queryJson?: string | null;
+}
+
+export interface Collection extends CollectionInput { id: string; }
+
 export async function getLanguagePairs(): Promise<LanguagePair[]> { return invoke("get_language_pairs"); }
 export async function getActiveLanguagePair(): Promise<string> { return invoke("get_active_language_pair"); }
 export async function setActiveLanguagePair(languagePairId: string): Promise<void> { return invoke("set_active_language_pair", { languagePairId }); }
+export async function createCourse(input: CourseInput): Promise<Course> { return invoke("create_course", { input }); }
+export async function createCourseUnit(courseId: string, title: string, description?: string | null): Promise<CourseUnit> {
+  return invoke("create_course_unit", { courseId, title, description: description ?? null });
+}
+export async function addLessonToUnit(unitId: string, lessonId: string): Promise<void> { return invoke("add_lesson_to_unit", { unitId, lessonId }); }
+export async function reorderUnitLessons(unitId: string, lessonIds: string[]): Promise<void> { return invoke("reorder_unit_lessons", { unitId, lessonIds }); }
+export async function createCollection(input: CollectionInput): Promise<Collection> { return invoke("create_collection", { input }); }
 
 export async function getLessons(): Promise<StudyLessonMeta[]> {
   return invoke("get_lessons");
