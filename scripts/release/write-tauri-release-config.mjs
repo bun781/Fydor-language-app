@@ -22,45 +22,15 @@ function requireOrigin(name, value) {
   return url.origin;
 }
 
-function requireHttpsUrl(name, value) {
-  if (!value) fail(`${name} is required.`);
-  let url;
-  try {
-    url = new URL(value);
-  } catch {
-    fail(`${name} must be an absolute URL.`);
-  }
-  if (url.protocol !== "https:") fail(`${name} must use HTTPS for packaged releases.`);
-  if (url.username || url.password) fail(`${name} cannot contain credentials.`);
-  return url.toString();
-}
-
 const webOrigin = requireOrigin("FYDOR_RELEASE_WEB_ORIGIN", process.env.FYDOR_RELEASE_WEB_ORIGIN || "https://fydor.vercel.app");
-const endpoint = requireHttpsUrl(
-  "FYDOR_UPDATER_ENDPOINT",
-  process.env.FYDOR_UPDATER_ENDPOINT || `${webOrigin}/downloads/latest.json`
-);
-const pubkey = (process.env.FYDOR_UPDATER_PUBKEY || "").trim();
-if (!pubkey) fail("FYDOR_UPDATER_PUBKEY is required.");
 
 const config = {
   app: {
     security: {
-      csp: `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: data: blob:; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost ${webOrigin} https://github.com; object-src 'none'; base-uri 'none'; frame-src 'none'`
+      csp: `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: data: blob:; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost ${webOrigin}; object-src 'none'; base-uri 'none'; frame-src 'none'`
     }
   },
-  bundle: {
-    createUpdaterArtifacts: true
-  },
-  plugins: {
-    updater: {
-      pubkey,
-      endpoints: [endpoint],
-      windows: {
-        installMode: "passive"
-      }
-    }
-  }
+  bundle: {}
 };
 
 const dir = mkdtempSync(join(tmpdir(), "fydor-tauri-release-"));

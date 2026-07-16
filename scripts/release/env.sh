@@ -2,13 +2,8 @@
 set -u
 
 FYDOR_RELEASE_WEB_ORIGIN="${FYDOR_RELEASE_WEB_ORIGIN:-https://fydor.vercel.app}"
-FYDOR_RELEASE_REPOSITORY="${FYDOR_RELEASE_REPOSITORY:-bun781/Triolinga}"
-FYDOR_UPDATER_ENDPOINT="${FYDOR_UPDATER_ENDPOINT:-https://github.com/$FYDOR_RELEASE_REPOSITORY/releases/latest/download/latest.json}"
-
 export VITE_FYDOR_WEB_ORIGIN="$FYDOR_RELEASE_WEB_ORIGIN"
 export FYDOR_WEB_ORIGIN="$FYDOR_RELEASE_WEB_ORIGIN"
-export FYDOR_UPDATER_ENDPOINT
-export FYDOR_RELEASE_REPOSITORY
 
 check_release_env() {
   case "$FYDOR_RELEASE_WEB_ORIGIN" in
@@ -22,35 +17,6 @@ check_release_env() {
 
   if printf '%s' "$FYDOR_RELEASE_WEB_ORIGIN" | grep -Eq '[?#]|://[^/]*@|https://[^/]+/.+'; then
     echo "FAIL FYDOR_RELEASE_WEB_ORIGIN must be an origin only, with no path, credentials, query, or fragment."
-    exit 1
-  fi
-
-  case "$FYDOR_UPDATER_ENDPOINT" in
-    https://*)
-      ;;
-    *)
-      echo "FAIL FYDOR_UPDATER_ENDPOINT must be an HTTPS URL for packaged releases."
-      exit 1
-      ;;
-  esac
-
-  if printf '%s' "$FYDOR_UPDATER_ENDPOINT" | grep -Eq '://[^/]*@'; then
-    echo "FAIL FYDOR_UPDATER_ENDPOINT cannot contain credentials."
-    exit 1
-  fi
-
-  if [ -z "${FYDOR_UPDATER_PUBKEY:-}" ]; then
-    echo "FAIL FYDOR_UPDATER_PUBKEY is required for release updater verification."
-    exit 1
-  fi
-
-  if [ -z "${TAURI_SIGNING_PRIVATE_KEY:-}" ] && [ -z "${TAURI_SIGNING_PRIVATE_KEY_PATH:-}" ]; then
-    echo "FAIL TAURI_SIGNING_PRIVATE_KEY or TAURI_SIGNING_PRIVATE_KEY_PATH is required to sign updater artifacts."
-    exit 1
-  fi
-
-  if [ -n "${TAURI_SIGNING_PRIVATE_KEY_PATH:-}" ] && [ ! -f "$TAURI_SIGNING_PRIVATE_KEY_PATH" ]; then
-    echo "FAIL TAURI_SIGNING_PRIVATE_KEY_PATH does not point to a file."
     exit 1
   fi
 

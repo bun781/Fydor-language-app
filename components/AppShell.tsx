@@ -72,14 +72,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <aside className="sidebar" aria-label="App navigation">
         <nav aria-label="Primary navigation">
           {navSections.map((section) => (
-            <div className="sidebar-section" key={section.label}>
+            <div className="sidebar-section" key={section.label} data-tour={section.label === "Study" ? "nav-study-modes" : undefined}>
               <div className="sidebar-section-label">{section.label}</div>
               {section.links.map(({ href, label, icon: Icon }) => (
                 <Link
                   key={href}
                   to={href}
                   title={label}
-                  data-tour={href === "/lessons/manage" ? "nav-library" : undefined}
+                  data-tour={
+                    href === "/lessons/manage" ? "nav-library"
+                      : href === "/admin/imports" ? "nav-builder"
+                        : href === "/fydor-exchange" ? "nav-exchange"
+                          : href === "/review" ? "nav-review"
+                            : href === "/study/imported-content" ? "nav-flashcards"
+                              : href === "/study/fill-blank" ? "nav-fill-blank"
+                                : href === "/study/multiple-choice" ? "nav-multiple-choice"
+                                  : undefined
+                  }
                   className={pathname === href || pathname.startsWith(href + "/") ? "nav-active" : ""}
                 >
                   <Icon size={18} />

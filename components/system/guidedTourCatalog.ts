@@ -12,6 +12,117 @@ export interface TourStep {
 }
 
 const tourCatalog: Record<string, TourStep[]> = {
+  "first-run": [
+    {
+      route: "/lessons/manage",
+      section: "Welcome to Fydor",
+      title: "Your lesson library starts here",
+      description: "Everything you add to Fydor stays in your local lesson library, ready for every study mode.",
+      details: [
+        "Use Lessons to find saved lessons, organize packs and units, or reopen an existing lesson.",
+        "New lessons can come from the Builder or Fydor Exchange."
+      ],
+      targetSelectors: ['[data-tour="nav-library"]'],
+      placement: "right"
+    },
+    {
+      route: "/admin/imports",
+      section: "Add lessons",
+      title: "Create a lesson in Builder",
+      description: "Builder is for making a lesson yourself, sentence by sentence, with translations and learning notes.",
+      details: [
+        "Start with the sample lesson to see the expected structure.",
+        "Use Builder for visible fields, or JSON when you already have structured lesson content."
+      ],
+      targetSelectors: ['[data-tour="nav-builder"]'],
+      placement: "right"
+    },
+    {
+      route: "/lessons/manage",
+      section: "Add lessons",
+      title: "Check, then save to your library",
+      description: "Validate a lesson before saving so its content is ready for practice and review.",
+      details: [
+        "Check finds missing or invalid fields before they become a problem.",
+        "Saved lessons can be edited later from the Lessons tab."
+      ],
+      targetSelectors: ['[data-tour="nav-library"]'],
+      placement: "right"
+    },
+    {
+      route: "/fydor-exchange",
+      section: "Fydor Exchange",
+      title: "Get shared lessons with Exchange",
+      description: "Fydor Exchange is the fastest way to add a complete shared lesson pack to your library.",
+      details: [
+        "Use Install Pack for a .fydorpack file someone shared with you.",
+        "Use Share Pack when you want to export your own lessons later."
+      ],
+      targetSelectors: ['[data-tour="nav-exchange"]'],
+      placement: "right"
+    },
+    {
+      route: "/fydor-exchange",
+      section: "Fydor Exchange",
+      title: "Browse, inspect, and install",
+      description: "Start with the public library, or open Install Pack to import a pack file directly.",
+      details: [
+        "Previewing lets you inspect a pack before adding it.",
+        "Installed lessons immediately appear in Lessons and every study mode."
+      ],
+      targetSelectors: ['[data-tour="exchange-hub-install"]'],
+      placement: "bottom"
+    },
+    {
+      route: "/study/imported-content",
+      section: "Study modes",
+      title: "Learn with Flashcards",
+      description: "Flashcards are the slower, layered way to learn each sentence in a saved lesson.",
+      details: [
+        "Choose a lesson or pack, then reveal translation, vocabulary, grammar, and hints as needed.",
+        "Use this mode when you want to understand a sentence in depth."
+      ],
+      targetSelectors: ['[data-tour="nav-flashcards"]'],
+      placement: "right"
+    },
+    {
+      route: "/study/fill-blank",
+      section: "Study modes",
+      title: "Practice recall with Fill Blank",
+      description: "Fill Blank removes part of a saved sentence and asks you to produce the missing language.",
+      details: [
+        "Use it after flashcards when recognition feels easy but recall still needs work.",
+        "You can scope a session to the lessons you want to practice."
+      ],
+      targetSelectors: ['[data-tour="nav-fill-blank"]'],
+      placement: "right"
+    },
+    {
+      route: "/study/multiple-choice",
+      section: "Study modes",
+      title: "Do quick passes with Multiple Choice",
+      description: "Multiple Choice checks recognition with answer choices drawn from your saved lesson pool.",
+      details: [
+        "It is useful for a lighter practice session or a fast confidence check.",
+        "Switch modes freely: all three use the same lessons."
+      ],
+      targetSelectors: ['[data-tour="nav-multiple-choice"]'],
+      placement: "right"
+    },
+    {
+      route: "/review",
+      section: "Keep momentum",
+      title: "Return to Review for scheduled practice",
+      description: "Review gathers due and new material into a focused session so progress does not get lost.",
+      details: [
+        "Choose a lesson scope and start a mixed, due-only, or new-only queue.",
+        "Use the sidebar help button anytime to replay a guide for the current page."
+      ],
+      targetSelectors: ['[data-tour="nav-review"]'],
+      placement: "right",
+      primaryLabel: "Finish tour"
+    }
+  ],
   "/lessons/manage::builder": [
     {
       route: "/lessons/manage",

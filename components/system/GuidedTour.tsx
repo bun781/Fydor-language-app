@@ -1,6 +1,8 @@
 import type { CSSProperties } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { z } from "zod";
+import { readSessionProgress, writeSessionProgress } from "@/lib/storage";
 import { getTourSteps, resolveTourScope, type TourPlacement } from "./guidedTourCatalog";
 
 interface TourTargetState {
@@ -12,6 +14,8 @@ interface TourReplayDetail {
 }
 
 const TOUR_REPLAY_EVENT = "fydor-guided-tour:replay";
+const FIRST_RUN_TOUR_SCOPE = "first-run";
+const FIRST_RUN_TOUR_KEY = "guided-tour.first-run-complete";
 
 export function createTourScope(route: string, tab?: string) {
   return tab ? `${route}::${tab}` : route;
@@ -51,6 +55,15 @@ export function GuidedTour() {
     window.addEventListener(TOUR_REPLAY_EVENT, handleReplayTour as EventListener);
     return () => window.removeEventListener(TOUR_REPLAY_EVENT, handleReplayTour as EventListener);
   }, [pathname]);
+
+  useEffect(() => {
+    if (!mounted || readSessionProgress(FIRST_RUN_TOUR_KEY, z.boolean()) === true) return;
+
+    setActiveScope(FIRST_RUN_TOUR_SCOPE);
+    setActiveStepIndex(0);
+    setTarget(null);
+    navigate("/lessons/manage");
+  }, [mounted, navigate]);
 
   useEffect(() => {
     if (!mounted || !activeStep) return;
@@ -110,6 +123,9 @@ export function GuidedTour() {
   const spotlightStyle = target ? buildSpotlightStyle(target.rect) : undefined;
 
   function closeTour() {
+    if (activeScope === FIRST_RUN_TOUR_SCOPE) {
+      writeSessionProgress(FIRST_RUN_TOUR_KEY, true);
+    }
     setActiveScope(null);
     setActiveStepIndex(0);
     setTarget(null);
@@ -181,7 +197,7 @@ export function GuidedTour() {
 export function replayGuidedTour(scope?: string) {
   const resolvedScope = typeof window === "undefined"
     ? scope
-    : resolveTourScope(scope ?? window.location.pathname);
+    : resolveTourScope(scope ?? getHashRoute());
 
   if (!resolvedScope || !getTourSteps(resolvedScope)) {
     return;
@@ -190,6 +206,11 @@ export function replayGuidedTour(scope?: string) {
   window.dispatchEvent(new CustomEvent<TourReplayDetail>(TOUR_REPLAY_EVENT, {
     detail: { scope: resolvedScope }
   }));
+}
+
+function getHashRoute() {
+  const hash = window.location.hash;
+  return hash.startsWith("#") ? hash.slice(1).split("?")[0] || "/" : window.location.pathname;
 }
 
 function findTarget(selectors: string[]): HTMLElement | null {

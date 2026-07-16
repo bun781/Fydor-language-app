@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# One-shot release pipeline: checks ALL tool prerequisites for both platforms
-# up front, then builds Mac + Windows sequentially.
+# One-shot release pipeline: builds installers and copies them into the website's
+# static public/downloads directory.
 #
 # Usage:
-#   scripts/release/release.sh              # build both, print artifact paths
+#   scripts/release/release.sh              # build both and stage website assets
 #   scripts/release/release.sh --mac-only | --windows-only
 set -u
 cd "$(dirname "$0")/../.." || exit 1
@@ -23,7 +23,6 @@ done
 echo "== Checking prerequisites =="
 check_release_env
 echo "desktop release origin: $FYDOR_RELEASE_WEB_ORIGIN"
-echo "updater endpoint: $FYDOR_UPDATER_ENDPOINT"
 MISSING=0
 if [ "$DO_MAC" = 1 ]; then
   for tool in hdiutil; do
@@ -36,6 +35,7 @@ if [ "$DO_WIN" = 1 ]; then
   done
   rustup target list --installed | grep -q x86_64-pc-windows-msvc || { echo "missing (windows): rust target x86_64-pc-windows-msvc"; MISSING=1; }
 fi
+
 if [ "$MISSING" = 1 ]; then
   echo "FAIL prerequisites missing, aborting before any build (see references/fydor-release-troubleshooting.md)"
   exit 1
@@ -63,4 +63,21 @@ if [ "$DO_WIN" = 1 ]; then
   echo "== building Windows EXE (this takes longer on first run) =="
   WIN_RESULT="$(scripts/release/build-windows.sh)"
   echo "$WIN_RESULT"
+fi
+
+WEBSITE_DIR="$PWD/fydor-website"
+mkdir -p "$WEBSITE_DIR/public/downloads" "$WEBSITE_DIR/downloads"
+
+if [ "$DO_MAC" = 1 ]; then
+  MAC_PATH="${MAC_RESULT#OK }"
+  cp "$MAC_PATH" "$WEBSITE_DIR/public/downloads/fydor-mac.dmg"
+  cp "$MAC_PATH" "$WEBSITE_DIR/downloads/fydor-mac.dmg"
+  shasum -a 256 "$WEBSITE_DIR/public/downloads/fydor-mac.dmg"
+fi
+
+if [ "$DO_WIN" = 1 ]; then
+  WIN_PATH="${WIN_RESULT#OK }"
+  cp "$WIN_PATH" "$WEBSITE_DIR/public/downloads/fydor-windows.exe"
+  cp "$WIN_PATH" "$WEBSITE_DIR/downloads/fydor-windows.exe"
+  shasum -a 256 "$WEBSITE_DIR/public/downloads/fydor-windows.exe"
 fi

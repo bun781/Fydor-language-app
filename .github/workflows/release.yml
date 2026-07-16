@@ -48,7 +48,7 @@ jobs:
         with:
           workspaces: src-tauri
       - run: npm ci
-      - name: Build unsigned macOS release and signed updater artifact
+      - name: Build signed macOS release and signed updater artifact
         env:
           FYDOR_RELEASE_WEB_ORIGIN: https://fydor.vercel.app
           FYDOR_UPDATER_ENDPOINT: https://github.com/bun781/Triolinga/releases/latest/download/latest.json
@@ -63,6 +63,7 @@ jobs:
           cp "$(find src-tauri/target/release/bundle/dmg -name '*.dmg' -type f | head -1)" release-assets/fydor-mac.dmg
           cp "$(find src-tauri/target/release/bundle -name '*.tar.gz' -type f | head -1)" release-assets/fydor-mac-updater.tar.gz
           cp "$(find src-tauri/target/release/bundle -name '*.tar.gz.sig' -type f | head -1)" release-assets/fydor-mac-updater.tar.gz.sig
+          codesign --verify --deep --strict --verbose=2 release-assets/fydor-mac.dmg
       - uses: actions/upload-artifact@v4
         with:
           name: macos-release
@@ -84,7 +85,7 @@ jobs:
         with:
           workspaces: src-tauri
       - run: npm ci
-      - name: Build unsigned Windows release and signed updater artifact
+      - name: Build signed Windows release and signed updater artifact
         shell: pwsh
         env:
           FYDOR_RELEASE_WEB_ORIGIN: https://fydor.vercel.app
@@ -98,6 +99,7 @@ jobs:
           New-Item -ItemType Directory -Force release-assets
           Copy-Item (Get-ChildItem src-tauri/target/release/bundle/nsis -Filter *.exe -Recurse | Select-Object -First 1).FullName release-assets/fydor-windows.exe
           Copy-Item (Get-ChildItem src-tauri/target/release/bundle/nsis -Filter *.exe.sig -Recurse | Select-Object -First 1).FullName release-assets/fydor-windows-updater.exe.sig
+          if ((Get-AuthenticodeSignature release-assets/fydor-windows.exe).Status -ne 'Valid') { throw 'Windows installer is not Authenticode signed.' }
       - uses: actions/upload-artifact@v4
         with:
           name: windows-release
@@ -123,6 +125,7 @@ jobs:
           cat > release-assets/latest.json <<EOF
           {"version":"$VERSION","notes":"Fydor $VERSION","pub_date":"$(date -u +%Y-%m-%dT%H:%M:%SZ)","platforms":{"darwin-aarch64":{"signature":"$MAC_SIGNATURE","url":"https://github.com/bun781/Triolinga/releases/latest/download/fydor-mac-updater.tar.gz"},"windows-x86_64":{"signature":"$WINDOWS_SIGNATURE","url":"https://github.com/bun781/Triolinga/releases/latest/download/fydor-windows.exe"}}}
           EOF
+          sha256sum release-assets/fydor-mac.dmg release-assets/fydor-windows.exe > release-assets/SHA256SUMS
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}

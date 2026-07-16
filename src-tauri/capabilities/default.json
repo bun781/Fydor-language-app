@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main-window",
+  "description": "Least-privilege permissions for the bundled Fydor renderer.",
+  "windows": ["main"],
+  "permissions": ["core:default", "opener:default"]
+}

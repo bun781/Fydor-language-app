@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Builds an unsigned macOS DMG. Tauri updater artifacts remain signed with the
-# separate updater key configured by scripts/release/env.sh.
+# Builds an unsigned macOS DMG for direct website distribution.
 # Prints one final line:
 #   OK <path-to-dmg>
 # or
@@ -19,9 +18,21 @@ DMG_STAGE="$(mktemp -d /private/tmp/fydor-dmg-stage.XXXXXX)"
 DMG_MOUNT="$(mktemp -d /private/tmp/fydor-dmg-check.XXXXXX)"
 trap 'hdiutil detach "$DMG_MOUNT" >/dev/null 2>&1 || true; rm -rf "$DMG_STAGE" "$DMG_MOUNT"' EXIT
 
-npm run tauri:build -- --features auto-updates --bundles app --config "$RELEASE_CONFIG" >/tmp/fydor-mac-build.log 2>&1
+npm run tauri:build -- --bundles app --config "$RELEASE_CONFIG" >/tmp/fydor-mac-build.log 2>&1
 if [ $? -ne 0 ] || [ ! -d "$APP_BUNDLE" ]; then
   echo "FAIL tauri build did not produce $APP_BUNDLE (see /tmp/fydor-mac-build.log)"
+  exit 1
+fi
+
+codesign --force --deep --sign - "$APP_BUNDLE" >/tmp/fydor-mac-build.log 2>&1
+if [ $? -ne 0 ]; then
+  echo "FAIL unable to ad-hoc sign $APP_BUNDLE (see /tmp/fydor-mac-build.log)"
+  exit 1
+fi
+
+codesign --verify --deep --strict --verbose=4 "$APP_BUNDLE" >/tmp/fydor-mac-build.log 2>&1
+if [ $? -ne 0 ]; then
+  echo "FAIL code signature verification failed for $APP_BUNDLE (see /tmp/fydor-mac-build.log)"
   exit 1
 fi
 

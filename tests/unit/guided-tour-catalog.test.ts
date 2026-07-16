@@ -16,6 +16,10 @@ describe("guided tour route scopes", () => {
     expect(getTourSteps(scope)).not.toBeNull();
   });
 
+  it("includes the first-run tour", () => {
+    expect(getTourSteps("first-run")).toHaveLength(9);
+  });
+
   it.each([
     ["/fydor-exchange", "/fydor-exchange"],
     ["/fydor-exchange/import", "/fydor-exchange::install"],
