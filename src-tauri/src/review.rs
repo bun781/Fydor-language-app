@@ -56,7 +56,15 @@ pub fn update_review_item(
         .ok_or_else(|| "Missing sentenceId or valid review decision.".to_string())?;
 
     let mut conn = state.conn.lock().map_err(|err| err.to_string())?;
-    update_review_item_with_context(&mut conn, &sentence_id, &grade, hint_used.unwrap_or(false), session_id.as_deref(), mode.as_deref()).map_err(|err| err.to_string())
+    update_review_item_with_context(
+        &mut conn,
+        &sentence_id,
+        &grade,
+        hint_used.unwrap_or(false),
+        session_id.as_deref(),
+        mode.as_deref(),
+    )
+    .map_err(|err| err.to_string())
 }
 
 fn update_review_item_inner(
@@ -68,7 +76,12 @@ fn update_review_item_inner(
 }
 
 fn update_review_item_with_context(
-    conn: &mut Connection, sentence_id: &str, grade: &str, hint_used: bool, session_id: Option<&str>, mode: Option<&str>,
+    conn: &mut Connection,
+    sentence_id: &str,
+    grade: &str,
+    hint_used: bool,
+    session_id: Option<&str>,
+    mode: Option<&str>,
 ) -> Result<ReviewSentence> {
     let current =
         get_sentence(conn, sentence_id)?.ok_or_else(|| anyhow::anyhow!("Sentence not found."))?;
@@ -128,7 +141,17 @@ fn update_review_item_with_context(
         "UPDATE sentences SET review_state = ?1, review_streak = ?2, reviewed_at = ?3, updated_at = ?3 WHERE id = ?4",
         params![review_state, review_streak, reviewed_at, sentence_id],
     )?;
-    record_review_event(&tx, "sentence", sentence_id, grade, was_new, hint_used, session_id, mode, &reviewed_at)?;
+    record_review_event(
+        &tx,
+        "sentence",
+        sentence_id,
+        grade,
+        was_new,
+        hint_used,
+        session_id,
+        mode,
+        &reviewed_at,
+    )?;
     tx.commit()?;
 
     get_sentence(conn, sentence_id)?.ok_or_else(|| anyhow::anyhow!("Sentence not found."))
@@ -466,7 +489,17 @@ fn update_item_review_inner(
             scheduler_state.scheduler_engine,
         ],
     )?;
-    record_review_event(&tx, "item", learning_item_id, grade, was_new, false, None, None, &reviewed_at)?;
+    record_review_event(
+        &tx,
+        "item",
+        learning_item_id,
+        grade,
+        was_new,
+        false,
+        None,
+        None,
+        &reviewed_at,
+    )?;
     tx.commit()?;
 
     get_item_review_targets_inner(conn, Some(learning_item_id))?
@@ -666,7 +699,13 @@ fn normalize_grade(decision: &str) -> Option<String> {
 }
 
 fn response_grade(legacy_grade: &str) -> &'static str {
-    match legacy_grade { "forgot" => "again", "hard" => "hard", "remembered" => "good", "easy" => "easy", _ => "again" }
+    match legacy_grade {
+        "forgot" => "again",
+        "hard" => "hard",
+        "remembered" => "good",
+        "easy" => "easy",
+        _ => "again",
+    }
 }
 
 #[derive(Debug, PartialEq)]

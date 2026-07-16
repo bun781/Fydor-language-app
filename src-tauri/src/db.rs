@@ -354,7 +354,10 @@ pub(crate) fn migrate(conn: &Connection) -> Result<()> {
         // Language identity is deliberately separate from display strings.  Legacy
         // values are retained on lessons for export compatibility, while all new
         // scoping uses these canonical records and directional pairs.
-        run_migration(conn, 9, r#"
+        run_migration(
+            conn,
+            9,
+            r#"
             CREATE TABLE languages (
               id TEXT PRIMARY KEY,
               code TEXT NOT NULL UNIQUE,
@@ -399,11 +402,15 @@ pub(crate) fn migrate(conn: &Connection) -> Result<()> {
             INSERT OR REPLACE INTO user_settings(key, value, updated_at)
               SELECT 'active_language_pair_id', COALESCE((SELECT language_pair_id FROM lessons ORDER BY imported_at DESC LIMIT 1), 'pair:language-unknown:language-unknown'), datetime('now')
               WHERE NOT EXISTS (SELECT 1 FROM user_settings WHERE key = 'active_language_pair_id');
-        "#)?;
+        "#,
+        )?;
     }
 
     if current < 10 {
-        run_migration(conn, 10, r#"
+        run_migration(
+            conn,
+            10,
+            r#"
             CREATE TABLE courses (
               id TEXT PRIMARY KEY,
               language_pair_id TEXT NOT NULL REFERENCES language_pairs(id) ON DELETE RESTRICT,
@@ -454,14 +461,18 @@ pub(crate) fn migrate(conn: &Connection) -> Result<()> {
               created_at TEXT NOT NULL,
               PRIMARY KEY(collection_id, lesson_id), UNIQUE(collection_id, position)
             );
-        "#)?;
+        "#,
+        )?;
     }
 
     if current < 11 {
         // These nullable additions preserve every historical event verbatim. New
         // writes populate the normalized response while legacy grade remains the
         // compatibility field used by existing clients.
-        run_migration(conn, 11, r#"
+        run_migration(
+            conn,
+            11,
+            r#"
             ALTER TABLE review_events ADD COLUMN response TEXT;
             ALTER TABLE review_events ADD COLUMN hint_used INTEGER NOT NULL DEFAULT 0 CHECK (hint_used IN (0, 1));
             ALTER TABLE review_events ADD COLUMN session_id TEXT;
@@ -486,7 +497,8 @@ pub(crate) fn migrate(conn: &Connection) -> Result<()> {
               normalized_text TEXT NOT NULL, item_type TEXT NOT NULL,
               created_at TEXT NOT NULL, PRIMARY KEY(language_pair_id, normalized_text, item_type)
             );
-        "#)?;
+        "#,
+        )?;
     }
 
     Ok(())

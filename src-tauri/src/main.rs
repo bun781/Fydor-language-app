@@ -2,8 +2,8 @@
 
 #[cfg(feature = "auto-updates")]
 mod app_updates;
-mod db;
 mod curriculum;
+mod db;
 mod external_links;
 mod lessons;
 mod models;
