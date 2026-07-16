@@ -57,7 +57,7 @@ pub(crate) fn parse_lesson_json(source: &str) -> Result<(LessonImportInput, Valu
     }
     let raw_value =
         parse_strict_json(source).map_err(|error| vec![format!("Invalid JSON: {error}")])?;
-    validate_untrusted_json(&raw_value, "$", 0).map_err(|errors| errors)?;
+    validate_untrusted_json(&raw_value, "$", 0)?;
     let mut lesson: LessonImportInput = serde_json::from_value(raw_value.clone())
         .map_err(|err| vec![format!("Invalid lesson shape: {err}")])?;
     trim_lesson(&mut lesson);
@@ -281,10 +281,8 @@ fn validate_untrusted_json(value: &Value, path: &str, depth: usize) -> Result<()
                 ));
             }
         }
-        Value::Number(number) => {
-            if number.as_f64().is_some_and(|value| !value.is_finite()) {
-                errors.push(format!("{path}: numeric value is not finite."));
-            }
+        Value::Number(number) if number.as_f64().is_some_and(|value| !value.is_finite()) => {
+            errors.push(format!("{path}: numeric value is not finite."));
         }
         _ => {}
     }

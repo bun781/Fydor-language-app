@@ -82,12 +82,11 @@ fn get_lessons_without_packs(conn: &Connection) -> Result<Vec<StudyLessonMeta>> 
 }
 
 fn table_exists(conn: &Connection, table: &str) -> Result<bool> {
-    Ok(conn
-        .query_row(
-            "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?1",
-            [table],
-            |row| row.get::<_, i64>(0),
-        )? > 0)
+    Ok(conn.query_row(
+        "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?1",
+        [table],
+        |row| row.get::<_, i64>(0),
+    )? > 0)
 }
 
 pub(crate) fn get_lesson_inner(conn: &Connection, lesson_id: &str) -> Result<Option<StudyLesson>> {

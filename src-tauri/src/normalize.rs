@@ -5,7 +5,6 @@ use unicode_normalization::UnicodeNormalization;
 pub fn normalize_text(text: &str) -> String {
     text.nfkc()
         .collect::<String>()
-        .trim()
         .split_whitespace()
         .collect::<Vec<_>>()
         .join(" ")
@@ -41,7 +40,7 @@ fn stable_stringify(value: &Value) -> String {
         ),
         Value::Object(map) => {
             let mut entries = map.iter().collect::<Vec<_>>();
-            entries.sort_by(|(left, _), (right, _)| left.cmp(right));
+            entries.sort_by_key(|(key, _)| *key);
             format!(
                 "{{{}}}",
                 entries

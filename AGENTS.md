@@ -20,8 +20,7 @@ Fydor is a local-first language-learning desktop app: a Vite + React SPA inside 
 │   ├── App.tsx             ⭐ Route table (HashRouter). / redirects to /lessons/manage
 │   ├── ErrorBoundary.tsx   Top-level render-error screen
 │   ├── globals.css         All styling (single global stylesheet)
-│   └── pages/              Pages with their own load logic (ReviewPage, LearningSciencePage);
-│                           all other routes are thin shells declared inline in App.tsx
+│   └── pages/              ReviewPage owns review-route loading; other routes are thin shells in App.tsx
 ├── components/             React UI by feature
 │   ├── review/             ReviewDeck, ReviewControls, ReviewSentenceCard, ReviewStatsBrowser
 │   ├── reading/            ReadingWorkspace (tab shell), LessonReader, TextAnalyzer
@@ -29,6 +28,7 @@ Fydor is a local-first language-learning desktop app: a Vite + React SPA inside 
 │   │                       quizSession.ts = shared quiz engine hook, QuizShell.tsx = shared quiz panels
 │   ├── admin-imports/      Lesson Builder UI (LessonImportsPage + LessonBuilderEditor)
 │   ├── exchange/           Fydor Exchange UI (pack install/share/library)
+│   ├── community/          Entries that open the companion website in the system browser
 │   ├── language/           Import help panel + preview
 │   ├── system/             GuidedTour, PageState
 │   ├── ui/                 AudioButton, Tooltip, ConfirmDialog, PieChart
@@ -36,6 +36,7 @@ Fydor is a local-first language-learning desktop app: a Vite + React SPA inside 
 ├── lib/
 │   ├── desktopApi.ts       ⭐ THE data layer — every Tauri invoke() call lives here
 │   ├── storage.ts          Browser local/session storage helpers with Zod validation
+│   ├── public-library.ts   Website public-library client; never a desktop persistence path
 │   ├── review/             Queue building, SRS scheduling, recall modes, deck hooks
 │   ├── reading/            Tokenizer, coverage analyzer, reader navigation helpers
 │   ├── language/           importResources.ts (guide/prompt content) + types.ts
@@ -47,13 +48,14 @@ Fydor is a local-first language-learning desktop app: a Vite + React SPA inside 
 │       ├── main.rs         Command registration
 │       ├── lessons/        mod.rs (commands+tests), read.rs (queries/export), import.rs (import pipeline)
 │       ├── review.rs       Review queue + SRS update commands
+│       ├── packs.rs        Local pack CRUD; pack_export.rs writes .fydorpack files
 │       ├── db.rs           SQLite schema, setup, migrations
 │       ├── models.rs       Rust structs mirroring the TS types in lib/*/types.ts
 │       └── normalize.rs    Text normalization / canonical keys
 ├── tests/unit/             Vitest tests for pure frontend logic
 ├── docs/                   Feature docs and historical logs
 ├── samples/                Sample course content (.json, .fydorpack)
-└── scripts/                Icon generation, tauri dev launcher, release scripts
+└── scripts/                Tauri dev launcher and release scripts
 ```
 
 ## Data Flow
@@ -93,6 +95,17 @@ UI component → hook (e.g. `lib/review/useReviewDeck.ts`) → `lib/desktopApi.t
 4. `npm run build` — only after typecheck passes
 5. `npm run tauri:dev` — manual smoke test of the affected route only
 
+`cargo test --manifest-path src-tauri/Cargo.toml` covers Rust persistence and
+command logic. `cargo fmt --check` must pass before Rust changes are handed off.
+Clippy is useful when installed, but is not presently available in this toolchain.
+
+## Usually Ignore
+
+Do not load or modify `node_modules/`, `dist/`, `src-tauri/target/`, generated
+Tauri bindings, local databases, packaged installers, or `docs/archive/` unless
+the task explicitly concerns them. `.codexignore` and `.claudeignore` preserve
+that boundary for coding agents.
+
 ## Handle With Care
 
 - `src-tauri/src/db.rs` — schema changes need a migration path for existing user databases
@@ -108,4 +121,6 @@ UI component → hook (e.g. `lib/review/useReviewDeck.ts`) → `lib/desktopApi.t
 - No new abstractions, barrel exports, or shared utilities unless the task requires them.
 - Do not add a second DB access layer or bypass `lib/desktopApi.ts`.
 - Do not add business logic to route declarations in `src/App.tsx` or `src/pages/*` shells — routes stay thin over components.
-- There is no legacy web pipeline: the drizzle/PGlite layer was removed in July 2026. Ignore any docs/history that reference `db/schema.ts`, `lib/server/`, or `lib/language/importLesson.ts` — persistence is Rust-only.
+- The desktop app has no server-side database layer. `lib/public-library.ts` is
+  the narrow exception for the companion website's public catalog; lesson and
+  review persistence remains Rust-only.

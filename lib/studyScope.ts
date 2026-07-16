@@ -36,20 +36,3 @@ export function resolveStudyScope(scope: StudyScope, lessons: StudyLessonMeta[],
     })
     .map((lesson) => lesson.id);
 }
-
-export function scopeForLessonIds(lessonIds: string[], lessons: StudyLessonMeta[]): StudyScope {
-  const selected = new Set(lessonIds);
-  const packIds = new Set<string>();
-  const individualIds: string[] = [];
-  for (const lesson of lessons) {
-    if (!selected.has(lesson.id)) continue;
-    if (lesson.packId) packIds.add(lesson.packId);
-    else individualIds.push(lesson.id);
-  }
-  return {
-    allPacks: false,
-    packIds: [...packIds],
-    lessonIds: individualIds,
-    excludedLessonIds: []
-  };
-}

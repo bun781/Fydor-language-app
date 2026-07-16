@@ -18,7 +18,6 @@ The repository name is `Habitz`, but the app itself is branded as Fydor.
 - Fill-in-the-blank study at `/study/fill-blank`
 - Multiple-choice study at `/study/multiple-choice`
 - Sentence review at `/review`
-- Learning science reference page at `/learning-science`
 - Lesson sharing and pack import/export at `/fydor-exchange`
 
 ## Highlights
@@ -46,13 +45,14 @@ The repository name is `Habitz`, but the app itself is branded as Fydor.
    npm install
    ```
 
-2. Start the app:
+2. Start the desktop app:
 
    ```bash
-   npm run dev
+   npm run tauri:dev
    ```
 
-3. Open the app in your browser at the local Vite URL (normally `http://127.0.0.1:3001`).
+   `npm run dev` is also available when you only need the browser UI; Tauri
+   commands require the desktop shell.
 
 The database is created automatically on first run. By default, Fydor stores local data in the app data directory for your platform.
 
@@ -89,12 +89,12 @@ if desktop release env files contain Supabase or database variables.
 
 ## Project Layout
 
-- `src/` - Vite entry point, route table, global styles, and page shells
+- `src/` - Vite entry point, route table, global styles, and the review page
 - `components/` - UI and feature components
 - `src-tauri/` - Rust desktop backend (SQLite schema, Tauri commands)
 - `lib/` - shared logic for import, study, review, speech, and desktop helpers
 - `tests/` - unit tests
-- `docs/` - implementation notes and product docs
+- `docs/` - current feature and operational notes (`docs/archive/` is historical)
 
 ## Further Reading
 

@@ -754,7 +754,7 @@ fn schedule_fsrs_review(
     let due_at = if fsrs_grade == 1 {
         reviewed_at_date + Duration::minutes(10)
     } else {
-        reviewed_at_date + Duration::days(fsrs_next_interval_days(stability) as i64)
+        reviewed_at_date + Duration::days(fsrs_next_interval_days(stability))
     };
 
     ReviewSchedule {

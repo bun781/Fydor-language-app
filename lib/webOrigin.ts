@@ -17,11 +17,7 @@ export function normalizeFydorWebOrigin(value: string): string {
   return url.origin;
 }
 
-export function fydorWebOrigin(): string {
-  return DEFAULT_FYDOR_WEB_ORIGIN;
-}
-
 export function fydorWebUrl(path: string): string {
   if (!path.startsWith("/") || path.startsWith("//")) throw new Error("Fydor website path must be root-relative.");
-  return new URL(path, `${fydorWebOrigin()}/`).toString();
+  return new URL(path, `${DEFAULT_FYDOR_WEB_ORIGIN}/`).toString();
 }

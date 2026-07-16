@@ -100,5 +100,5 @@ The switch happens the moment `reveal.translation` becomes `true` (user clicks t
 |------|------|
 | `components/imported-content/AnnotatedSentence.tsx` | Run-building logic and annotated render |
 | `components/imported-content/SentenceFlashcard.tsx` | Conditional render trigger |
-| `app/globals.css` | `.sentence-annotated`, `.sentence-annotated-wrap` additions; shared `.annotated-*` and `.tooltip-*` classes |
+| `src/globals.css` | `.sentence-annotated`, `.sentence-annotated-wrap` additions; shared `.annotated-*` and `.tooltip-*` classes |
 | `lib/imported-content/types.ts` | `StudySentence`, `StudyWord`, `StudyGrammar`, `StudyChunk` interfaces |

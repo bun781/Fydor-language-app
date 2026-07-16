@@ -69,24 +69,6 @@ pub fn move_lessons_to_pack(
 }
 
 #[tauri::command]
-pub fn reorder_pack_lessons(
-    pack_id: String,
-    lesson_ids: Vec<String>,
-    state: State<db::AppState>,
-) -> Result<(), String> {
-    let mut conn = state.conn.lock().map_err(|err| err.to_string())?;
-    let tx = conn.transaction().map_err(|err| err.to_string())?;
-    for (position, lesson_id) in lesson_ids.iter().enumerate() {
-        tx.execute(
-            "UPDATE lessons SET pack_position = ?1, updated_at = ?2 WHERE id = ?3 AND pack_id = ?4",
-            params![position as i64, db::now(), lesson_id, pack_id],
-        )
-        .map_err(|err| err.to_string())?;
-    }
-    tx.commit().map_err(|err| err.to_string())
-}
-
-#[tauri::command]
 pub fn delete_pack(pack_id: String, state: State<db::AppState>) -> Result<(), String> {
     if pack_id == UNSORTED_PACK_ID {
         return Err("The Personal / Unsorted pack cannot be deleted.".to_string());
@@ -123,7 +105,8 @@ pub(crate) fn get_packs_inner(conn: &Connection) -> Result<Vec<StudyPackMeta>> {
         "#,
     )?;
     let rows = stmt.query_map([], map_pack)?;
-    rows.collect::<rusqlite::Result<Vec<_>>>().map_err(Into::into)
+    rows.collect::<rusqlite::Result<Vec<_>>>()
+        .map_err(Into::into)
 }
 
 fn get_pack_inner(conn: &Connection, id: &str) -> Result<StudyPackMeta> {
@@ -169,7 +152,7 @@ pub(crate) fn upsert_pack_inner(conn: &mut Connection, input: PackInput) -> Resu
     let stable_id = input
         .stable_id
         .filter(|value| !value.trim().is_empty())
-        .unwrap_or_else(|| db::id());
+        .unwrap_or_else(db::id);
     let existing_id = conn
         .query_row(
             "SELECT id FROM packs WHERE stable_id = ?1",
@@ -228,12 +211,11 @@ pub(crate) fn move_lessons_to_pack_inner(
     lesson_ids: &[String],
     pack_id: &str,
 ) -> Result<()> {
-    let pack_exists: bool = conn
-        .query_row(
-            "SELECT COUNT(*) FROM packs WHERE id = ?1",
-            [pack_id],
-            |row| Ok(row.get::<_, i64>(0)? > 0),
-        )?;
+    let pack_exists: bool = conn.query_row(
+        "SELECT COUNT(*) FROM packs WHERE id = ?1",
+        [pack_id],
+        |row| Ok(row.get::<_, i64>(0)? > 0),
+    )?;
     if !pack_exists {
         return Err(anyhow!("Selected pack was not found."));
     }

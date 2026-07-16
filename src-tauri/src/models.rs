@@ -378,15 +378,3 @@ pub struct LessonImportSummary {
     pub links_created: i64,
     pub errors: Vec<String>,
 }
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PublishedLessonInstallResult {
-    pub status: String,
-    pub lesson_id: String,
-    pub lesson_version: String,
-    pub progress_preserved: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub warning: Option<String>,
-    pub summary: LessonImportSummary,
-}

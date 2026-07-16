@@ -7,9 +7,8 @@ mod external_links;
 mod lessons;
 mod models;
 mod normalize;
-mod packs;
 mod pack_export;
-mod public_library;
+mod packs;
 mod reading;
 mod review;
 
@@ -38,7 +37,7 @@ fn main() {
             #[cfg(debug_assertions)]
             {
                 if let Some(window) = app.get_webview_window("main") {
-                    let _ = window.open_devtools();
+                    window.open_devtools();
                 }
             }
 
@@ -56,7 +55,6 @@ fn main() {
             packs::upsert_pack,
             packs::update_pack,
             packs::move_lessons_to_pack,
-            packs::reorder_pack_lessons,
             packs::delete_pack,
             review::get_review_queue,
             review::update_review_item,
@@ -65,7 +63,6 @@ fn main() {
             review::update_item_review,
             review::get_review_progress,
             reading::get_reading_inputs,
-            public_library::install_published_lesson,
             pack_export::save_fydor_pack,
             external_links::open_generation_destination,
             external_links::open_community_workspace

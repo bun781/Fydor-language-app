@@ -1,6 +1,6 @@
 # Lesson Builder System
 
-This document is a handoff guide for future agents working on the lesson import pipeline.
+This document describes the production lesson-import pipeline.
 
 ## Purpose
 
@@ -11,17 +11,16 @@ The lesson builder is the canonical content-ingestion path for:
 - chunks and expressions
 - sentences
 - hover explanations
-- future SRS and reviews
-- future quizzes
+- reviews
+- quiz modes
 
 Imported content must feed the real learning system. It is not allowed to live in import-only tables.
 
 ## Entry Points
 
 - Lesson Builder UI: `/admin/imports`
-- Legacy redirect: `/lessons/import`
-- Preview API: `POST /api/lessons/import/preview`
-- Save API: `POST /api/lessons/import`
+- Preview command: `preview_lesson_import`
+- Save command: `import_lesson`
 - Lesson Library page: `/study/imported-content`
 
 ## JSON Contract
@@ -54,7 +53,7 @@ Validation rules:
 - `grammar.pattern` is required if a grammar entry exists.
 - `chunk.surface` is required if a chunk entry exists.
 - If `word.surface`, `grammar.surface`, or `chunk.surface` is provided, it must appear in `sentence.text`.
-- Revalidate server-side before preview and import.
+- Revalidate in Rust before preview and import.
 
 ## Canonical Keys
 
@@ -86,7 +85,10 @@ The SQLite schema lives in `src-tauri/src/db.rs`.
 
 ## Import Flow
 
-The import flow (Rust, `src-tauri/src/lessons/mod.rs`) is:
+The production flow is UI → `lib/desktopApi.ts` → Tauri command → Rust. Rust
+orchestrates the import in `src-tauri/src/lessons/mod.rs`; parsing, validation,
+preview construction, and transactional persistence live in
+`src-tauri/src/lessons/import.rs`:
 
 1. Parse and validate the lesson JSON.
 2. Validate required fields and surface checks.
@@ -162,16 +164,17 @@ Prompt templates and guide content are stored in `lib/language/importResources.t
 
 If you need to extend the importer, these are the main files:
 
-- validation, normalization, persistence, preview, and readback: `src-tauri/src/lessons/mod.rs` and `src-tauri/src/normalize.rs`
+- command orchestration: `src-tauri/src/lessons/mod.rs`
+- validation, preview, and persistence: `src-tauri/src/lessons/import.rs`
+- normalization: `src-tauri/src/normalize.rs`
 - frontend bridge: `lib/desktopApi.ts`
-- admin UI: `app/admin/imports/page.tsx`
-- lesson library: `app/study/imported-content/page.tsx`
+- admin UI: `components/admin-imports/LessonImportsPage.tsx`
+- study library: `components/imported-content/ImportedContentWorkspace.tsx`
 - guide and prompt content: `lib/language/importResources.ts`
 
 ## Known Limitations
 
 - Surface matching is normalized string matching, not a tokenizer-aware parser.
-- The demo reader shows the latest imported lesson only.
 - The importer blocks canonical type conflicts instead of merging them.
 - Overwrite mode is not implemented yet.
 

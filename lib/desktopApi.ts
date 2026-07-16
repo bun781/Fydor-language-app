@@ -41,10 +41,6 @@ export async function moveLessonsToPack(lessonIds: string[], packId: string): Pr
   return invoke("move_lessons_to_pack", { lessonIds, packId });
 }
 
-export async function reorderPackLessons(packId: string, lessonIds: string[]): Promise<void> {
-  return invoke("reorder_pack_lessons", { packId, lessonIds });
-}
-
 export async function deletePack(packId: string): Promise<void> {
   return invoke("delete_pack", { packId });
 }
@@ -118,25 +114,6 @@ export async function getReviewProgress(): Promise<ReviewProgressSnapshot> {
 
 export async function getReadingInputs(): Promise<ReadingInputs> {
   return invoke("get_reading_inputs");
-}
-
-export interface PublishedLessonInstallResult {
-  status: "installed" | "updated" | "already_installed";
-  lessonId: string;
-  lessonVersion: string;
-  progressPreserved: boolean;
-  warning?: string;
-  summary: LessonImportSummary;
-}
-
-export async function installPublishedLesson(input: {
-  stableLessonId: string;
-  lessonVersion: string;
-  checksum: string;
-  source: string;
-}): Promise<PublishedLessonInstallResult> {
-  invalidateLessonCache();
-  return invoke("install_published_lesson", input);
 }
 
 export async function saveFydorPack(suggestedName: string, source: string): Promise<string | null> {

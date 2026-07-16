@@ -1,6 +1,5 @@
 node_modules/
 .next/
-out/
 test-results/
 playwright-report/
 coverage/
@@ -21,11 +20,9 @@ pnpm-debug.log*
 /cleaned-*-course.json
 /*course*.json
 /*learning*.json
+/packs/.scratch/
 
 # Runtime databases belong in the OS app data directory, not the repo.
-test-pglite/
-.pglite-data/
-pglite/
 runtime-db/
 runtime-data/
 *.sqlite
@@ -46,8 +43,6 @@ fydor-website/
 # Tauri build artifacts
 src-tauri/target/
 src-tauri/gen/
-src-tauri/next-standalone/*
-!src-tauri/next-standalone/.gitkeep
 dist/
 build/
 cache/
@@ -62,7 +57,3 @@ dist-share/
 *.key
 *.p12
 *.pfx
-
-# Old PWA generated files (from workbox builds)
-public/workbox-*.js
-public/swe-worker-*.js

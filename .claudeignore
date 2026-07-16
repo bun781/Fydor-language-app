@@ -1,9 +1,6 @@
 node_modules/
 .next/
-out/
 src-tauri/target/
-src-tauri/next-standalone/*
-!src-tauri/next-standalone/.gitkeep
 dist-share/
 coverage/
 test-results/
@@ -16,6 +13,7 @@ src-tauri/gen/
 # Local/generated/imported learning data
 samples/*.json
 samples/*.fydorpack
+/packs/.scratch/
 /cleaned-*-course.json
 /*course*.json
 /*learning*.json
@@ -28,9 +26,6 @@ src-tauri/icons/
 *.ico
 
 # Runtime database files
-test-pglite/
-.pglite-data/
-pglite/
 runtime-db/
 runtime-data/
 *.sqlite
