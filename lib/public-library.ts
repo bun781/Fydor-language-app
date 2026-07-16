@@ -30,23 +30,6 @@ export interface PublishedLessonQuery {
   pageSize?: number;
 }
 
-export interface PublishedPackResult {
-  pack: {
-    id: string;
-    title: string;
-    version: string;
-    language: string;
-    baseLanguage: string;
-    lessonCount: number;
-    sentenceCount: number;
-  };
-  bucket: string;
-  path: string;
-  publicUrl: string;
-  checksum: string;
-  byteLength: number;
-}
-
 export async function listPublishedLessons(query: PublishedLessonQuery = {}): Promise<{ lessons: PublishedLessonSummary[]; hasMore: boolean }> {
   const params = new URLSearchParams();
   Object.entries(query).forEach(([key, value]) => {
@@ -71,14 +54,6 @@ export async function downloadPublishedLesson(id: string, expectedChecksum: stri
   const checksum = await computeFydorPackChecksum(validation.pack);
   if (checksum !== expectedChecksum.toLowerCase()) throw new Error("The downloaded package failed its integrity check.");
   return validation.pack;
-}
-
-export async function publishFydorPack(pack: FydorPack): Promise<PublishedPackResult> {
-  return fetchJson(fydorWebUrl("/api/packs"), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ pack })
-  });
 }
 
 async function fetchJson<T>(url: string, init: RequestInit = {}): Promise<T> {

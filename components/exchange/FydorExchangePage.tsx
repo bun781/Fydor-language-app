@@ -2,7 +2,7 @@ import { CheckCircle2, PackageOpen } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { AppShell } from "@/components/AppShell";
-import { exportLesson, getLessons, importLesson, moveLessonsToPack, saveFydorPack, updateLesson, upsertPack } from "@/lib/desktopApi";
+import { exportLesson, getLessons, importLesson, moveLessonsToPack, openCommunityWorkspace, saveFydorPack, updateLesson, upsertPack } from "@/lib/desktopApi";
 import { errorMessage } from "@/lib/errors";
 import {
   createFydorPack,
@@ -14,7 +14,6 @@ import {
 } from "@/lib/fydor-pack";
 import type { StudyLessonMeta } from "@/lib/imported-content/types";
 import type { LessonImportInput } from "@/lib/language/types";
-import { publishFydorPack } from "@/lib/public-library";
 import { clearLocal, readLocal, readSessionProgress, writeSessionProgress } from "@/lib/storage";
 import { z } from "zod";
 import { InstallPackSection, SharePackSection } from "./ExchangeSections";
@@ -87,7 +86,7 @@ export function FydorExchangePage() {
     new Set(savedProgress?.selectedLessonIds ?? [])
   ));
   const [exporting, setExporting] = useState(false);
-  const [publishing, setPublishing] = useState(false);
+  const [openingContributor, setOpeningContributor] = useState(false);
   const [exportPreview, setExportPreview] = useState<FydorPack | null>(null);
   const [metadata, setMetadata] = useState<ExchangePackMetadata>(savedProgress?.metadata ?? {
     title: "My Fydor Pack",
@@ -365,19 +364,24 @@ export function FydorExchangePage() {
     setStatus(`Exported ${pack.title} to ${savedPath}.`);
   }
 
-  async function publishSelectedPack(ids = selectedLessonIds) {
+  async function openContributorSubmission(ids = selectedLessonIds) {
     const pack = exportPreview && ids === selectedLessonIds ? exportPreview : await buildExportPreview(ids);
     if (!pack) return;
-    setPublishing(true);
+    setOpeningContributor(true);
     setErrors([]);
     setStatus("");
     try {
-      const result = await publishFydorPack(pack);
-      setStatus(`Published ${result.pack.title} to ${result.bucket}/${result.path}.`);
+      const savedPath = await saveFydorPack(
+        `${slugifyPackTitle(pack.title)}.fydorpack`,
+        JSON.stringify(pack, null, 2)
+      );
+      if (!savedPath) return;
+      await openCommunityWorkspace("contributor");
+      setStatus(`Saved ${pack.title}. Upload this exact package in the online contributor workspace for review.`);
     } catch (error) {
-      setErrors([errorMessage(error, "Unable to publish this pack.")]);
+      setErrors([errorMessage(error, "Unable to open the contributor workflow.")]);
     } finally {
-      setPublishing(false);
+      setOpeningContributor(false);
     }
   }
 
@@ -435,7 +439,7 @@ export function FydorExchangePage() {
             selectedLessonIds={selectedLessonIds}
             metadata={metadata}
             exporting={exporting}
-            publishing={publishing}
+            publishing={openingContributor}
             exportPreview={exportPreview}
             onSelectAll={selectAllLessons}
             onClearSelection={clearSelectedLessons}
@@ -444,7 +448,7 @@ export function FydorExchangePage() {
             onBuildPreview={() => void buildExportPreview()}
             onExportSelected={() => void exportSelectedPack()}
             onExportAll={() => void exportSelectedPack(new Set(lessons.map((lesson) => lesson.id)))}
-            onPublishSelected={() => void publishSelectedPack()}
+            onPublishSelected={() => void openContributorSubmission()}
           />
         ) : null}
       </div>

@@ -258,7 +258,7 @@ export function SharePackSection({
             </button>
             <button className="button secondary" type="button" disabled={exporting || publishing || selectedLessonIds.size === 0} onClick={onPublishSelected}>
               <Upload size={18} />
-              {publishing ? "Publishing..." : "Publish selected"}
+              {publishing ? "Opening..." : "Submit for review"}
             </button>
           </div>
 
