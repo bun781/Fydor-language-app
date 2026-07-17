@@ -307,14 +307,14 @@ const pack = {
   title: "Humongous Mandarin: Daily Life, Work & School",
   description: "A 440-sentence Mandarin course for English speakers, centered on everyday life, workplace and school scenarios, accidents, emergencies, and clear grammar progression.",
   author: { name: "Fydor Community" },
-  version: "1.0.0",
+  version: "2.0.0",
   license: "CC BY 4.0",
   language: "zh",
   baseLanguage: "en",
   level: "A0-A2",
   tags: ["mandarin", "chinese", "english", "daily-life", "work", "school", "accidents", "emergency", "grammar", "pinyin"],
   createdAt: "2026-07-16T00:00:00.000Z",
-  updatedAt: "2026-07-16T00:00:00.000Z",
+  updatedAt: "2026-07-18T00:00:00.000Z",
   unitManifest: {
     schemaVersion: 1,
     units: units.map((unit, position) => ({ id: `unit-${String(position + 1).padStart(2, "0")}`, title: unit.title, position, lessonIndexes: [position] }))

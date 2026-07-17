@@ -4,7 +4,11 @@
   "id": "german-beginner-v1",
   "title": "German for Beginners: A0 to A2",
   "description": "A complete beginner course in German for English speakers, covering everyday situations from first greetings to confident A2 conversations — sein/haben, cases, modal verbs, separable verbs, past-tense storytelling, and natural spoken German with common idioms.",
-  "version": "1.0.0",
+  "author": {
+    "name": "Fydor Community"
+  },
+  "version": "2.0.0",
+  "license": "CC BY 4.0",
   "language": "de",
   "baseLanguage": "en",
   "level": "A0-A2",
@@ -19,7 +23,1661 @@
     "conversation"
   ],
   "createdAt": "2026-07-14T13:07:10.324Z",
-  "updatedAt": "2026-07-14T13:07:10.325Z",
+  "updatedAt": "2026-07-17T00:00:00.000Z",
+  "unitManifest": {
+    "schemaVersion": 1,
+    "units": [
+      {
+        "id": "unit-01",
+        "title": "Hallo! Erste Begegnung",
+        "position": 0,
+        "lessonIndexes": [
+          0
+        ]
+      },
+      {
+        "id": "unit-02",
+        "title": "Woher kommst du?",
+        "position": 1,
+        "lessonIndexes": [
+          1
+        ]
+      },
+      {
+        "id": "unit-03",
+        "title": "Zahlen 1–20",
+        "position": 2,
+        "lessonIndexes": [
+          2
+        ]
+      },
+      {
+        "id": "unit-04",
+        "title": "Haben und sein",
+        "position": 3,
+        "lessonIndexes": [
+          3
+        ]
+      },
+      {
+        "id": "unit-05",
+        "title": "Der, die, das",
+        "position": 4,
+        "lessonIndexes": [
+          4
+        ]
+      },
+      {
+        "id": "unit-06",
+        "title": "Meine Familie",
+        "position": 5,
+        "lessonIndexes": [
+          5
+        ]
+      },
+      {
+        "id": "unit-07",
+        "title": "Plural, bitte",
+        "position": 6,
+        "lessonIndexes": [
+          6
+        ]
+      },
+      {
+        "id": "unit-08",
+        "title": "Im Café",
+        "position": 7,
+        "lessonIndexes": [
+          7
+        ]
+      },
+      {
+        "id": "unit-09",
+        "title": "Essen und Trinken",
+        "position": 8,
+        "lessonIndexes": [
+          8
+        ]
+      },
+      {
+        "id": "unit-10",
+        "title": "Wie spät ist es?",
+        "position": 9,
+        "lessonIndexes": [
+          9
+        ]
+      },
+      {
+        "id": "unit-11",
+        "title": "Präsens: regelmäßige Verben",
+        "position": 10,
+        "lessonIndexes": [
+          10
+        ]
+      },
+      {
+        "id": "unit-12",
+        "title": "Der Tagesablauf",
+        "position": 11,
+        "lessonIndexes": [
+          11
+        ]
+      },
+      {
+        "id": "unit-13",
+        "title": "Nicht und kein",
+        "position": 12,
+        "lessonIndexes": [
+          12
+        ]
+      },
+      {
+        "id": "unit-14",
+        "title": "Farben und Kleidung",
+        "position": 13,
+        "lessonIndexes": [
+          13
+        ]
+      },
+      {
+        "id": "unit-15",
+        "title": "Das Wetter",
+        "position": 14,
+        "lessonIndexes": [
+          14
+        ]
+      },
+      {
+        "id": "unit-16",
+        "title": "Akkusativ: Ich sehe den Mann",
+        "position": 15,
+        "lessonIndexes": [
+          15
+        ]
+      },
+      {
+        "id": "unit-17",
+        "title": "Im Supermarkt",
+        "position": 16,
+        "lessonIndexes": [
+          16
+        ]
+      },
+      {
+        "id": "unit-18",
+        "title": "Wie viel kostet das?",
+        "position": 17,
+        "lessonIndexes": [
+          17
+        ]
+      },
+      {
+        "id": "unit-19",
+        "title": "Können, müssen, wollen",
+        "position": 18,
+        "lessonIndexes": [
+          18
+        ]
+      },
+      {
+        "id": "unit-20",
+        "title": "Mögen und möchten",
+        "position": 19,
+        "lessonIndexes": [
+          19
+        ]
+      },
+      {
+        "id": "unit-21",
+        "title": "Trennbare Verben",
+        "position": 20,
+        "lessonIndexes": [
+          20
+        ]
+      },
+      {
+        "id": "unit-22",
+        "title": "Im Restaurant",
+        "position": 21,
+        "lessonIndexes": [
+          21
+        ]
+      },
+      {
+        "id": "unit-23",
+        "title": "Dativ: Ich gebe dir das Buch",
+        "position": 22,
+        "lessonIndexes": [
+          22
+        ]
+      },
+      {
+        "id": "unit-24",
+        "title": "Präpositionen mit Dativ",
+        "position": 23,
+        "lessonIndexes": [
+          23
+        ]
+      },
+      {
+        "id": "unit-25",
+        "title": "Präpositionen mit Akkusativ",
+        "position": 24,
+        "lessonIndexes": [
+          24
+        ]
+      },
+      {
+        "id": "unit-26",
+        "title": "Der Körper",
+        "position": 25,
+        "lessonIndexes": [
+          25
+        ]
+      },
+      {
+        "id": "unit-27",
+        "title": "Beim Arzt",
+        "position": 26,
+        "lessonIndexes": [
+          26
+        ]
+      },
+      {
+        "id": "unit-28",
+        "title": "Wochentage und Pläne",
+        "position": 27,
+        "lessonIndexes": [
+          27
+        ]
+      },
+      {
+        "id": "unit-29",
+        "title": "Verabredungen machen",
+        "position": 28,
+        "lessonIndexes": [
+          28
+        ]
+      },
+      {
+        "id": "unit-30",
+        "title": "Am Telefon",
+        "position": 29,
+        "lessonIndexes": [
+          29
+        ]
+      },
+      {
+        "id": "unit-31",
+        "title": "Imperativ: Bitte komm!",
+        "position": 30,
+        "lessonIndexes": [
+          30
+        ]
+      },
+      {
+        "id": "unit-32",
+        "title": "Meine Wohnung",
+        "position": 31,
+        "lessonIndexes": [
+          31
+        ]
+      },
+      {
+        "id": "unit-33",
+        "title": "Eine Wohnung suchen",
+        "position": 32,
+        "lessonIndexes": [
+          32
+        ]
+      },
+      {
+        "id": "unit-34",
+        "title": "In der Stadt",
+        "position": 33,
+        "lessonIndexes": [
+          33
+        ]
+      },
+      {
+        "id": "unit-35",
+        "title": "Nach dem Weg fragen",
+        "position": 34,
+        "lessonIndexes": [
+          34
+        ]
+      },
+      {
+        "id": "unit-36",
+        "title": "Öffentliche Verkehrsmittel",
+        "position": 35,
+        "lessonIndexes": [
+          35
+        ]
+      },
+      {
+        "id": "unit-37",
+        "title": "Hobbys und Freizeit",
+        "position": 36,
+        "lessonIndexes": [
+          36
+        ]
+      },
+      {
+        "id": "unit-38",
+        "title": "Wortstellung: Nebensätze mit weil",
+        "position": 37,
+        "lessonIndexes": [
+          37
+        ]
+      },
+      {
+        "id": "unit-39",
+        "title": "Komparativ und Superlativ",
+        "position": 38,
+        "lessonIndexes": [
+          38
+        ]
+      },
+      {
+        "id": "unit-40",
+        "title": "Reflexive Verben",
+        "position": 39,
+        "lessonIndexes": [
+          39
+        ]
+      },
+      {
+        "id": "unit-41",
+        "title": "Perfekt: haben + Partizip",
+        "position": 40,
+        "lessonIndexes": [
+          40
+        ]
+      },
+      {
+        "id": "unit-42",
+        "title": "Perfekt: sein + Partizip",
+        "position": 41,
+        "lessonIndexes": [
+          41
+        ]
+      },
+      {
+        "id": "unit-43",
+        "title": "Ein Wochenende erzählen",
+        "position": 42,
+        "lessonIndexes": [
+          42
+        ]
+      },
+      {
+        "id": "unit-44",
+        "title": "Eine Reise erzählen",
+        "position": 43,
+        "lessonIndexes": [
+          43
+        ]
+      },
+      {
+        "id": "unit-45",
+        "title": "Schule und Ausbildung",
+        "position": 44,
+        "lessonIndexes": [
+          44
+        ]
+      },
+      {
+        "id": "unit-46",
+        "title": "Auf der Arbeit",
+        "position": 45,
+        "lessonIndexes": [
+          45
+        ]
+      },
+      {
+        "id": "unit-47",
+        "title": "Wenn-Sätze: Bedingungen",
+        "position": 46,
+        "lessonIndexes": [
+          46
+        ]
+      },
+      {
+        "id": "unit-48",
+        "title": "Adjektivendungen: Nominativ und Akkusativ",
+        "position": 47,
+        "lessonIndexes": [
+          47
+        ]
+      },
+      {
+        "id": "unit-49",
+        "title": "Small Talk beim Kaffee",
+        "position": 48,
+        "lessonIndexes": [
+          48
+        ]
+      },
+      {
+        "id": "unit-50",
+        "title": "Gesundheit und Wohlbefinden",
+        "position": 49,
+        "lessonIndexes": [
+          49
+        ]
+      },
+      {
+        "id": "unit-51",
+        "title": "Auf Reisen: Im Hotel",
+        "position": 50,
+        "lessonIndexes": [
+          50
+        ]
+      },
+      {
+        "id": "unit-52",
+        "title": "Am Flughafen",
+        "position": 51,
+        "lessonIndexes": [
+          51
+        ]
+      },
+      {
+        "id": "unit-53",
+        "title": "Das Wetter und die Jahreszeiten",
+        "position": 52,
+        "lessonIndexes": [
+          52
+        ]
+      },
+      {
+        "id": "unit-54",
+        "title": "Feste und Feiertage",
+        "position": 53,
+        "lessonIndexes": [
+          53
+        ]
+      },
+      {
+        "id": "unit-55",
+        "title": "Beim Einkaufen: Kleidung",
+        "position": 54,
+        "lessonIndexes": [
+          54
+        ]
+      },
+      {
+        "id": "unit-56",
+        "title": "Nachbarn und Small Talk",
+        "position": 55,
+        "lessonIndexes": [
+          55
+        ]
+      },
+      {
+        "id": "unit-57",
+        "title": "Meinungen äußern",
+        "position": 56,
+        "lessonIndexes": [
+          56
+        ]
+      },
+      {
+        "id": "unit-58",
+        "title": "Probleme lösen: am Telefon",
+        "position": 57,
+        "lessonIndexes": [
+          57
+        ]
+      },
+      {
+        "id": "unit-59",
+        "title": "Über die Vergangenheit sprechen: war/hatte",
+        "position": 58,
+        "lessonIndexes": [
+          58
+        ]
+      },
+      {
+        "id": "unit-60",
+        "title": "Zukunft: Pläne für morgen",
+        "position": 59,
+        "lessonIndexes": [
+          59
+        ]
+      },
+      {
+        "id": "unit-61",
+        "title": "Rückblick: Ein Jahr in Deutschland",
+        "position": 60,
+        "lessonIndexes": [
+          60
+        ]
+      },
+      {
+        "id": "unit-62",
+        "title": "Abschied und gute Wünsche",
+        "position": 61,
+        "lessonIndexes": [
+          61
+        ]
+      }
+    ]
+  },
+  "grammarGuide": {
+    "schemaVersion": 1,
+    "rules": [
+      {
+        "id": "grammar-w-question-word-order-n4392f",
+        "title": "W-question word order",
+        "overview": "German questions with a question word (wie) put the verb straight after it, then the subject.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "German questions with a question word (wie) put the verb straight after it, then the subject.",
+            "unitIndexes": [
+              0
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-sein-present-tense-1i223j5",
+        "title": "sein (present tense)",
+        "overview": "'Sein' is highly irregular: ich bin, du bist, er/sie/es ist.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Sein' is highly irregular: ich bin, du bist, er/sie/es ist.",
+            "unitIndexes": [
+              0
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-sein-present-tense-formal-lgrm2c",
+        "title": "sein (present tense, formal)",
+        "overview": "With the formal pronoun 'Sie', the verb form is the same as the plural 'sind'.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "With the formal pronoun 'Sie', the verb form is the same as the plural 'sind'.",
+            "unitIndexes": [
+              0
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-w-question-woher-i05gfc",
+        "title": "w-question: woher",
+        "overview": "'Woher' asks about origin; the verb comes right after it, then the subject.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Woher' asks about origin; the verb comes right after it, then the subject.",
+            "unitIndexes": [
+              1
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-haben-present-tense-2h6f1g",
+        "title": "haben (present tense)",
+        "overview": "'Haben' is irregular: ich habe, du hast, er/sie/es hat.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Haben' is irregular: ich habe, du hast, er/sie/es hat.",
+            "unitIndexes": [
+              3
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-negation-with-kein-rszb0x",
+        "title": "Negation with kein",
+        "overview": "'Kein' negates nouns that would otherwise take 'ein/einen'; it agrees in case and gender with the noun.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Kein' negates nouns that would otherwise take 'ein/einen'; it agrees in case and gender with the noun.",
+            "unitIndexes": [
+              3
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-negation-with-kein-neuter-plural-17a1144",
+        "title": "Negation with kein (neuter/plural)",
+        "overview": "'Kein' changes form with gender and case: keinen (masc. acc.), keine (fem.), kein (neuter).",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Kein' changes form with gender and case: keinen (masc. acc.), keine (fem.), kein (neuter).",
+            "unitIndexes": [
+              3
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-negation-with-nicht-1f7lsng",
+        "title": "Negation with nicht",
+        "overview": "'Nicht' negates verbs, adjectives, or adverbs — here it negates the quantity 'viel'.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Nicht' negates verbs, adjectives, or adverbs — here it negates the quantity 'viel'.",
+            "unitIndexes": [
+              3
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-indefinite-article-ein-1n5fs5s",
+        "title": "Indefinite article ein",
+        "overview": "'Ein' is used for masculine and neuter nouns in the nominative case; it means 'a/an'.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Ein' is used for masculine and neuter nouns in the nominative case; it means 'a/an'.",
+            "unitIndexes": [
+              4
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-definite-article-der-1n9prks",
+        "title": "Definite article der",
+        "overview": "'Der' is the nominative definite article for masculine nouns.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Der' is the nominative definite article for masculine nouns.",
+            "unitIndexes": [
+              4
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-definite-article-das-1lc7dbn",
+        "title": "Definite article das",
+        "overview": "'Das' is the nominative definite article for neuter nouns.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Das' is the nominative definite article for neuter nouns.",
+            "unitIndexes": [
+              4
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-definite-article-die-1n0wf31",
+        "title": "Definite article die",
+        "overview": "'Die' is the nominative definite article for feminine nouns (and for all plurals).",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Die' is the nominative definite article for feminine nouns (and for all plurals).",
+            "unitIndexes": [
+              4
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-possessive-mein-meine-1cq2zkj",
+        "title": "Possessive mein/meine",
+        "overview": "'Mein' is used before masculine/neuter nouns, 'meine' before feminine and plural nouns, in the nominative.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Mein' is used before masculine/neuter nouns, 'meine' before feminine and plural nouns, in the nominative.",
+            "unitIndexes": [
+              5
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-plural-formation-1gofekk",
+        "title": "Plural formation",
+        "overview": "German plurals follow several patterns; 'Mann' → 'Männer' adds an umlaut and -er.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "German plurals follow several patterns; 'Mann' → 'Männer' adds an umlaut and -er.",
+            "unitIndexes": [
+              6
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-mochten-polite-want-nt10jg",
+        "title": "möchten (polite want)",
+        "overview": "'Möchten' is the polite way to say what you want, softer than 'wollen'.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Möchten' is the polite way to say what you want, softer than 'wollen'.",
+            "unitIndexes": [
+              7
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-gern-verb-xbo6y9",
+        "title": "gern + verb",
+        "overview": "'Gern' after a verb expresses that you like doing that action.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Gern' after a verb expresses that you like doing that action.",
+            "unitIndexes": [
+              8
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-time-with-uhr-9liy1t",
+        "title": "Time with Uhr",
+        "overview": "'Uhr' follows the number to express clock time, similar to 'o'clock'.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Uhr' follows the number to express clock time, similar to 'o'clock'.",
+            "unitIndexes": [
+              9
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-um-time-5lo9kn",
+        "title": "um + time",
+        "overview": "'Um' is used before a specific clock time to say 'at'.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Um' is used before a specific clock time to say 'at'.",
+            "unitIndexes": [
+              9
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-regular-present-tense-en-verbs-1pfuimd",
+        "title": "Regular present tense -en verbs",
+        "overview": "Regular verbs add -st for 'du': mach-en → du mach-st.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "Regular verbs add -st for 'du': mach-en → du mach-st.",
+            "unitIndexes": [
+              10
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-time-manner-place-word-order-ijc7sc",
+        "title": "Time-manner-place word order",
+        "overview": "Time expressions typically come early in the sentence, right after the verb and subject.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "Time expressions typically come early in the sentence, right after the verb and subject.",
+            "unitIndexes": [
+              11
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-nicht-vs-kein-review-qc83km",
+        "title": "nicht vs kein (review)",
+        "overview": "'Kein' negates the noun 'Auto'; 'nicht' negates the whole statement 'stimmt'.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Kein' negates the noun 'Auto'; 'nicht' negates the whole statement 'stimmt'.",
+            "unitIndexes": [
+              12
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-impersonal-es-weather-verb-1yjicl1",
+        "title": "Impersonal es + weather verb",
+        "overview": "Weather verbs use the impersonal subject 'es', which doesn't refer to a specific thing.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "Weather verbs use the impersonal subject 'es', which doesn't refer to a specific thing.",
+            "unitIndexes": [
+              14
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-accusative-case-masculine-lr2lol",
+        "title": "Accusative case (masculine)",
+        "overview": "Masculine nouns change 'der' to 'den' in the accusative case, used for direct objects.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "Masculine nouns change 'der' to 'den' in the accusative case, used for direct objects.",
+            "unitIndexes": [
+              15
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-accusative-case-with-possessives-4qqclk",
+        "title": "Accusative case with possessives",
+        "overview": "Masculine possessives also take -en in the accusative, matching the article pattern.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "Masculine possessives also take -en in the accusative, matching the article pattern.",
+            "unitIndexes": [
+              15
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-modal-verb-konnen-2a4hcv",
+        "title": "Modal verb können",
+        "overview": "'Können' expresses ability or possibility; the conjugated modal takes 2nd position, the main verb goes to the end.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Können' expresses ability or possibility; the conjugated modal takes 2nd position, the main verb goes to the end.",
+            "unitIndexes": [
+              18
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-modal-verb-mussen-1ubyryl",
+        "title": "Modal verb müssen",
+        "overview": "'Müssen' expresses obligation or necessity.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Müssen' expresses obligation or necessity.",
+            "unitIndexes": [
+              18
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-modal-verb-wollen-8yl1gg",
+        "title": "Modal verb wollen",
+        "overview": "'Wollen' expresses a strong wish or intention.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Wollen' expresses a strong wish or intention.",
+            "unitIndexes": [
+              18
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-modal-verb-durfen-19g6d1u",
+        "title": "Modal verb dürfen",
+        "overview": "'Dürfen' expresses permission; it's often used in polite requests.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Dürfen' expresses permission; it's often used in polite requests.",
+            "unitIndexes": [
+              18
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-mogen-vs-mochten-1uj2aes",
+        "title": "mögen vs möchten",
+        "overview": "'Mögen' expresses a general liking for something; 'möchten' expresses a specific wish, like ordering food.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Mögen' expresses a general liking for something; 'möchten' expresses a specific wish, like ordering food.",
+            "unitIndexes": [
+              19
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-separable-verbs-present-tense-1xy3x11",
+        "title": "Separable verbs (present tense)",
+        "overview": "With separable verbs like 'aufstehen', the prefix 'auf' splits off and moves to the end of the main clause.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "With separable verbs like 'aufstehen', the prefix 'auf' splits off and moves to the end of the main clause.",
+            "unitIndexes": [
+              20
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-dative-case-personal-pronoun-z29hvy",
+        "title": "Dative case (personal pronoun)",
+        "overview": "'Dir' is the dative form of 'du', used for the indirect object — the person receiving something.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Dir' is the dative form of 'du', used for the indirect object — the person receiving something.",
+            "unitIndexes": [
+              22
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-verbs-with-dative-object-ymog3b",
+        "title": "Verbs with dative object",
+        "overview": "Certain German verbs like 'helfen', 'gehören', and 'gefallen' always take a dative object, not accusative.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "Certain German verbs like 'helfen', 'gehören', and 'gefallen' always take a dative object, not accusative.",
+            "unitIndexes": [
+              22
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-dative-preposition-mit-13lex4k",
+        "title": "Dative preposition mit",
+        "overview": "'Mit' always takes the dative case; 'dein' becomes 'deinem' before a masculine dative noun.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Mit' always takes the dative case; 'dein' becomes 'deinem' before a masculine dative noun.",
+            "unitIndexes": [
+              23
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-dative-preposition-bei-yri9t2",
+        "title": "Dative preposition bei",
+        "overview": "'Bei' takes the dative case and expresses location near a person or place.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Bei' takes the dative case and expresses location near a person or place.",
+            "unitIndexes": [
+              23
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-dative-prepositions-nach-zu-ko0uz5",
+        "title": "Dative prepositions nach/zu",
+        "overview": "'Nach' (after, to a place) and 'zu' (to a person or place) both require the dative case.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Nach' (after, to a place) and 'zu' (to a person or place) both require the dative case.",
+            "unitIndexes": [
+              23
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-dative-preposition-von-1798o1l",
+        "title": "Dative preposition von",
+        "overview": "'Von' (from) always takes the dative case.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Von' (from) always takes the dative case.",
+            "unitIndexes": [
+              23
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-accusative-preposition-fur-pu7vkd",
+        "title": "Accusative preposition für",
+        "overview": "'Für' always takes the accusative case.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Für' always takes the accusative case.",
+            "unitIndexes": [
+              24
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-accusative-preposition-ohne-1gzqnul",
+        "title": "Accusative preposition ohne",
+        "overview": "'Ohne' takes the accusative case.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Ohne' takes the accusative case.",
+            "unitIndexes": [
+              24
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-accusative-preposition-durch-1yff74h",
+        "title": "Accusative preposition durch",
+        "overview": "'Durch' takes the accusative case.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Durch' takes the accusative case.",
+            "unitIndexes": [
+              24
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-accusative-preposition-gegen-1yog417",
+        "title": "Accusative preposition gegen",
+        "overview": "'Gegen' takes the accusative case.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Gegen' takes the accusative case.",
+            "unitIndexes": [
+              24
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-possessive-with-body-parts-1hq9bpx",
+        "title": "Possessive with body parts",
+        "overview": "German often uses a possessive (mein, dein) with body parts, similar to English 'my head hurts'.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "German often uses a possessive (mein, dein) with body parts, similar to English 'my head hurts'.",
+            "unitIndexes": [
+              25
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-seit-dative-duration-1a9mzhl",
+        "title": "seit + dative (duration)",
+        "overview": "'Seit' with the dative case expresses how long something has been happening, continuing into the present.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Seit' with the dative case expresses how long something has been happening, continuing into the present.",
+            "unitIndexes": [
+              26
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-am-weekday-1xtrepo",
+        "title": "am + weekday",
+        "overview": "'Am' (an + dem) is used with days of the week to say 'on [day]'.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Am' (an + dem) is used with days of the week to say 'on [day]'.",
+            "unitIndexes": [
+              27
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-lust-haben-zu-auf-1alyfyu",
+        "title": "Lust haben + zu/auf",
+        "overview": "'Lust haben' + infinitive with 'zu' expresses wanting to do something.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Lust haben' + infinitive with 'zu' expresses wanting to do something.",
+            "unitIndexes": [
+              28
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-imperative-du-form-b9i5us",
+        "title": "Imperative (du-form)",
+        "overview": "The informal imperative drops 'du' and often the final -st: du kommst → Komm!",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "The informal imperative drops 'du' and often the final -st: du kommst → Komm!",
+            "unitIndexes": [
+              30
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-imperative-ihr-form-evsvpw",
+        "title": "Imperative (ihr-form)",
+        "overview": "The informal plural imperative uses the 'ihr' verb form without the pronoun.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "The informal plural imperative uses the 'ihr' verb form without the pronoun.",
+            "unitIndexes": [
+              30
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-imperative-sie-form-1p4p2k2",
+        "title": "Imperative (Sie-form)",
+        "overview": "The formal imperative puts 'Sie' right after the verb.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "The formal imperative puts 'Sie' right after the verb.",
+            "unitIndexes": [
+              30
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-es-gibt-accusative-1kn1gmu",
+        "title": "es gibt + accusative",
+        "overview": "The fixed phrase 'es gibt' is always followed by the accusative case.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "The fixed phrase 'es gibt' is always followed by the accusative case.",
+            "unitIndexes": [
+              31
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-adjective-ending-after-eine-hughd4",
+        "title": "Adjective ending after eine",
+        "overview": "After 'eine' (feminine accusative), the adjective takes the ending -e: eine neue Wohnung.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "After 'eine' (feminine accusative), the adjective takes the ending -e: eine neue Wohnung.",
+            "unitIndexes": [
+              32
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-wo-location-kbk7vj",
+        "title": "wo (location)",
+        "overview": "'Wo' asks about a fixed location — 'where something is'.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Wo' asks about a fixed location — 'where something is'.",
+            "unitIndexes": [
+              33
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-wohin-direction-iliwpm",
+        "title": "wohin (direction)",
+        "overview": "'Wohin' asks about a direction or destination — 'where to'.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Wohin' asks about a direction or destination — 'where to'.",
+            "unitIndexes": [
+              33
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-mit-transportation-dative-1jcd832",
+        "title": "mit + transportation (dative)",
+        "overview": "'Mit' takes the dative case; it's used to say how you're traveling.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Mit' takes the dative case; it's used to say how you're traveling.",
+            "unitIndexes": [
+              35
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-weil-verb-final-word-order-mkvct1",
+        "title": "weil + verb-final word order",
+        "overview": "'Weil' introduces a subordinate clause where the conjugated verb moves to the very end.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Weil' introduces a subordinate clause where the conjugated verb moves to the very end.",
+            "unitIndexes": [
+              37
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-denn-coordinating-verb-stays-2nd-1bvgaj7",
+        "title": "denn (coordinating, verb stays 2nd)",
+        "overview": "Unlike 'weil', 'denn' is a coordinating conjunction and the verb stays in normal second position.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "Unlike 'weil', 'denn' is a coordinating conjunction and the verb stays in normal second position.",
+            "unitIndexes": [
+              37
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-comparative-with-er-883bbu",
+        "title": "Comparative with -er",
+        "overview": "German forms the comparative by adding -er to the adjective: groß → größer.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "German forms the comparative by adding -er to the adjective: groß → größer.",
+            "unitIndexes": [
+              38
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-irregular-comparative-gut-besser-ii5xms",
+        "title": "Irregular comparative gut/besser",
+        "overview": "'Gut' has an irregular comparative form: besser, not 'guter'.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Gut' has an irregular comparative form: besser, not 'guter'.",
+            "unitIndexes": [
+              38
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-superlative-am-sten-4bn06q",
+        "title": "Superlative am -sten",
+        "overview": "The superlative form uses 'am' + adjective + -sten: am besten.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "The superlative form uses 'am' + adjective + -sten: am besten.",
+            "unitIndexes": [
+              38
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-reflexive-verbs-accusative-yvx7xq",
+        "title": "Reflexive verbs (accusative)",
+        "overview": "Reflexive verbs use a reflexive pronoun that matches the subject; here 'mich' for 'ich'.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "Reflexive verbs use a reflexive pronoun that matches the subject; here 'mich' for 'ich'.",
+            "unitIndexes": [
+              39
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-perfect-tense-with-haben-133kil3",
+        "title": "Perfect tense with haben",
+        "overview": "Most verbs form the perfect tense with 'haben' + past participle, with the participle at the end.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "Most verbs form the perfect tense with 'haben' + past participle, with the participle at the end.",
+            "unitIndexes": [
+              40
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-perfect-tense-with-sein-9laduy",
+        "title": "Perfect tense with sein",
+        "overview": "Motion and change-of-state verbs like 'gehen', 'fahren', and 'kommen' use 'sein' as the auxiliary in the perfect tense.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "Motion and change-of-state verbs like 'gehen', 'fahren', and 'kommen' use 'sein' as the auxiliary in the perfect tense.",
+            "unitIndexes": [
+              41
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-seit-dative-review-h6pk2d",
+        "title": "seit + dative (review)",
+        "overview": "'Seit' + dative expresses an action continuing from the past into the present.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Seit' + dative expresses an action continuing from the past into the present.",
+            "unitIndexes": [
+              44
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-dass-clauses-verb-final-8udhny",
+        "title": "dass-clauses (verb-final)",
+        "overview": "'Dass' introduces a subordinate clause; the conjugated verb moves to the end, just like with 'weil'.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Dass' introduces a subordinate clause; the conjugated verb moves to the end, just like with 'weil'.",
+            "unitIndexes": [
+              45
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-wenn-clauses-verb-final-1giow69",
+        "title": "wenn-clauses (verb-final)",
+        "overview": "'Wenn' introduces a conditional subordinate clause; the verb goes to the end, and the main clause often starts with the verb.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Wenn' introduces a conditional subordinate clause; the verb goes to the end, and the main clause often starts with the verb.",
+            "unitIndexes": [
+              46
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-adjective-ending-after-eine-nominative-jls71t",
+        "title": "Adjective ending after eine (nominative)",
+        "overview": "After 'eine' in the nominative (feminine), the adjective takes -e.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "After 'eine' in the nominative (feminine), the adjective takes -e.",
+            "unitIndexes": [
+              47
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-adjective-ending-after-dieser-nominative-masc-95wxjq",
+        "title": "Adjective ending after dieser (nominative masc.)",
+        "overview": "After 'dieser' (masculine nominative), the adjective takes -e.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "After 'dieser' (masculine nominative), the adjective takes -e.",
+            "unitIndexes": [
+              47
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-adjective-ending-after-den-accusative-masc-101gkxd",
+        "title": "Adjective ending after den (accusative masc.)",
+        "overview": "After 'den' (masculine accusative), the adjective takes -en.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "After 'den' (masculine accusative), the adjective takes -en.",
+            "unitIndexes": [
+              47
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-adjective-ending-after-ein-neuter-8y7ksd",
+        "title": "Adjective ending after ein (neuter)",
+        "overview": "After 'ein' (neuter nominative/accusative), the adjective takes -es.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "After 'ein' (neuter nominative/accusative), the adjective takes -es.",
+            "unitIndexes": [
+              47
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-reflexive-verb-with-dative-pronoun-dtcdc6",
+        "title": "Reflexive verb with dative pronoun",
+        "overview": "Some reflexive verbs use the dative pronoun (mir, dir) instead of accusative, especially with body parts.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "Some reflexive verbs use the dative pronoun (mir, dir) instead of accusative, especially with body parts.",
+            "unitIndexes": [
+              49
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-indirect-questions-with-ob-1k5r0h7",
+        "title": "Indirect questions with ob",
+        "overview": "'Ob' introduces an indirect yes/no question; like other subordinate clauses, the verb goes to the end.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Ob' introduces an indirect yes/no question; like other subordinate clauses, the verb goes to the end.",
+            "unitIndexes": [
+              50
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-indirect-questions-with-w-words-1tar70n",
+        "title": "Indirect questions with w-words",
+        "overview": "W-question words like 'wo', 'wann', and 'wie' also introduce indirect questions with verb-final word order.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "W-question words like 'wo', 'wann', and 'wie' also introduce indirect questions with verb-final word order.",
+            "unitIndexes": [
+              51
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-indirect-questions-with-wann-dy8u8y",
+        "title": "Indirect questions with wann",
+        "overview": "The verb 'öffnet' moves to the end because it's part of an indirect question with 'wann'.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "The verb 'öffnet' moves to the end because it's part of an indirect question with 'wann'.",
+            "unitIndexes": [
+              51
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-temporal-preposition-im-season-h3r5ip",
+        "title": "Temporal preposition im + season",
+        "overview": "'Im' (in + dem) is used with seasons to say 'in [season]'.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Im' (in + dem) is used with seasons to say 'in [season]'.",
+            "unitIndexes": [
+              52
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-adjective-ending-after-dieses-neuter-1x7503u",
+        "title": "Adjective ending after dieses (neuter)",
+        "overview": "After 'dieses' (neuter, a der-word), the adjective takes -e.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "After 'dieses' (neuter, a der-word), the adjective takes -e.",
+            "unitIndexes": [
+              54
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-adjective-ending-after-diese-feminine-u1tinj",
+        "title": "Adjective ending after diese (feminine)",
+        "overview": "After 'diese' (feminine, a der-word), the adjective takes -e.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "After 'diese' (feminine, a der-word), the adjective takes -e.",
+            "unitIndexes": [
+              54
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-relative-clause-with-der-za4yhd",
+        "title": "Relative clause with der",
+        "overview": "'Der' as a relative pronoun refers back to 'der Mann'; the verb goes to the end of the relative clause.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Der' as a relative pronoun refers back to 'der Mann'; the verb goes to the end of the relative clause.",
+            "unitIndexes": [
+              55
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-relative-clause-with-die-1414gh4",
+        "title": "Relative clause with die",
+        "overview": "'Die' as a relative pronoun refers to a feminine noun, here 'die Frau'.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Die' as a relative pronoun refers to a feminine noun, here 'die Frau'.",
+            "unitIndexes": [
+              55
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-finden-denken-glauben-dass-clause-h0wo84",
+        "title": "finden/denken/glauben + dass-clause",
+        "overview": "Verbs of opinion like 'finden', 'denken', and 'glauben' are often followed by a 'dass'-clause with verb-final word order.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "Verbs of opinion like 'finden', 'denken', and 'glauben' are often followed by a 'dass'-clause with verb-final word order.",
+            "unitIndexes": [
+              56
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-simple-past-of-modals-spoken-use-cjq884",
+        "title": "Simple past of modals (spoken use)",
+        "overview": "In spoken German, modal verbs like 'können' and 'wollen' typically appear in the simple past (Präteritum) rather than the perfect tense.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "In spoken German, modal verbs like 'können' and 'wollen' typically appear in the simple past (Präteritum) rather than the perfect tense.",
+            "unitIndexes": [
+              57
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-simple-past-prateritum-of-sein-jmy0je",
+        "title": "Simple past (Präteritum) of sein",
+        "overview": "'Sein' in the simple past: ich war, du warst, er/sie/es war, wir waren, ihr wart, sie waren.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Sein' in the simple past: ich war, du warst, er/sie/es war, wir waren, ihr wart, sie waren.",
+            "unitIndexes": [
+              58
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-simple-past-prateritum-of-haben-nxvluv",
+        "title": "Simple past (Präteritum) of haben",
+        "overview": "'Haben' in the simple past: ich hatte, du hattest, er/sie/es hatte, wir hatten, ihr hattet, sie hatten.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Haben' in the simple past: ich hatte, du hattest, er/sie/es hatte, wir hatten, ihr hattet, sie hatten.",
+            "unitIndexes": [
+              58
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-werden-future-fuxnfk",
+        "title": "werden-future",
+        "overview": "'Werden' + infinitive (at the end) forms the future tense, though present tense with a time word is also common.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Werden' + infinitive (at the end) forms the future tense, though present tense with a time word is also common.",
+            "unitIndexes": [
+              59
+            ]
+          }
+        ]
+      },
+      {
+        "id": "grammar-seit-present-tense-review-o7ne7s",
+        "title": "seit + present tense (review)",
+        "overview": "'Seit' + present tense expresses an action that started in the past and continues now.",
+        "situations": [
+          {
+            "title": "Course usage",
+            "explanation": "'Seit' + present tense expresses an action that started in the past and continues now.",
+            "unitIndexes": [
+              60
+            ]
+          }
+        ]
+      }
+    ]
+  },
   "lessons": [
     {
       "language": "de",
@@ -63,7 +1721,8 @@
               "pattern": "W-question word order",
               "surface": "Wie heißt du",
               "meaning": "question word + verb + subject",
-              "explanation": "German questions with a question word (wie) put the verb straight after it, then the subject."
+              "explanation": "German questions with a question word (wie) put the verb straight after it, then the subject.",
+              "ruleId": "grammar-w-question-word-order-n4392f"
             }
           ]
         },
@@ -217,7 +1876,8 @@
               "pattern": "sein (present tense)",
               "surface": "bin",
               "meaning": "to be — 1st person singular",
-              "explanation": "'Sein' is highly irregular: ich bin, du bist, er/sie/es ist."
+              "explanation": "'Sein' is highly irregular: ich bin, du bist, er/sie/es ist.",
+              "ruleId": "grammar-sein-present-tense-1i223j5"
             }
           ]
         },
@@ -245,7 +1905,8 @@
               "pattern": "sein (present tense, formal)",
               "surface": "Sind Sie",
               "meaning": "are you (formal)",
-              "explanation": "With the formal pronoun 'Sie', the verb form is the same as the plural 'sind'."
+              "explanation": "With the formal pronoun 'Sie', the verb form is the same as the plural 'sind'.",
+              "ruleId": "grammar-sein-present-tense-formal-lgrm2c"
             }
           ]
         },
@@ -322,7 +1983,8 @@
               "pattern": "w-question: woher",
               "surface": "Woher kommst du",
               "meaning": "where do you come from",
-              "explanation": "'Woher' asks about origin; the verb comes right after it, then the subject."
+              "explanation": "'Woher' asks about origin; the verb comes right after it, then the subject.",
+              "ruleId": "grammar-w-question-woher-i05gfc"
             }
           ]
         },
@@ -763,7 +2425,8 @@
               "pattern": "haben (present tense)",
               "surface": "Hast",
               "meaning": "to have — 2nd person singular",
-              "explanation": "'Haben' is irregular: ich habe, du hast, er/sie/es hat."
+              "explanation": "'Haben' is irregular: ich habe, du hast, er/sie/es hat.",
+              "ruleId": "grammar-haben-present-tense-2h6f1g"
             }
           ]
         },
@@ -808,7 +2471,8 @@
               "pattern": "Negation with kein",
               "surface": "keinen Bruder",
               "meaning": "not a brother",
-              "explanation": "'Kein' negates nouns that would otherwise take 'ein/einen'; it agrees in case and gender with the noun."
+              "explanation": "'Kein' negates nouns that would otherwise take 'ein/einen'; it agrees in case and gender with the noun.",
+              "ruleId": "grammar-negation-with-kein-rszb0x"
             }
           ]
         },
@@ -852,7 +2516,8 @@
               "pattern": "Negation with kein (neuter/plural)",
               "surface": "kein Auto",
               "meaning": "not a car",
-              "explanation": "'Kein' changes form with gender and case: keinen (masc. acc.), keine (fem.), kein (neuter)."
+              "explanation": "'Kein' changes form with gender and case: keinen (masc. acc.), keine (fem.), kein (neuter).",
+              "ruleId": "grammar-negation-with-kein-neuter-plural-17a1144"
             }
           ]
         },
@@ -910,7 +2575,8 @@
               "pattern": "Negation with nicht",
               "surface": "nicht viel Zeit",
               "meaning": "not a lot of time",
-              "explanation": "'Nicht' negates verbs, adjectives, or adverbs — here it negates the quantity 'viel'."
+              "explanation": "'Nicht' negates verbs, adjectives, or adverbs — here it negates the quantity 'viel'.",
+              "ruleId": "grammar-negation-with-nicht-1f7lsng"
             }
           ]
         },
@@ -1012,7 +2678,8 @@
               "pattern": "Indefinite article ein",
               "surface": "ein Tisch",
               "meaning": "a table",
-              "explanation": "'Ein' is used for masculine and neuter nouns in the nominative case; it means 'a/an'."
+              "explanation": "'Ein' is used for masculine and neuter nouns in the nominative case; it means 'a/an'.",
+              "ruleId": "grammar-indefinite-article-ein-1n5fs5s"
             }
           ]
         },
@@ -1044,7 +2711,8 @@
               "pattern": "Definite article der",
               "surface": "Der Tisch",
               "meaning": "the table",
-              "explanation": "'Der' is the nominative definite article for masculine nouns."
+              "explanation": "'Der' is the nominative definite article for masculine nouns.",
+              "ruleId": "grammar-definite-article-der-1n9prks"
             }
           ]
         },
@@ -1071,7 +2739,8 @@
               "pattern": "Definite article das",
               "surface": "das Buch",
               "meaning": "the book",
-              "explanation": "'Das' is the nominative definite article for neuter nouns."
+              "explanation": "'Das' is the nominative definite article for neuter nouns.",
+              "ruleId": "grammar-definite-article-das-1lc7dbn"
             }
           ]
         },
@@ -1110,7 +2779,8 @@
               "pattern": "Definite article die",
               "surface": "Die Tasche",
               "meaning": "the bag",
-              "explanation": "'Die' is the nominative definite article for feminine nouns (and for all plurals)."
+              "explanation": "'Die' is the nominative definite article for feminine nouns (and for all plurals).",
+              "ruleId": "grammar-definite-article-die-1n0wf31"
             }
           ]
         },
@@ -1230,7 +2900,8 @@
               "pattern": "Possessive mein/meine",
               "surface": "mein Vater",
               "meaning": "my father",
-              "explanation": "'Mein' is used before masculine/neuter nouns, 'meine' before feminine and plural nouns, in the nominative."
+              "explanation": "'Mein' is used before masculine/neuter nouns, 'meine' before feminine and plural nouns, in the nominative.",
+              "ruleId": "grammar-possessive-mein-meine-1cq2zkj"
             }
           ]
         },
@@ -1424,7 +3095,8 @@
               "pattern": "Plural formation",
               "surface": "Männer",
               "meaning": "men",
-              "explanation": "German plurals follow several patterns; 'Mann' → 'Männer' adds an umlaut and -er."
+              "explanation": "German plurals follow several patterns; 'Mann' → 'Männer' adds an umlaut and -er.",
+              "ruleId": "grammar-plural-formation-1gofekk"
             }
           ]
         },
@@ -1463,7 +3135,8 @@
               "pattern": "Plural formation",
               "surface": "Bücher",
               "meaning": "books",
-              "explanation": "'Buch' → 'Bücher' adds an umlaut and -er, a common neuter plural pattern."
+              "explanation": "'Buch' → 'Bücher' adds an umlaut and -er, a common neuter plural pattern.",
+              "ruleId": "grammar-plural-formation-1gofekk"
             }
           ]
         },
@@ -1562,7 +3235,8 @@
               "pattern": "möchten (polite want)",
               "surface": "möchtest",
               "meaning": "would like — 2nd person singular",
-              "explanation": "'Möchten' is the polite way to say what you want, softer than 'wollen'."
+              "explanation": "'Möchten' is the polite way to say what you want, softer than 'wollen'.",
+              "ruleId": "grammar-mochten-polite-want-nt10jg"
             }
           ]
         },
@@ -1742,7 +3416,8 @@
               "pattern": "gern + verb",
               "surface": "gern",
               "meaning": "gladly, expresses liking",
-              "explanation": "'Gern' after a verb expresses that you like doing that action."
+              "explanation": "'Gern' after a verb expresses that you like doing that action.",
+              "ruleId": "grammar-gern-verb-xbo6y9"
             }
           ]
         },
@@ -1934,7 +3609,8 @@
               "pattern": "Time with Uhr",
               "surface": "zehn Uhr",
               "meaning": "ten o'clock",
-              "explanation": "'Uhr' follows the number to express clock time, similar to 'o'clock'."
+              "explanation": "'Uhr' follows the number to express clock time, similar to 'o'clock'.",
+              "ruleId": "grammar-time-with-uhr-9liy1t"
             }
           ]
         },
@@ -1984,7 +3660,8 @@
               "pattern": "um + time",
               "surface": "Um wie viel Uhr",
               "meaning": "at what time",
-              "explanation": "'Um' is used before a specific clock time to say 'at'."
+              "explanation": "'Um' is used before a specific clock time to say 'at'.",
+              "ruleId": "grammar-um-time-5lo9kn"
             }
           ]
         },
@@ -2094,7 +3771,8 @@
               "pattern": "Regular present tense -en verbs",
               "surface": "machst",
               "meaning": "do — 2nd person singular",
-              "explanation": "Regular verbs add -st for 'du': mach-en → du mach-st."
+              "explanation": "Regular verbs add -st for 'du': mach-en → du mach-st.",
+              "ruleId": "grammar-regular-present-tense-en-verbs-1pfuimd"
             }
           ]
         },
@@ -2280,7 +3958,8 @@
               "pattern": "Time-manner-place word order",
               "surface": "um sieben Uhr morgens",
               "meaning": "at seven in the morning",
-              "explanation": "Time expressions typically come early in the sentence, right after the verb and subject."
+              "explanation": "Time expressions typically come early in the sentence, right after the verb and subject.",
+              "ruleId": "grammar-time-manner-place-word-order-ijc7sc"
             }
           ]
         },
@@ -2415,7 +4094,8 @@
               "pattern": "nicht vs kein (review)",
               "surface": "kein Auto",
               "meaning": "not a car",
-              "explanation": "'Kein' negates the noun 'Auto'; 'nicht' negates the whole statement 'stimmt'."
+              "explanation": "'Kein' negates the noun 'Auto'; 'nicht' negates the whole statement 'stimmt'.",
+              "ruleId": "grammar-nicht-vs-kein-review-qc83km"
             }
           ],
           "chunks": [
@@ -2461,7 +4141,7 @@
           "translation": "That's really not a problem, we'll take the bus!",
           "chunks": [
             {
-              "surface": "Kein Problem",
+              "surface": "kein Problem",
               "type": "idiom",
               "meaning": "no problem",
               "explanation": "Reassurance phrase softening a small inconvenience."
@@ -2718,7 +4398,8 @@
               "pattern": "Impersonal es + weather verb",
               "surface": "Es regnet",
               "meaning": "it's raining",
-              "explanation": "Weather verbs use the impersonal subject 'es', which doesn't refer to a specific thing."
+              "explanation": "Weather verbs use the impersonal subject 'es', which doesn't refer to a specific thing.",
+              "ruleId": "grammar-impersonal-es-weather-verb-1yjicl1"
             }
           ]
         },
@@ -2858,7 +4539,8 @@
               "pattern": "Accusative case (masculine)",
               "surface": "den Mann",
               "meaning": "the man",
-              "explanation": "Masculine nouns change 'der' to 'den' in the accusative case, used for direct objects."
+              "explanation": "Masculine nouns change 'der' to 'den' in the accusative case, used for direct objects.",
+              "ruleId": "grammar-accusative-case-masculine-lr2lol"
             }
           ]
         },
@@ -2945,7 +4627,8 @@
               "pattern": "Accusative case with possessives",
               "surface": "meinen Kaffee",
               "meaning": "my coffee",
-              "explanation": "Masculine possessives also take -en in the accusative, matching the article pattern."
+              "explanation": "Masculine possessives also take -en in the accusative, matching the article pattern.",
+              "ruleId": "grammar-accusative-case-with-possessives-4qqclk"
             }
           ]
         },
@@ -3099,7 +4782,7 @@
           "translation": "I've got my bag with me, that's enough.",
           "chunks": [
             {
-              "surface": "Das reicht",
+              "surface": "das reicht",
               "type": "idiom",
               "meaning": "that's enough",
               "explanation": "Common phrase used to say something is sufficient, often to stop or limit something."
@@ -3295,7 +4978,8 @@
               "pattern": "Modal verb können",
               "surface": "Kannst",
               "meaning": "can — 2nd person singular",
-              "explanation": "'Können' expresses ability or possibility; the conjugated modal takes 2nd position, the main verb goes to the end."
+              "explanation": "'Können' expresses ability or possibility; the conjugated modal takes 2nd position, the main verb goes to the end.",
+              "ruleId": "grammar-modal-verb-konnen-2a4hcv"
             }
           ]
         },
@@ -3321,7 +5005,8 @@
               "pattern": "Modal verb müssen",
               "surface": "muss",
               "meaning": "must — 1st person singular",
-              "explanation": "'Müssen' expresses obligation or necessity."
+              "explanation": "'Müssen' expresses obligation or necessity.",
+              "ruleId": "grammar-modal-verb-mussen-1ubyryl"
             }
           ]
         },
@@ -3351,7 +5036,8 @@
               "pattern": "Modal verb wollen",
               "surface": "Willst",
               "meaning": "want — 2nd person singular",
-              "explanation": "'Wollen' expresses a strong wish or intention."
+              "explanation": "'Wollen' expresses a strong wish or intention.",
+              "ruleId": "grammar-modal-verb-wollen-8yl1gg"
             }
           ]
         },
@@ -3403,7 +5089,8 @@
               "pattern": "Modal verb dürfen",
               "surface": "Darf",
               "meaning": "may — 1st person singular",
-              "explanation": "'Dürfen' expresses permission; it's often used in polite requests."
+              "explanation": "'Dürfen' expresses permission; it's often used in polite requests.",
+              "ruleId": "grammar-modal-verb-durfen-19g6d1u"
             }
           ]
         },
@@ -3479,7 +5166,8 @@
               "pattern": "mögen vs möchten",
               "surface": "Magst",
               "meaning": "like — general liking (mögen)",
-              "explanation": "'Mögen' expresses a general liking for something; 'möchten' expresses a specific wish, like ordering food."
+              "explanation": "'Mögen' expresses a general liking for something; 'möchten' expresses a specific wish, like ordering food.",
+              "ruleId": "grammar-mogen-vs-mochten-1uj2aes"
             }
           ]
         },
@@ -3600,7 +5288,8 @@
               "pattern": "Separable verbs (present tense)",
               "surface": "auf",
               "meaning": "get up",
-              "explanation": "With separable verbs like 'aufstehen', the prefix 'auf' splits off and moves to the end of the main clause."
+              "explanation": "With separable verbs like 'aufstehen', the prefix 'auf' splits off and moves to the end of the main clause.",
+              "ruleId": "grammar-separable-verbs-present-tense-1xy3x11"
             }
           ]
         },
@@ -3893,7 +5582,8 @@
               "pattern": "Dative case (personal pronoun)",
               "surface": "dir",
               "meaning": "to you",
-              "explanation": "'Dir' is the dative form of 'du', used for the indirect object — the person receiving something."
+              "explanation": "'Dir' is the dative form of 'du', used for the indirect object — the person receiving something.",
+              "ruleId": "grammar-dative-case-personal-pronoun-z29hvy"
             }
           ]
         },
@@ -3937,7 +5627,8 @@
               "pattern": "Verbs with dative object",
               "surface": "mir helfen",
               "meaning": "help me",
-              "explanation": "Certain German verbs like 'helfen', 'gehören', and 'gefallen' always take a dative object, not accusative."
+              "explanation": "Certain German verbs like 'helfen', 'gehören', and 'gefallen' always take a dative object, not accusative.",
+              "ruleId": "grammar-verbs-with-dative-object-ymog3b"
             }
           ]
         },
@@ -4054,7 +5745,8 @@
               "pattern": "Dative preposition mit",
               "surface": "mit deinem Freund",
               "meaning": "with your friend",
-              "explanation": "'Mit' always takes the dative case; 'dein' becomes 'deinem' before a masculine dative noun."
+              "explanation": "'Mit' always takes the dative case; 'dein' becomes 'deinem' before a masculine dative noun.",
+              "ruleId": "grammar-dative-preposition-mit-13lex4k"
             }
           ]
         },
@@ -4078,7 +5770,8 @@
               "pattern": "Dative preposition bei",
               "surface": "bei der Arbeit",
               "meaning": "at work",
-              "explanation": "'Bei' takes the dative case and expresses location near a person or place."
+              "explanation": "'Bei' takes the dative case and expresses location near a person or place.",
+              "ruleId": "grammar-dative-preposition-bei-yri9t2"
             }
           ]
         },
@@ -4104,7 +5797,8 @@
               "pattern": "Dative prepositions nach/zu",
               "surface": "nach der Arbeit",
               "meaning": "after work",
-              "explanation": "'Nach' (after, to a place) and 'zu' (to a person or place) both require the dative case."
+              "explanation": "'Nach' (after, to a place) and 'zu' (to a person or place) both require the dative case.",
+              "ruleId": "grammar-dative-prepositions-nach-zu-ko0uz5"
             }
           ]
         },
@@ -4130,7 +5824,8 @@
               "pattern": "Dative preposition von",
               "surface": "von der Schule",
               "meaning": "from school",
-              "explanation": "'Von' (from) always takes the dative case."
+              "explanation": "'Von' (from) always takes the dative case.",
+              "ruleId": "grammar-dative-preposition-von-1798o1l"
             }
           ]
         },
@@ -4197,7 +5892,8 @@
               "pattern": "Accusative preposition für",
               "surface": "für meinen Bruder",
               "meaning": "for my brother",
-              "explanation": "'Für' always takes the accusative case."
+              "explanation": "'Für' always takes the accusative case.",
+              "ruleId": "grammar-accusative-preposition-fur-pu7vkd"
             }
           ]
         },
@@ -4223,7 +5919,8 @@
               "pattern": "Accusative preposition ohne",
               "surface": "ohne ein Geschenk",
               "meaning": "without a gift",
-              "explanation": "'Ohne' takes the accusative case."
+              "explanation": "'Ohne' takes the accusative case.",
+              "ruleId": "grammar-accusative-preposition-ohne-1gzqnul"
             }
           ]
         },
@@ -4253,7 +5950,8 @@
               "pattern": "Accusative preposition durch",
               "surface": "durch den Stadtpark",
               "meaning": "through the city park",
-              "explanation": "'Durch' takes the accusative case."
+              "explanation": "'Durch' takes the accusative case.",
+              "ruleId": "grammar-accusative-preposition-durch-1yff74h"
             }
           ]
         },
@@ -4279,7 +5977,8 @@
               "pattern": "Accusative preposition gegen",
               "surface": "gegen den Wind",
               "meaning": "against the wind",
-              "explanation": "'Gegen' takes the accusative case."
+              "explanation": "'Gegen' takes the accusative case.",
+              "ruleId": "grammar-accusative-preposition-gegen-1yog417"
             }
           ]
         },
@@ -4292,7 +5991,7 @@
           "translation": "What time are we driving to the party?",
           "words": [
             {
-              "surface": "um",
+              "surface": "Um",
               "lemma": "um",
               "meaning": "around, at",
               "role": "preposition"
@@ -4366,7 +6065,8 @@
               "pattern": "Possessive with body parts",
               "surface": "mein Kopf",
               "meaning": "my head",
-              "explanation": "German often uses a possessive (mein, dein) with body parts, similar to English 'my head hurts'."
+              "explanation": "German often uses a possessive (mein, dein) with body parts, similar to English 'my head hurts'.",
+              "ruleId": "grammar-possessive-with-body-parts-1hq9bpx"
             }
           ],
           "chunks": [
@@ -4532,7 +6232,8 @@
               "pattern": "seit + dative (duration)",
               "surface": "seit drei Tagen",
               "meaning": "for three days",
-              "explanation": "'Seit' with the dative case expresses how long something has been happening, continuing into the present."
+              "explanation": "'Seit' with the dative case expresses how long something has been happening, continuing into the present.",
+              "ruleId": "grammar-seit-dative-duration-1a9mzhl"
             }
           ]
         },
@@ -4615,7 +6316,7 @@
           "translation": "Thank you, doctor. Goodbye, and get well soon to myself!",
           "chunks": [
             {
-              "surface": "Gute Besserung",
+              "surface": "gute Besserung",
               "type": "idiom",
               "meaning": "get well soon",
               "explanation": "Standard wish said to someone who is sick."
@@ -4651,7 +6352,8 @@
               "pattern": "am + weekday",
               "surface": "am Montag",
               "meaning": "on Monday",
-              "explanation": "'Am' (an + dem) is used with days of the week to say 'on [day]'."
+              "explanation": "'Am' (an + dem) is used with days of the week to say 'on [day]'.",
+              "ruleId": "grammar-am-weekday-1xtrepo"
             }
           ]
         },
@@ -4794,7 +6496,8 @@
               "pattern": "Lust haben + zu/auf",
               "surface": "Hast du Lust",
               "meaning": "do you feel like",
-              "explanation": "'Lust haben' + infinitive with 'zu' expresses wanting to do something."
+              "explanation": "'Lust haben' + infinitive with 'zu' expresses wanting to do something.",
+              "ruleId": "grammar-lust-haben-zu-auf-1alyfyu"
             }
           ],
           "chunks": [
@@ -5059,7 +6762,8 @@
               "pattern": "Imperative (du-form)",
               "surface": "Komm",
               "meaning": "come!",
-              "explanation": "The informal imperative drops 'du' and often the final -st: du kommst → Komm!"
+              "explanation": "The informal imperative drops 'du' and often the final -st: du kommst → Komm!",
+              "ruleId": "grammar-imperative-du-form-b9i5us"
             }
           ]
         },
@@ -5080,7 +6784,8 @@
               "pattern": "Imperative (ihr-form)",
               "surface": "Wartet",
               "meaning": "wait! (plural)",
-              "explanation": "The informal plural imperative uses the 'ihr' verb form without the pronoun."
+              "explanation": "The informal plural imperative uses the 'ihr' verb form without the pronoun.",
+              "ruleId": "grammar-imperative-ihr-form-evsvpw"
             }
           ]
         },
@@ -5101,7 +6806,8 @@
               "pattern": "Imperative (Sie-form)",
               "surface": "Kommen Sie",
               "meaning": "come! (formal)",
-              "explanation": "The formal imperative puts 'Sie' right after the verb."
+              "explanation": "The formal imperative puts 'Sie' right after the verb.",
+              "ruleId": "grammar-imperative-sie-form-1p4p2k2"
             }
           ]
         },
@@ -5162,7 +6868,7 @@
           ],
           "chunks": [
             {
-              "surface": "Pass auf",
+              "surface": "pass auf",
               "type": "idiom",
               "meaning": "watch out, be careful",
               "explanation": "Common warning phrase, from separable verb 'aufpassen'."
@@ -5186,7 +6892,7 @@
           "translation": "Alright, let's go, we don't have any more time!",
           "chunks": [
             {
-              "surface": "Los geht's",
+              "surface": "los geht's",
               "type": "idiom",
               "meaning": "let's go, here we go",
               "explanation": "Enthusiastic, casual phrase for starting something."
@@ -5271,7 +6977,8 @@
               "pattern": "es gibt + accusative",
               "surface": "Es gibt",
               "meaning": "there is/are",
-              "explanation": "The fixed phrase 'es gibt' is always followed by the accusative case."
+              "explanation": "The fixed phrase 'es gibt' is always followed by the accusative case.",
+              "ruleId": "grammar-es-gibt-accusative-1kn1gmu"
             }
           ]
         },
@@ -5369,7 +7076,8 @@
               "pattern": "Adjective ending after eine",
               "surface": "eine neue Wohnung",
               "meaning": "a new apartment",
-              "explanation": "After 'eine' (feminine accusative), the adjective takes the ending -e: eine neue Wohnung."
+              "explanation": "After 'eine' (feminine accusative), the adjective takes the ending -e: eine neue Wohnung.",
+              "ruleId": "grammar-adjective-ending-after-eine-hughd4"
             }
           ]
         },
@@ -5502,7 +7210,8 @@
               "pattern": "wo (location)",
               "surface": "Wo ist",
               "meaning": "where is",
-              "explanation": "'Wo' asks about a fixed location — 'where something is'."
+              "explanation": "'Wo' asks about a fixed location — 'where something is'.",
+              "ruleId": "grammar-wo-location-kbk7vj"
             }
           ]
         },
@@ -5540,7 +7249,8 @@
               "pattern": "wohin (direction)",
               "surface": "Wohin",
               "meaning": "where to",
-              "explanation": "'Wohin' asks about a direction or destination — 'where to'."
+              "explanation": "'Wohin' asks about a direction or destination — 'where to'.",
+              "ruleId": "grammar-wohin-direction-iliwpm"
             }
           ]
         },
@@ -5810,7 +7520,8 @@
               "pattern": "mit + transportation (dative)",
               "surface": "mit dem Bus",
               "meaning": "by bus",
-              "explanation": "'Mit' takes the dative case; it's used to say how you're traveling."
+              "explanation": "'Mit' takes the dative case; it's used to say how you're traveling.",
+              "ruleId": "grammar-mit-transportation-dative-1jcd832"
             }
           ]
         },
@@ -6040,7 +7751,7 @@
           "translation": "Do you also play sports, or do you prefer to relax?",
           "words": [
             {
-              "surface": "treibst",
+              "surface": "Treibst",
               "lemma": "treiben",
               "meaning": "do, play (sport)",
               "role": "verb"
@@ -6116,7 +7827,8 @@
               "pattern": "weil + verb-final word order",
               "surface": "weil ich müde bin",
               "meaning": "because I am tired",
-              "explanation": "'Weil' introduces a subordinate clause where the conjugated verb moves to the very end."
+              "explanation": "'Weil' introduces a subordinate clause where the conjugated verb moves to the very end.",
+              "ruleId": "grammar-weil-verb-final-word-order-mkvct1"
             }
           ]
         },
@@ -6140,7 +7852,8 @@
               "pattern": "weil + verb-final word order",
               "surface": "weil ich krank bin",
               "meaning": "because I am sick",
-              "explanation": "The verb 'bin' goes to the end because it's inside a 'weil'-clause."
+              "explanation": "The verb 'bin' goes to the end because it's inside a 'weil'-clause.",
+              "ruleId": "grammar-weil-verb-final-word-order-mkvct1"
             }
           ]
         },
@@ -6197,7 +7910,8 @@
               "pattern": "denn (coordinating, verb stays 2nd)",
               "surface": "denn morgen habe ich mehr Zeit",
               "meaning": "because tomorrow I have more time",
-              "explanation": "Unlike 'weil', 'denn' is a coordinating conjunction and the verb stays in normal second position."
+              "explanation": "Unlike 'weil', 'denn' is a coordinating conjunction and the verb stays in normal second position.",
+              "ruleId": "grammar-denn-coordinating-verb-stays-2nd-1bvgaj7"
             }
           ]
         },
@@ -6254,7 +7968,8 @@
               "pattern": "Comparative with -er",
               "surface": "größer",
               "meaning": "bigger",
-              "explanation": "German forms the comparative by adding -er to the adjective: groß → größer."
+              "explanation": "German forms the comparative by adding -er to the adjective: groß → größer.",
+              "ruleId": "grammar-comparative-with-er-883bbu"
             }
           ]
         },
@@ -6317,7 +8032,8 @@
               "pattern": "Irregular comparative gut/besser",
               "surface": "besser",
               "meaning": "better",
-              "explanation": "'Gut' has an irregular comparative form: besser, not 'guter'."
+              "explanation": "'Gut' has an irregular comparative form: besser, not 'guter'.",
+              "ruleId": "grammar-irregular-comparative-gut-besser-ii5xms"
             }
           ]
         },
@@ -6329,7 +8045,8 @@
               "pattern": "Superlative am -sten",
               "surface": "am besten",
               "meaning": "the best",
-              "explanation": "The superlative form uses 'am' + adjective + -sten: am besten."
+              "explanation": "The superlative form uses 'am' + adjective + -sten: am besten.",
+              "ruleId": "grammar-superlative-am-sten-4bn06q"
             }
           ]
         },
@@ -6395,7 +8112,8 @@
               "pattern": "Reflexive verbs (accusative)",
               "surface": "freue mich",
               "meaning": "look forward",
-              "explanation": "Reflexive verbs use a reflexive pronoun that matches the subject; here 'mich' for 'ich'."
+              "explanation": "Reflexive verbs use a reflexive pronoun that matches the subject; here 'mich' for 'ich'.",
+              "ruleId": "grammar-reflexive-verbs-accusative-yvx7xq"
             }
           ],
           "chunks": [
@@ -6550,7 +8268,8 @@
               "pattern": "Perfect tense with haben",
               "surface": "gemacht",
               "meaning": "have done",
-              "explanation": "Most verbs form the perfect tense with 'haben' + past participle, with the participle at the end."
+              "explanation": "Most verbs form the perfect tense with 'haben' + past participle, with the participle at the end.",
+              "ruleId": "grammar-perfect-tense-with-haben-133kil3"
             }
           ]
         },
@@ -6697,7 +8416,8 @@
               "pattern": "Perfect tense with sein",
               "surface": "gegangen",
               "meaning": "have gone",
-              "explanation": "Motion and change-of-state verbs like 'gehen', 'fahren', and 'kommen' use 'sein' as the auxiliary in the perfect tense."
+              "explanation": "Motion and change-of-state verbs like 'gehen', 'fahren', and 'kommen' use 'sein' as the auxiliary in the perfect tense.",
+              "ruleId": "grammar-perfect-tense-with-sein-9laduy"
             }
           ]
         },
@@ -6919,7 +8639,7 @@
           ],
           "chunks": [
             {
-              "surface": "Es war klasse",
+              "surface": "es war klasse",
               "type": "idiom",
               "meaning": "it was great",
               "explanation": "Casual, enthusiastic way of saying something was excellent."
@@ -7106,7 +8826,8 @@
               "pattern": "seit + dative (review)",
               "surface": "seit zwei Jahren",
               "meaning": "for two years",
-              "explanation": "'Seit' + dative expresses an action continuing from the past into the present."
+              "explanation": "'Seit' + dative expresses an action continuing from the past into the present.",
+              "ruleId": "grammar-seit-dative-review-h6pk2d"
             }
           ]
         },
@@ -7251,7 +8972,8 @@
               "pattern": "dass-clauses (verb-final)",
               "surface": "dass wir viel Stress haben",
               "meaning": "that we have a lot of stress",
-              "explanation": "'Dass' introduces a subordinate clause; the conjugated verb moves to the end, just like with 'weil'."
+              "explanation": "'Dass' introduces a subordinate clause; the conjugated verb moves to the end, just like with 'weil'.",
+              "ruleId": "grammar-dass-clauses-verb-final-8udhny"
             }
           ]
         },
@@ -7271,7 +8993,8 @@
               "pattern": "dass-clauses (verb-final)",
               "surface": "dass die Deadline zu knapp ist",
               "meaning": "that the deadline is too tight",
-              "explanation": "The main verb 'ist' is pushed to the end of the 'dass'-clause."
+              "explanation": "The main verb 'ist' is pushed to the end of the 'dass'-clause.",
+              "ruleId": "grammar-dass-clauses-verb-final-8udhny"
             }
           ]
         },
@@ -7398,7 +9121,8 @@
               "pattern": "wenn-clauses (verb-final)",
               "surface": "Wenn es morgen regnet",
               "meaning": "if it rains tomorrow",
-              "explanation": "'Wenn' introduces a conditional subordinate clause; the verb goes to the end, and the main clause often starts with the verb."
+              "explanation": "'Wenn' introduces a conditional subordinate clause; the verb goes to the end, and the main clause often starts with the verb.",
+              "ruleId": "grammar-wenn-clauses-verb-final-1giow69"
             }
           ]
         },
@@ -7418,7 +9142,8 @@
               "pattern": "wenn-clauses (verb-final)",
               "surface": "wenn die Sonne scheint",
               "meaning": "if the sun shines",
-              "explanation": "The verb 'scheint' moves to the end of this 'wenn'-clause."
+              "explanation": "The verb 'scheint' moves to the end of this 'wenn'-clause.",
+              "ruleId": "grammar-wenn-clauses-verb-final-1giow69"
             }
           ]
         },
@@ -7513,7 +9238,8 @@
               "pattern": "Adjective ending after eine (nominative)",
               "surface": "eine schöne Wohnung",
               "meaning": "a beautiful apartment",
-              "explanation": "After 'eine' in the nominative (feminine), the adjective takes -e."
+              "explanation": "After 'eine' in the nominative (feminine), the adjective takes -e.",
+              "ruleId": "grammar-adjective-ending-after-eine-nominative-jls71t"
             }
           ]
         },
@@ -7539,7 +9265,8 @@
               "pattern": "Adjective ending after dieser (nominative masc.)",
               "surface": "dieser moderne Tisch",
               "meaning": "this modern table",
-              "explanation": "After 'dieser' (masculine nominative), the adjective takes -e."
+              "explanation": "After 'dieser' (masculine nominative), the adjective takes -e.",
+              "ruleId": "grammar-adjective-ending-after-dieser-nominative-masc-95wxjq"
             }
           ]
         },
@@ -7565,7 +9292,8 @@
               "pattern": "Adjective ending after den (accusative masc.)",
               "surface": "den altmodischen Stuhl",
               "meaning": "the old-fashioned chair",
-              "explanation": "After 'den' (masculine accusative), the adjective takes -en."
+              "explanation": "After 'den' (masculine accusative), the adjective takes -en.",
+              "ruleId": "grammar-adjective-ending-after-den-accusative-masc-101gkxd"
             }
           ]
         },
@@ -7585,7 +9313,8 @@
               "pattern": "Adjective ending after ein (neuter)",
               "surface": "ein bequemes Sofa",
               "meaning": "a comfortable sofa",
-              "explanation": "After 'ein' (neuter nominative/accusative), the adjective takes -es."
+              "explanation": "After 'ein' (neuter nominative/accusative), the adjective takes -es.",
+              "ruleId": "grammar-adjective-ending-after-ein-neuter-8y7ksd"
             }
           ]
         },
@@ -7759,7 +9488,7 @@
           "translation": "Wow, I never would've thought you were so relaxed!",
           "words": [
             {
-              "surface": "krass",
+              "surface": "Krass",
               "lemma": "krass",
               "meaning": "wow, intense",
               "role": "interjection",
@@ -7801,7 +9530,8 @@
               "pattern": "Reflexive verb with dative pronoun",
               "surface": "dir wehgetan",
               "meaning": "hurt yourself",
-              "explanation": "Some reflexive verbs use the dative pronoun (mir, dir) instead of accusative, especially with body parts."
+              "explanation": "Some reflexive verbs use the dative pronoun (mir, dir) instead of accusative, especially with body parts.",
+              "ruleId": "grammar-reflexive-verb-with-dative-pronoun-dtcdc6"
             }
           ]
         },
@@ -7959,7 +9689,8 @@
               "pattern": "Indirect questions with ob",
               "surface": "ob noch Zimmer frei sind",
               "meaning": "whether there are still rooms free",
-              "explanation": "'Ob' introduces an indirect yes/no question; like other subordinate clauses, the verb goes to the end."
+              "explanation": "'Ob' introduces an indirect yes/no question; like other subordinate clauses, the verb goes to the end.",
+              "ruleId": "grammar-indirect-questions-with-ob-1k5r0h7"
             }
           ]
         },
@@ -7979,7 +9710,8 @@
               "pattern": "Indirect questions with ob",
               "surface": "ob es ein Zimmer mit Ausblick gibt",
               "meaning": "whether there's a room with a view",
-              "explanation": "Again, the verb 'gibt' is pushed to the end because it's inside an 'ob'-clause."
+              "explanation": "Again, the verb 'gibt' is pushed to the end because it's inside an 'ob'-clause.",
+              "ruleId": "grammar-indirect-questions-with-ob-1k5r0h7"
             }
           ]
         },
@@ -8089,7 +9821,8 @@
               "pattern": "Indirect questions with w-words",
               "surface": "wo der Check-in",
               "meaning": "where the check-in is",
-              "explanation": "W-question words like 'wo', 'wann', and 'wie' also introduce indirect questions with verb-final word order."
+              "explanation": "W-question words like 'wo', 'wann', and 'wie' also introduce indirect questions with verb-final word order.",
+              "ruleId": "grammar-indirect-questions-with-w-words-1tar70n"
             }
           ]
         },
@@ -8109,7 +9842,8 @@
               "pattern": "Indirect questions with wann",
               "surface": "wann genau unser Gate öffnet",
               "meaning": "exactly when our gate opens",
-              "explanation": "The verb 'öffnet' moves to the end because it's part of an indirect question with 'wann'."
+              "explanation": "The verb 'öffnet' moves to the end because it's part of an indirect question with 'wann'.",
+              "ruleId": "grammar-indirect-questions-with-wann-dy8u8y"
             }
           ]
         },
@@ -8259,7 +9993,8 @@
               "pattern": "Temporal preposition im + season",
               "surface": "Im Sommer",
               "meaning": "in summer",
-              "explanation": "'Im' (in + dem) is used with seasons to say 'in [season]'."
+              "explanation": "'Im' (in + dem) is used with seasons to say 'in [season]'.",
+              "ruleId": "grammar-temporal-preposition-im-season-h3r5ip"
             }
           ]
         },
@@ -8475,7 +10210,7 @@
           "translation": "Thanks! And happy congratulations back to you in advance too!",
           "chunks": [
             {
-              "surface": "Herzlichen Glückwunsch",
+              "surface": "herzlichen Glückwunsch",
               "type": "idiom",
               "meaning": "congratulations",
               "explanation": "Standard formal congratulatory phrase, common for birthdays."
@@ -8512,7 +10247,8 @@
               "pattern": "Adjective ending after dieses (neuter)",
               "surface": "dieses schöne Kleid",
               "meaning": "this beautiful dress",
-              "explanation": "After 'dieses' (neuter, a der-word), the adjective takes -e."
+              "explanation": "After 'dieses' (neuter, a der-word), the adjective takes -e.",
+              "ruleId": "grammar-adjective-ending-after-dieses-neuter-1x7503u"
             }
           ]
         },
@@ -8556,7 +10292,8 @@
               "pattern": "Adjective ending after diese (feminine)",
               "surface": "diese mittlere Größe",
               "meaning": "this medium size",
-              "explanation": "After 'diese' (feminine, a der-word), the adjective takes -e."
+              "explanation": "After 'diese' (feminine, a der-word), the adjective takes -e.",
+              "ruleId": "grammar-adjective-ending-after-diese-feminine-u1tinj"
             }
           ]
         },
@@ -8691,7 +10428,8 @@
               "pattern": "Relative clause with der",
               "surface": "Der Mann, der nebenan wohnt",
               "meaning": "the man who lives next door",
-              "explanation": "'Der' as a relative pronoun refers back to 'der Mann'; the verb goes to the end of the relative clause."
+              "explanation": "'Der' as a relative pronoun refers back to 'der Mann'; the verb goes to the end of the relative clause.",
+              "ruleId": "grammar-relative-clause-with-der-za4yhd"
             }
           ]
         },
@@ -8711,7 +10449,8 @@
               "pattern": "Relative clause with die",
               "surface": "die Frau, die im ersten Stock wohnt",
               "meaning": "the woman who lives on the first floor",
-              "explanation": "'Die' as a relative pronoun refers to a feminine noun, here 'die Frau'."
+              "explanation": "'Die' as a relative pronoun refers to a feminine noun, here 'die Frau'.",
+              "ruleId": "grammar-relative-clause-with-die-1414gh4"
             }
           ]
         },
@@ -8826,7 +10565,8 @@
               "pattern": "finden/denken/glauben + dass-clause",
               "surface": "Ich finde, dass es wirklich gut ist",
               "meaning": "I think that it's really good",
-              "explanation": "Verbs of opinion like 'finden', 'denken', and 'glauben' are often followed by a 'dass'-clause with verb-final word order."
+              "explanation": "Verbs of opinion like 'finden', 'denken', and 'glauben' are often followed by a 'dass'-clause with verb-final word order.",
+              "ruleId": "grammar-finden-denken-glauben-dass-clause-h0wo84"
             }
           ]
         },
@@ -8911,7 +10651,7 @@
           "translation": "I'd rather say it's okay, but not perfect.",
           "words": [
             {
-              "surface": "eher",
+              "surface": "Eher",
               "lemma": "eher",
               "meaning": "rather",
               "role": "adverb"
@@ -9000,7 +10740,8 @@
               "pattern": "Simple past of modals (spoken use)",
               "surface": "konnte",
               "meaning": "could",
-              "explanation": "In spoken German, modal verbs like 'können' and 'wollen' typically appear in the simple past (Präteritum) rather than the perfect tense."
+              "explanation": "In spoken German, modal verbs like 'können' and 'wollen' typically appear in the simple past (Präteritum) rather than the perfect tense.",
+              "ruleId": "grammar-simple-past-of-modals-spoken-use-cjq884"
             }
           ]
         },
@@ -9048,7 +10789,7 @@
           ],
           "chunks": [
             {
-              "surface": "Kein Problem",
+              "surface": "kein Problem",
               "type": "idiom",
               "meaning": "no problem",
               "explanation": "Reassures the customer that the issue is manageable."
@@ -9119,7 +10860,8 @@
               "pattern": "Simple past (Präteritum) of sein",
               "surface": "war",
               "meaning": "was",
-              "explanation": "'Sein' in the simple past: ich war, du warst, er/sie/es war, wir waren, ihr wart, sie waren."
+              "explanation": "'Sein' in the simple past: ich war, du warst, er/sie/es war, wir waren, ihr wart, sie waren.",
+              "ruleId": "grammar-simple-past-prateritum-of-sein-jmy0je"
             }
           ]
         },
@@ -9144,7 +10886,8 @@
               "pattern": "Simple past (Präteritum) of haben",
               "surface": "Hattest",
               "meaning": "had",
-              "explanation": "'Haben' in the simple past: ich hatte, du hattest, er/sie/es hatte, wir hatten, ihr hattet, sie hatten."
+              "explanation": "'Haben' in the simple past: ich hatte, du hattest, er/sie/es hatte, wir hatten, ihr hattet, sie hatten.",
+              "ruleId": "grammar-simple-past-prateritum-of-haben-nxvluv"
             }
           ]
         },
@@ -9281,7 +11024,8 @@
               "pattern": "werden-future",
               "surface": "werde",
               "meaning": "I will",
-              "explanation": "'Werden' + infinitive (at the end) forms the future tense, though present tense with a time word is also common."
+              "explanation": "'Werden' + infinitive (at the end) forms the future tense, though present tense with a time word is also common.",
+              "ruleId": "grammar-werden-future-fuxnfk"
             }
           ]
         },
@@ -9314,7 +11058,7 @@
           "translation": "It'll surely be nice, you need a break.",
           "words": [
             {
-              "surface": "bestimmt",
+              "surface": "Bestimmt",
               "lemma": "bestimmt",
               "meaning": "surely, definitely",
               "role": "adverb"
@@ -9326,7 +11070,7 @@
           "translation": "Someday I'd also like to travel to Japan.",
           "words": [
             {
-              "surface": "irgendwann",
+              "surface": "Irgendwann",
               "lemma": "irgendwann",
               "meaning": "someday",
               "role": "adverb"
@@ -9354,7 +11098,7 @@
           "translation": "We'll know more soon, I think.",
           "words": [
             {
-              "surface": "bald",
+              "surface": "Bald",
               "lemma": "bald",
               "meaning": "soon",
               "role": "adverb"
@@ -9422,7 +11166,8 @@
               "pattern": "seit + present tense (review)",
               "surface": "seit ich hier bin",
               "meaning": "since I've been here",
-              "explanation": "'Seit' + present tense expresses an action that started in the past and continues now."
+              "explanation": "'Seit' + present tense expresses an action that started in the past and continues now.",
+              "ruleId": "grammar-seit-present-tense-review-o7ne7s"
             }
           ]
         },
@@ -9560,7 +11305,7 @@
           ],
           "chunks": [
             {
-              "surface": "Alles Gute",
+              "surface": "alles Gute",
               "type": "idiom",
               "meaning": "all the best",
               "explanation": "Standard well-wishing phrase used when parting or celebrating."
